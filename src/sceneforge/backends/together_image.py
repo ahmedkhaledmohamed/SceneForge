@@ -32,6 +32,8 @@ class TogetherImageBackend(ImageBackend):
             headers={
                 "Authorization": f"Bearer {together_api_key()}",
                 "Content-Type": "application/json",
+                # Cloudflare 403s urllib's default Python-urllib agent
+                "User-Agent": "SceneForge/1.0",
             },
         )
         with urllib.request.urlopen(req, timeout=120) as resp:

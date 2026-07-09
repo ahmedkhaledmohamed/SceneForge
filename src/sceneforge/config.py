@@ -39,8 +39,8 @@ MODELS = {
         "kind": "video",
         "backend": "together",
         "id": "ByteDance/Seedance-2.0",
-        "price": 0.80,
-        "supports_i2v": None,
+        "price": 0.80,  # $0.16/sec at 720p, 5s clip
+        "supports_i2v": True,
         "notes": "most realistic",
     },
     "veo-3.0-fast": {
@@ -54,10 +54,10 @@ MODELS = {
     "kling-2.1": {
         "kind": "video",
         "backend": "together",
-        "id": "kwaivgi/kling-2.1-std",
+        "id": "kwaivgI/kling-2.1-standard",
         "price": 0.18,
         "supports_i2v": True,
-        "notes": "cheapest confirmed I2V",
+        "notes": "cheapest I2V",
     },
     # --- zero-cost test backends (ffmpeg lavfi) ---
     "fake-image": {
