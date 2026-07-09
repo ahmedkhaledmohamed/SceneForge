@@ -51,6 +51,19 @@ sceneforge models            # available models, prices, I2V support
 sceneforge regenerate scene-03 clip --model veo-3.0-fast
 ```
 
+## Web UI
+
+```bash
+sceneforge ui --dir ~/videos     # directory containing your project folders
+# open http://127.0.0.1:8000
+```
+
+Browse projects, compare image options side by side, click to select,
+generate images/clips/final video with buttons (jobs run in the background
+and the page refreshes when they finish). The UI and CLI share the same
+project.json state, so you can mix them freely. The UI is local-only by
+design — generation and ffmpeg run on your machine.
+
 Generation commands are idempotent — re-running skips scenes that already
 have what they need (so a failed batch resumes where it left off). Use
 `--force` or `regenerate` to redo. Every artifact records the exact prompt

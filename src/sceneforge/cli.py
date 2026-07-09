@@ -5,24 +5,13 @@ generate-clips -> stitch. Generation commands are idempotent: they skip
 scenes that already have what they need unless --force / regenerate.
 """
 
-from datetime import datetime, timezone
 from pathlib import Path
 
 import typer
 
-from . import config
-from .backends import get_image_backend, get_video_backend
-from .project import (
-    ClipArtifact,
-    ImageArtifact,
-    Project,
-    Scene,
-    Settings,
-    Style,
-    find_project_root,
-)
+from . import config, ops
+from .project import Project, Settings, Style, find_project_root
 from .prompts import DEFAULT_SUFFIX, build_anchor, compose_prompt
-from .stitch import stitch as stitch_clips
 from .util import slugify
 
 app = typer.Typer(help="Local-first AI video production: images -> clips -> final cut.")
@@ -219,13 +208,11 @@ def generate_images(
     model_key = model or project.settings.image_model
     resolved = config.resolve_model(model_key, "image")
 
-    todo: list[tuple[Scene, int]] = []
+    todo = ops.plan_images(scenes, n_options, force)
+    in_todo = {sc.id for sc, _ in todo}
     for sc in scenes:
-        needed = n_options if force else max(0, n_options - len(sc.images))
-        if needed == 0:
+        if sc.id not in in_todo:
             typer.echo(f"{sc.id}: has {len(sc.images)} images, skipping (--force to redo)")
-        else:
-            todo.append((sc, needed))
     if not todo:
         typer.echo("Nothing to generate.")
         return
@@ -240,32 +227,7 @@ def generate_images(
             typer.echo(f"[dry-run] {sc.id} x{needed}: {compose_prompt(project, sc)}")
         return
 
-    backend = get_image_backend(model_key)
-    if project.style.reference_image and not backend.supports_reference_image:
-        typer.echo(f"note: {model_key} ignores the project reference image")
-
-    for sc, needed in todo:
-        prompt = compose_prompt(project, sc)
-        for _ in range(needed):
-            opt_num = len(sc.images) + 1
-            out = project.images_dir(sc) / f"opt-{opt_num}.png"
-            ref = (
-                project.root / project.style.reference_image
-                if project.style.reference_image and backend.supports_reference_image
-                else None
-            )
-            backend.generate_image(
-                prompt, out,
-                width=project.settings.width, height=project.settings.height,
-                reference_image=ref,
-            )
-            sc.images.append(ImageArtifact(
-                file=str(out.relative_to(project.root)),
-                prompt=prompt,
-                model=model_key,
-            ))
-            project.save()
-            typer.echo(f"{sc.id} opt-{opt_num}: {out.relative_to(project.root)}")
+    ops.run_images(project, todo, model_key, log=typer.echo)
     typer.secho("Done. Pick with: sceneforge select SCENE_ID OPTION_NUM",
                 fg=typer.colors.GREEN)
 
@@ -302,30 +264,20 @@ def generate_clips(
     model_key = model or project.settings.video_model
     resolved = config.resolve_model(model_key, "video")
 
-    unselected = [sc.id for sc in scenes if sc.selected_image is None]
+    unselected = ops.unselected_scenes(scenes)
     if unselected:
         _fail(
             "These scenes have no selected image: " + ", ".join(unselected)
             + "\nRun 'sceneforge generate-images' then 'sceneforge select'."
         )
 
-    todo = [sc for sc in scenes if force or sc.completed_clip is None]
+    todo = ops.plan_clips(scenes, force)
     for sc in scenes:
         if sc not in todo:
             typer.echo(f"{sc.id}: clip exists, skipping (--force to redo)")
     if not todo:
         typer.echo("Nothing to generate.")
         return
-
-    supports_i2v = resolved.get("supports_i2v")
-    if supports_i2v is False:
-        typer.secho(
-            f"WARNING: {model_key} is text-to-video only — selected images will "
-            "be IGNORED and visual consistency with your stills is not guaranteed.",
-            fg=typer.colors.YELLOW,
-        )
-    elif supports_i2v is None:
-        typer.echo(f"note: I2V support for {model_key} is unverified — attempting")
 
     typer.echo(f"Generating {len(todo)} clips with {model_key} "
                f"(~${len(todo) * resolved['price']:.2f})")
@@ -335,50 +287,7 @@ def generate_clips(
                        f"{compose_prompt(project, sc)}")
         return
 
-    backend = get_video_backend(model_key)
-    failures = []
-    for sc in todo:
-        prompt = compose_prompt(project, sc)
-        out = project.clips_dir / f"{sc.id}.mp4"
-        if out.exists():
-            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-            out.rename(out.with_name(f"{sc.id}.{stamp}.mp4"))
-        image = (
-            project.root / sc.selected_image_file
-            if backend.supports_i2v is not False and supports_i2v is not False
-            else None
-        )
-        typer.echo(f"{sc.id}: generating...")
-        try:
-            result = backend.generate_clip(
-                prompt, out,
-                image=image,
-                width=project.settings.width, height=project.settings.height,
-                timeout_s=config.VIDEO_TIMEOUT_S,
-            )
-            sc.clips.append(ClipArtifact(
-                file=str(out.relative_to(project.root)),
-                prompt=prompt,
-                source_image=sc.selected_image_file,
-                model=model_key,
-                job_id=result.job_id,
-                duration_s=result.duration_s,
-                status="completed",
-            ))
-            typer.echo(f"{sc.id}: done ({result.duration_s:.1f}s)")
-        except Exception as exc:
-            sc.clips.append(ClipArtifact(
-                file=str(out.relative_to(project.root)),
-                prompt=prompt,
-                source_image=sc.selected_image_file,
-                model=model_key,
-                status="failed",
-                error=str(exc),
-            ))
-            failures.append(sc.id)
-            typer.secho(f"{sc.id}: FAILED — {exc}", fg=typer.colors.RED)
-        project.save()
-
+    failures = ops.run_clips(project, todo, model_key, log=typer.echo)
     if failures:
         _fail(f"{len(failures)} clip(s) failed: {', '.join(failures)}. "
               "Re-run generate-clips to retry just those.")
@@ -397,21 +306,10 @@ def stitch(
 ):
     """Stitch all scene clips into the final video (speed + crossfades, no audio)."""
     project = _load(ctx)
-    missing = [sc.id for sc in project.scenes if sc.completed_clip is None]
-    if missing:
-        _fail("These scenes have no completed clip: " + ", ".join(missing))
-    if not project.scenes:
-        _fail("No scenes to stitch")
-
-    clips = [project.root / sc.completed_clip.file for sc in project.scenes]
-    out_path = out or project.output_dir / "final.mp4"
-    duration = stitch_clips(
-        clips, out_path,
-        work_dir=project.work_dir,
-        width=project.settings.width, height=project.settings.height,
-        speed=speed if speed is not None else project.settings.clip_speed,
-        fade=fade if fade is not None else project.settings.crossfade,
-    )
+    try:
+        out_path, duration = ops.run_stitch(project, speed=speed, fade=fade, out=out)
+    except ValueError as exc:
+        _fail(str(exc))
     typer.secho(f"Final video: {out_path} ({duration:.1f}s, "
                 f"{project.settings.width}x{project.settings.height})",
                 fg=typer.colors.GREEN)
@@ -470,6 +368,28 @@ def status(ctx: typer.Context):
     cost = images_needed * image_model["price"] + clips_needed * video_model["price"]
     typer.echo(f"\nRemaining: {images_needed} images, {clips_needed} clips "
                f"(~${cost:.2f} at current models)")
+
+
+# ---------------------------------------------------------------- web ui
+
+
+@app.command()
+def ui(
+    directory: Path = typer.Option(
+        None, "--dir", help="Directory containing project folders (default: cwd)"
+    ),
+    host: str = typer.Option("127.0.0.1"),
+    port: int = typer.Option(8000),
+):
+    """Launch the local web UI for browsing and driving projects."""
+    import uvicorn
+
+    from .web import create_app
+
+    base = (directory or Path.cwd()).resolve()
+    typer.secho(f"SceneForge UI on http://{host}:{port} (projects in {base})",
+                fg=typer.colors.GREEN)
+    uvicorn.run(create_app(base), host=host, port=port, log_level="warning")
 
 
 if __name__ == "__main__":
