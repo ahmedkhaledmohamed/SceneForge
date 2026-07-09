@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sceneforge"
 version = "0.1.0"
-description = "Local-first AI video production: image generation, image-to-video, and stitching for short vertical videos"
+description = "Local-first AI video production: concept to stitched short-form video with consistent visual style"
 requires-python = ">=3.12"
 dependencies = [
     "typer>=0.12",
@@ -27,6 +27,9 @@ dev = [
     "pytest>=8.0",
     "httpx>=0.27",
 ]
+
+[project.urls]
+Repository = "https://github.com/ahmedkhaledmohamed/SceneForge"
 
 [project.scripts]
 sceneforge = "sceneforge.cli:app"
