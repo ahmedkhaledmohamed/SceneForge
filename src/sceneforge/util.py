@@ -32,13 +32,17 @@ def download(url: str, out_path: Path) -> None:
         raise RuntimeError(f"Download failed for {url}: {result.stderr.strip()}")
 
 
+def image_b64(path: Path) -> str:
+    """Raw base64 of an image file (RunPod worker payload format)."""
+    return base64.b64encode(path.read_bytes()).decode("ascii")
+
+
 def image_data_uri(path: Path) -> str:
     suffix = path.suffix.lower().lstrip(".")
     mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg"}.get(
         suffix, "image/png"
     )
-    data = base64.b64encode(path.read_bytes()).decode("ascii")
-    return f"data:{mime};base64,{data}"
+    return f"data:{mime};base64,{image_b64(path)}"
 
 
 def ffprobe_duration(path: Path) -> float:

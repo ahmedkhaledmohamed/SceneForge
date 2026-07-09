@@ -369,6 +369,14 @@ def status(ctx: typer.Context):
     typer.echo(f"\nRemaining: {images_needed} images, {clips_needed} clips "
                f"(~${cost:.2f} at current models)")
 
+    spent = sum(
+        artifact.meta.get("cost_usd", 0.0)
+        for sc in project.scenes
+        for artifact in [*sc.images, *sc.clips]
+    )
+    if spent:
+        typer.echo(f"Self-hosted GPU spend so far: ${spent:.2f} (from artifact metadata)")
+
 
 # ---------------------------------------------------------------- web ui
 
