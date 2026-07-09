@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+dist/
+build/
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Generated media (sample projects live outside the repo)
+*.mp4
+*.png
+!docs/**/*.png
