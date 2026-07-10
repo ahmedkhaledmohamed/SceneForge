@@ -71,6 +71,7 @@ export interface Project {
   scenes: Scene[];
   job: Job | null;
   spent_usd: number;
+  profile_characters: Character[];
 }
 
 export interface ProjectSummary {

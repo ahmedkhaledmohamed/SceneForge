@@ -230,6 +230,48 @@ def test_import_image_and_clip(tmp_path):
     assert clips[0]["take"] == 1
 
 
+def test_delete_scene_outfit_project(tmp_path):
+    client = make_client(tmp_path)
+    prof = create_profile(client)
+    slug = create_project(client, prof)
+
+    # add scene, then delete it
+    client.post(f"/api/profiles/{prof}/projects/{slug}/scenes",
+                json={"description": "to be deleted"})
+    doc = client.get(f"/api/profiles/{prof}/projects/{slug}").json()
+    assert len(doc["scenes"]) == 1
+
+    response = client.delete(f"/api/profiles/{prof}/projects/{slug}/scenes/scene-01")
+    assert response.status_code == 200
+    doc = client.get(f"/api/profiles/{prof}/projects/{slug}").json()
+    assert len(doc["scenes"]) == 0
+
+    # add outfit, then delete it
+    client.post(f"/api/profiles/{prof}/projects/{slug}/outfits",
+                json={"name": "Doomed outfit"})
+    response = client.delete(f"/api/profiles/{prof}/projects/{slug}/outfits/outfit-1")
+    assert response.status_code == 200
+
+    # delete the whole project
+    response = client.delete(f"/api/profiles/{prof}/projects/{slug}")
+    assert response.status_code == 200
+    response = client.get(f"/api/profiles/{prof}/projects/{slug}")
+    assert response.status_code == 404
+
+
+def test_project_doc_includes_profile_characters(tmp_path):
+    client = make_client(tmp_path)
+    prof = create_profile(client)
+    client.post(f"/api/profiles/{prof}/characters",
+                data={"name": "Mila", "main": "true"},
+                files=[("files", ("doll.png", TINY_PNG, "image/png"))])
+    slug = create_project(client, prof)
+    doc = client.get(f"/api/profiles/{prof}/projects/{slug}").json()
+    assert len(doc["profile_characters"]) == 1
+    assert doc["profile_characters"][0]["name"] == "Mila"
+    assert doc["profile_characters"][0]["main"] is True
+
+
 def test_job_conflict_409(tmp_path):
     client = make_client(tmp_path)
     prof = create_profile(client)

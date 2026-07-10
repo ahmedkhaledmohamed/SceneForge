@@ -82,6 +82,7 @@ def make_router(home: Path) -> APIRouter:
             for sc in project.scenes
             for artifact in [*sc.images, *sc.clips]
         ), 4)
+        doc["profile_characters"] = [asdict(c) for c in profile.characters] if profile else []
         return doc
 
     def start_job_or_409(prof: str, slug: str, name: str, fn) -> dict:
@@ -258,6 +259,13 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return project_doc(project, prof, slug, profile=profile)
 
+    @router.delete("/profiles/{prof}/projects/{slug}")
+    def delete_project(prof: str, slug: str):
+        import shutil
+        root = project_root(prof, slug)
+        shutil.rmtree(root)
+        return {"deleted": slug}
+
     # ---------------------------------------- project-level characters
 
     @router.post("/profiles/{prof}/projects/{slug}/characters", status_code=201)
@@ -298,6 +306,14 @@ def make_router(home: Path) -> APIRouter:
         outfit.items.append(item)
         project.save()
         return asdict(outfit)
+
+    @router.delete("/profiles/{prof}/projects/{slug}/outfits/{oid}")
+    def delete_outfit(prof: str, slug: str, oid: str):
+        project = load_project(prof, slug)
+        outfit = find_or_404(project.find_outfit, oid)
+        project.outfits.remove(outfit)
+        project.save()
+        return {"deleted": oid}
 
     @router.delete("/profiles/{prof}/projects/{slug}/outfits/{oid}/items/{index}")
     def delete_item(prof: str, slug: str, oid: str, index: int):
@@ -363,6 +379,14 @@ def make_router(home: Path) -> APIRouter:
             created.append(asdict(scene))
         project.save()
         return created
+
+    @router.delete("/profiles/{prof}/projects/{slug}/scenes/{sid}")
+    def delete_scene(prof: str, slug: str, sid: str):
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        project.scenes.remove(scene)
+        project.save()
+        return {"deleted": sid}
 
     @router.patch("/profiles/{prof}/projects/{slug}/scenes/{sid}")
     def patch_scene(prof: str, slug: str, sid: str, payload: dict):

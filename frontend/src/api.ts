@@ -58,10 +58,19 @@ export const api = {
     request<Project>(`/profiles/${prof}/projects`, json(body)),
   job: (prof: string, slug: string) => request<Job>(`${p(prof, slug)}/job`),
 
+  deleteProject: (prof: string, slug: string) =>
+    request(`${p(prof, slug)}`, { method: "DELETE" }),
+  patchProject: (prof: string, slug: string, body: unknown) =>
+    request<Project>(`${p(prof, slug)}`, patch(body)),
+
   addOutfit: (prof: string, slug: string, name: string) =>
     request(`${p(prof, slug)}/outfits`, json({ name })),
   addItem: (prof: string, slug: string, oid: string, form: FormData) =>
     request(`${p(prof, slug)}/outfits/${oid}/items`, { method: "POST", body: form }),
+  deleteOutfit: (prof: string, slug: string, oid: string) =>
+    request(`${p(prof, slug)}/outfits/${oid}`, { method: "DELETE" }),
+  deleteItem: (prof: string, slug: string, oid: string, index: number) =>
+    request(`${p(prof, slug)}/outfits/${oid}/items/${index}`, { method: "DELETE" }),
   links: (prof: string, slug: string, oid: string) =>
     request<string>(`${p(prof, slug)}/outfits/${oid}/links`),
   addCharacter: (prof: string, slug: string, form: FormData) =>
@@ -71,6 +80,8 @@ export const api = {
     request(`${p(prof, slug)}/scenes`, json(body)),
   scenesFromOutfit: (prof: string, slug: string, body: unknown) =>
     request(`${p(prof, slug)}/scenes/from-outfit`, json(body)),
+  deleteScene: (prof: string, slug: string, sid: string) =>
+    request(`${p(prof, slug)}/scenes/${sid}`, { method: "DELETE" }),
   patchScene: (prof: string, slug: string, sid: string, body: unknown) =>
     request(`${p(prof, slug)}/scenes/${sid}`, patch(body)),
   select: (prof: string, slug: string, sid: string, imageIndex: number) =>
@@ -90,6 +101,8 @@ export const api = {
   keep: (prof: string, slug: string, sid: string, index: number, kept: boolean) =>
     request(`${p(prof, slug)}/scenes/${sid}/clips/${index}/keep`, json({ kept })),
 
+  stitch: (prof: string, slug: string) =>
+    request(`${p(prof, slug)}/stitch`, { method: "POST" }),
   export: (prof: string, slug: string) =>
     request<{ dir: string; files: string[] }>(`${p(prof, slug)}/export`, {
       method: "POST",
