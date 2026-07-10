@@ -48,6 +48,8 @@ export const api = {
     request(`/profiles/${prof}/characters`, { method: "POST", body: form }),
   addProfileCharacterRef: (prof: string, cid: string, form: FormData) =>
     request(`/profiles/${prof}/characters/${cid}/refs`, { method: "POST", body: form }),
+  deleteProfileCharacter: (prof: string, cid: string) =>
+    request(`/profiles/${prof}/characters/${cid}`, { method: "DELETE" }),
   addSeed: (prof: string, form: FormData) =>
     request(`/profiles/${prof}/seeds`, { method: "POST", body: form }),
 
@@ -60,6 +62,8 @@ export const api = {
 
   deleteProject: (prof: string, slug: string) =>
     request(`${p(prof, slug)}`, { method: "DELETE" }),
+  duplicateProject: (prof: string, slug: string, body: unknown) =>
+    request<Project>(`${p(prof, slug)}/duplicate`, json(body)),
   patchProject: (prof: string, slug: string, body: unknown) =>
     request<Project>(`${p(prof, slug)}`, patch(body)),
 
