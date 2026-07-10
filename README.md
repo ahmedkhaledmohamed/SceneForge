@@ -113,7 +113,7 @@ sceneforge stitch                        # final cut
 
 ```bash
 pip install -e ".[dev]"
-pytest                   # 68 tests, $0 (fake backends)
+pytest                   # 76 tests, $0 (fake backends)
 cd frontend && npm i && npm run dev     # SPA dev server at :5173
 ```
 
