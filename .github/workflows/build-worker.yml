@@ -47,5 +47,5 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/sceneforge-worker:${{ inputs.tag || '0.1' }}
+            ghcr.io/${{ github.repository_owner }}/sceneforge-worker:${{ inputs.tag || '0.2' }}
             ghcr.io/${{ github.repository_owner }}/sceneforge-worker:latest
