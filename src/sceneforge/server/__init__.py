@@ -32,6 +32,12 @@ def create_app(base_dir: Path) -> FastAPI:
 
         @app.get("/{path:path}", include_in_schema=False)
         def spa(path: str):  # SPA catch-all: client-side routing
+            if path == "api" or path.startswith("api/"):
+                # unmatched API paths are 404s, never index.html
+                return JSONResponse(
+                    {"error": {"code": "not_found", "message": "No such route"}},
+                    status_code=404,
+                )
             candidate = (web_dist / path).resolve()
             if path and candidate.is_file() and candidate.is_relative_to(web_dist):
                 return FileResponse(candidate)
