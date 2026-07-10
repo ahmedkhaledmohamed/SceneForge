@@ -113,11 +113,14 @@ def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
                 width=project.settings.width, height=project.settings.height,
                 reference_images=refs or None,
             )
+            meta = result.meta
+            if "cost_usd" not in meta:
+                meta["cost_usd"] = config.MODELS.get(model_key, {}).get("price", 0)
             sc.images.append(ImageArtifact(
                 file=str(out.relative_to(project.root)),
                 prompt=prompt,
                 model=model_key,
-                meta=result.meta,
+                meta=meta,
             ))
             project.save()
             count += 1
@@ -175,6 +178,9 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
                     if clip.file == rel_old:
                         clip.file = rel_new
             pending.rename(out)
+            clip_meta = result.meta
+            if "cost_usd" not in clip_meta:
+                clip_meta["cost_usd"] = config.MODELS.get(model_key, {}).get("price", 0)
             sc.clips.append(ClipArtifact(
                 file=str(out.relative_to(project.root)),
                 prompt=prompt,
@@ -183,7 +189,7 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
                 job_id=result.job_id,
                 duration_s=result.duration_s,
                 status="completed",
-                meta=result.meta,
+                meta=clip_meta,
             ))
             log(f"{sc.id}: done ({result.duration_s:.1f}s){_cost_suffix(result.meta)}")
         except Exception as exc:
@@ -240,6 +246,9 @@ def run_takes(project: Project, scene: Scene, image_index: int, count: int,
                 timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
             )
             pending.rename(out)
+            take_meta = result.meta
+            if "cost_usd" not in take_meta:
+                take_meta["cost_usd"] = config.MODELS.get(model_key, {}).get("price", 0)
             scene.clips.append(ClipArtifact(
                 file=str(out.relative_to(project.root)),
                 prompt=prompt,
@@ -248,12 +257,12 @@ def run_takes(project: Project, scene: Scene, image_index: int, count: int,
                 job_id=result.job_id,
                 duration_s=result.duration_s,
                 status="completed",
-                meta=result.meta,
+                meta=take_meta,
                 take=take_num,
                 source_image_index=image_index,
             ))
             log(f"{scene.id} take {take_num}: done "
-                f"({result.duration_s:.1f}s){_cost_suffix(result.meta)}")
+                f"({result.duration_s:.1f}s){_cost_suffix(take_meta)}")
         except Exception as exc:
             pending.unlink(missing_ok=True)
             scene.clips.append(ClipArtifact(
