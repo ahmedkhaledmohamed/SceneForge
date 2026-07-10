@@ -168,6 +168,12 @@ def make_router(home: Path) -> APIRouter:
         _sessions[token] = prof
         return {"token": token}
 
+    @router.post("/profiles/{prof}/logout")
+    def logout(request: Request):
+        token = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        _sessions.pop(token, None)
+        return {"ok": True}
+
     @router.post("/profiles/{prof}/set-password")
     def set_password(prof: str, request: Request, payload: dict):
         profile = load_profile(prof)

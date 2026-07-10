@@ -26,6 +26,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* not json */
     }
+    if (response.status === 401) {
+      setAuthToken(null);
+    }
     throw new Error(message);
   }
   const contentType = response.headers.get("content-type") ?? "";
@@ -60,6 +63,8 @@ export const api = {
   patchProfile: (prof: string, body: unknown) => request<ProfileDoc>(`/profiles/${prof}`, patch(body)),
   login: (prof: string, password: string) =>
     request<{ token: string }>(`/profiles/${prof}/login`, json({ password })),
+  logout: (prof: string) =>
+    request(`/profiles/${prof}/logout`, { method: "POST" }),
   setPassword: (prof: string, password: string) =>
     request<{ token: string }>(`/profiles/${prof}/set-password`, json({ password })),
   getSettings: (prof: string) =>
