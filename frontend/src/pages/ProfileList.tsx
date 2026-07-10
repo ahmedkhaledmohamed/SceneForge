@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 
 export default function ProfileList() {
-  const { data: profiles, isLoading } = useQuery({
+  const { data: profiles, isLoading, error } = useQuery({
     queryKey: ["profiles"],
     queryFn: api.profiles,
   });
@@ -51,6 +51,15 @@ export default function ProfileList() {
       )}
 
       {isLoading && <p className="muted">Loading…</p>}
+      {error && (
+        <div className="card" style={{ borderColor: "var(--red, #c44)" }}>
+          <b>Cannot reach the SceneForge API</b>
+          <p className="muted">
+            Run <code>sceneforge studio</code> locally, then refresh this page.
+            The Studio SPA needs a running API backend to load profiles and projects.
+          </p>
+        </div>
+      )}
       <div className="grid-cards">
         {profiles?.map((p) => (
           <Link key={p.slug} to={`/${p.slug}`} className="card" style={{ display: "block" }}>

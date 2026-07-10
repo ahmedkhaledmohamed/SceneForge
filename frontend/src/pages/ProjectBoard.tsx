@@ -177,10 +177,20 @@ function SceneCard({ prof, slug, scene, project, refresh, busy }: {
 }) {
   const [refineOpen, setRefineOpen] = useState(false);
   const [viewing, setViewing] = useState<number | null>(null);
+  const imgImportRef = useRef<HTMLInputElement>(null);
 
   const select = useMutation({
     mutationFn: (index: number) => api.select(prof, slug, scene.id, index),
     onSuccess: () => { toastOk("selected"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+  const importImg = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.set("file", file);
+      return api.importImage(prof, slug, scene.id, form);
+    },
+    onSuccess: () => { toastOk("image imported"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
 
@@ -205,6 +215,20 @@ function SceneCard({ prof, slug, scene, project, refresh, busy }: {
               takes{completedTakes > 0 ? ` (${completedTakes})` : ""}
             </button>
           </Link>
+          <input
+            ref={imgImportRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) importImg.mutate(file);
+              e.target.value = "";
+            }}
+          />
+          <button className="ghost" onClick={() => imgImportRef.current?.click()}>
+            import image
+          </button>
         </div>
       </div>
 

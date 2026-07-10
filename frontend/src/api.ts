@@ -76,6 +76,11 @@ export const api = {
   select: (prof: string, slug: string, sid: string, imageIndex: number) =>
     request(`${p(prof, slug)}/scenes/${sid}/select`, json({ image_index: imageIndex })),
 
+  importImage: (prof: string, slug: string, sid: string, form: FormData) =>
+    request(`${p(prof, slug)}/scenes/${sid}/import-image`, { method: "POST", body: form }),
+  importClip: (prof: string, slug: string, sid: string, form: FormData) =>
+    request(`${p(prof, slug)}/scenes/${sid}/import-clip`, { method: "POST", body: form }),
+
   generateImages: (prof: string, slug: string, body: unknown) =>
     request(`${p(prof, slug)}/generate-images`, json(body)),
   regenerateImage: (prof: string, slug: string, sid: string, body: unknown) =>

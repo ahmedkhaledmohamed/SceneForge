@@ -202,6 +202,34 @@ def test_profile_character_resolves_in_project(tmp_path):
     assert "Mila" in doc["scenes"][0]["prompt_preview"]
 
 
+def test_import_image_and_clip(tmp_path):
+    client = make_client(tmp_path)
+    prof = create_profile(client)
+    slug = create_project(client, prof)
+    client.post(f"/api/profiles/{prof}/projects/{slug}/scenes",
+                json={"description": "imported content"})
+
+    response = client.post(
+        f"/api/profiles/{prof}/projects/{slug}/scenes/scene-01/import-image",
+        files={"file": ("existing.png", TINY_PNG, "image/png")})
+    assert response.status_code == 201
+    doc = response.json()
+    assert len(doc["scenes"][0]["images"]) == 1
+    assert doc["scenes"][0]["images"][0]["model"] == "import"
+
+    # make a tiny mp4 header for clip import
+    tiny_mp4 = b"\x00\x00\x00\x1cftypisom" + b"\x00" * 64
+    response = client.post(
+        f"/api/profiles/{prof}/projects/{slug}/scenes/scene-01/import-clip",
+        files={"file": ("existing.mp4", tiny_mp4, "video/mp4")})
+    assert response.status_code == 201
+    doc = response.json()
+    clips = doc["scenes"][0]["clips"]
+    assert len(clips) == 1
+    assert clips[0]["model"] == "import"
+    assert clips[0]["take"] == 1
+
+
 def test_job_conflict_409(tmp_path):
     client = make_client(tmp_path)
     prof = create_profile(client)

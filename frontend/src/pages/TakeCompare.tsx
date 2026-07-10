@@ -1,9 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, media } from "../api";
 import JobBanner from "../components/JobBanner";
-import { toastError } from "../components/toast";
+import { toastError, toastOk } from "../components/toast";
 import { useInvalidateProject, useModels, useProject } from "../hooks";
 
 export default function TakeCompare() {
@@ -15,6 +15,7 @@ export default function TakeCompare() {
   const [count, setCount] = useState(3);
   const [imageIndex, setImageIndex] = useState<number | null>(null);
   const [motion, setMotion] = useState("");
+  const clipImportRef = useRef<HTMLInputElement>(null);
 
   const scene = project?.scenes.find((s) => s.id === sid);
   if (!project || !scene) return <p className="muted">Loading…</p>;
@@ -39,6 +40,15 @@ export default function TakeCompare() {
     mutationFn: ({ index, kept }: { index: number; kept: boolean }) =>
       api.keep(prof, slug, sid, index, kept),
     onSuccess: refresh,
+    onError: (e) => toastError(String(e)),
+  });
+  const importClip = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.set("file", file);
+      return api.importClip(prof, slug, sid, form);
+    },
+    onSuccess: () => { toastOk("clip imported"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
 
@@ -85,6 +95,20 @@ export default function TakeCompare() {
           />
           <button onClick={() => generate.mutate()} disabled={busy}>
             generate {count} takes (~${(count * price).toFixed(2)})
+          </button>
+          <input
+            ref={clipImportRef}
+            type="file"
+            accept="video/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) importClip.mutate(file);
+              e.target.value = "";
+            }}
+          />
+          <button className="ghost" onClick={() => clipImportRef.current?.click()}>
+            import clip
           </button>
         </div>
       </div>

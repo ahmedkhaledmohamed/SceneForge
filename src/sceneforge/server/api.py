@@ -387,6 +387,49 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return asdict(scene)
 
+    # ---------------------------------------------------------- import
+
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/import-image",
+                 status_code=201)
+    async def import_image(prof: str, slug: str, sid: str,
+                           file: UploadFile = File(...)):
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        dest = await save_upload(file, project.images_dir(scene))
+        from ..project import ImageArtifact
+        scene.images.append(ImageArtifact(
+            file=str(dest.relative_to(project.root)),
+            prompt="(imported)",
+            model="import",
+            meta={"imported": True},
+        ))
+        project.save()
+        return project_doc(load_project(prof, slug), prof, slug,
+                           profile=load_profile(prof))
+
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/import-clip",
+                 status_code=201)
+    async def import_clip(prof: str, slug: str, sid: str,
+                          file: UploadFile = File(...)):
+        from ..project import ClipArtifact
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        dest = await save_upload(file, project.clips_dir / scene.id,
+                                 kinds=("video",))
+        take_num = max((c.take for c in scene.clips if c.take), default=0) + 1
+        scene.clips.append(ClipArtifact(
+            file=str(dest.relative_to(project.root)),
+            prompt="(imported)",
+            source_image=None,
+            model="import",
+            status="completed",
+            meta={"imported": True},
+            take=take_num,
+        ))
+        project.save()
+        return project_doc(load_project(prof, slug), prof, slug,
+                           profile=load_profile(prof))
+
     # ------------------------------------------------------- generation
 
     @router.post("/profiles/{prof}/projects/{slug}/generate-images",
