@@ -17,3 +17,7 @@ build/
 *.mp4
 *.png
 !docs/**/*.png
+
+# Frontend
+frontend/node_modules/
+src/sceneforge/web_dist/
