@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 import App from "./App";
 
-test("renders the project list shell", async () => {
+test("renders the profile list shell", async () => {
   vi.stubGlobal("fetch", vi.fn(async () =>
     new Response(JSON.stringify([]), {
       headers: { "content-type": "application/json" },
@@ -17,5 +17,5 @@ test("renders the project list shell", async () => {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  expect(await screen.findByText("Projects")).toBeTruthy();
+  expect(await screen.findByText("Profiles")).toBeTruthy();
 });
