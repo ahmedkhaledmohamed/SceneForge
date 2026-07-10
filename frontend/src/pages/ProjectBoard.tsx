@@ -5,6 +5,8 @@ import { api, media } from "../api";
 import JobBanner from "../components/JobBanner";
 import Lightbox from "../components/Lightbox";
 import { toastError, toastOk } from "../components/toast";
+import { DEMO_MODELS, DEMO_PROJECT } from "../demo";
+import { useIsDemo } from "../DemoContext";
 import { useInvalidateProject, useModels, useProject } from "../hooks";
 import type { Character, Outfit, Project, Scene } from "../types";
 
@@ -466,6 +468,7 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
 
 export default function ProjectBoard() {
   const { prof = "", slug = "" } = useParams();
+  const isDemo = useIsDemo();
   const { data: project, isLoading, error } = useProject(prof, slug);
   const refresh = useInvalidateProject(prof, slug);
   const navigate = useNavigate();
@@ -559,30 +562,75 @@ export default function ProjectBoard() {
     onError: (e) => toastError(String(e)),
   });
 
-  if (isLoading) return <p className="muted">Loading…</p>;
-  if (error || !project) return <p className="muted">{String(error ?? "not found")}</p>;
+  if (isLoading && !isDemo) return <p className="muted">Loading…</p>;
+  if (!project && !isDemo) return <p className="muted">{String(error ?? "not found")}</p>;
+  if (!project && isDemo) {
+    // demo mode shows a read-only project with sample data
+    const dp = DEMO_PROJECT;
+    return (
+      <>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+          <h1>{dp.name}</h1>
+          <span className="pill gold">demo mode</span>
+        </div>
+        <p className="muted">
+          {dp.concept} · <span className="mono">{dp.style.anchor}</span>
+          · <span className="mono">${dp.spent_usd.toFixed(2)} GPU spend</span>
+        </p>
+        {dp.outfits.length > 0 && <h2>Outfits</h2>}
+        {dp.outfits.map((outfit) => (
+          <div key={outfit.id} className="card">
+            <b>{outfit.name}</b>
+            {outfit.items.map((item, i) => (
+              <div className="item-row" key={i}>
+                {item.url ? <a href={item.url} target="_blank" rel="noreferrer">{item.name}</a> : <span>{item.name}</span>}
+              </div>
+            ))}
+          </div>
+        ))}
+        <h2>Scenes</h2>
+        {dp.scenes.map((scene) => (
+          <div key={scene.id} className="card">
+            <b>{scene.id}</b> — {scene.description}
+            <div className="muted mono" style={{ fontSize: "0.75rem" }}>
+              {[scene.outfit_id, scene.character_id, scene.pose].filter(Boolean).join(" · ")}
+            </div>
+            <div className="row" style={{ margin: "8px 0" }}>
+              <span className="pill">{scene.images.length} images</span>
+              <span className="pill">{scene.clips.filter((c) => c.status === "completed").length} clips</span>
+              <span className="pill gold">{scene.clips.filter((c) => c.kept).length} kept</span>
+            </div>
+            {scene.prompt_preview && (
+              <div className="prompt-preview">{scene.prompt_preview}</div>
+            )}
+          </div>
+        ))}
+      </>
+    );
+  }
 
+  const proj = project!;
   const { data: models } = useModels();
-  const busy = project.job?.status === "running";
-  const keptCount = project.scenes.flatMap((s) => s.clips).filter((c) => c.kept).length;
-  const allClipsReady = project.scenes.length > 0 &&
-    project.scenes.every((s) => s.clips.some((c) => c.status === "completed"));
-  const allChars = [...project.profile_characters, ...project.characters];
+  const busy = proj.job?.status === "running";
+  const keptCount = proj.scenes.flatMap((s) => s.clips).filter((c) => c.kept).length;
+  const allClipsReady = proj.scenes.length > 0 &&
+    proj.scenes.every((s) => s.clips.some((c) => c.status === "completed"));
+  const allChars = [...proj.profile_characters, ...proj.characters];
   const defaultChar = allChars.find((c) => c.main)?.id ?? allChars[0]?.id ?? "";
-  const selectedCount = project.scenes.filter((s) => s.selected_image !== null).length;
-  const unselectedWithImages = project.scenes.filter((s) => s.selected_image === null && s.images.length > 0).length;
-  const imgModelKey = imageModel ?? project.settings.image_model;
+  const selectedCount = proj.scenes.filter((s) => s.selected_image !== null).length;
+  const unselectedWithImages = proj.scenes.filter((s) => s.selected_image === null && s.images.length > 0).length;
+  const imgModelKey = imageModel ?? proj.settings.image_model;
   const imgPrice = models?.[imgModelKey]?.price ?? 0;
-  const imagesNeeded = project.scenes.reduce((sum, s) =>
-    sum + Math.max(0, project.settings.image_options - s.images.length), 0);
+  const imagesNeeded = proj.scenes.reduce((sum, s) =>
+    sum + Math.max(0, proj.settings.image_options - s.images.length), 0);
   const imgCost = imagesNeeded * imgPrice;
-  const vidPrice = models?.[project.settings.video_model]?.price ?? 0;
+  const vidPrice = models?.[proj.settings.video_model]?.price ?? 0;
   const takesCost = selectedCount * 2 * vidPrice;
 
   return (
     <>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
-        <h1>{project.name}</h1>
+        <h1>{proj.name}</h1>
         <div className="row">
           <button className="ghost" onClick={() => setSettingsOpen(true)}>settings</button>
           <button className="ghost" onClick={() => duplicateProject.mutate()}>duplicate</button>
@@ -590,7 +638,7 @@ export default function ProjectBoard() {
             className="ghost"
             style={{ color: "var(--red, #c44)" }}
             onClick={() => {
-              if (confirm(`Delete project "${project.name}" and all its files?`))
+              if (confirm(`Delete project "${proj.name}" and all its files?`))
                 deleteProject.mutate();
             }}
           >
@@ -599,16 +647,16 @@ export default function ProjectBoard() {
         </div>
       </div>
       <p className="muted">
-        {project.concept} · <span className="mono">{project.style.anchor}</span>
-        {project.spent_usd > 0 && <> · <span className="mono">${project.spent_usd.toFixed(2)} GPU spend</span></>}
+        {proj.concept} · <span className="mono">{proj.style.anchor}</span>
+        {proj.spent_usd > 0 && <> · <span className="mono">${proj.spent_usd.toFixed(2)} GPU spend</span></>}
       </p>
-      <JobBanner job={project.job} onRetry={() => generateAll.mutate()} />
+      <JobBanner job={proj.job} onRetry={() => generateAll.mutate()} />
 
       {settingsOpen && (
         <SettingsDialog
           prof={prof}
           slug={slug}
-          project={project}
+          project={proj}
           onClose={() => setSettingsOpen(false)}
           refresh={refresh}
         />
@@ -617,7 +665,7 @@ export default function ProjectBoard() {
       <div className="row">
         <ModelPicker
           kind="image"
-          value={imageModel ?? project.settings.image_model}
+          value={imageModel ?? proj.settings.image_model}
           onChange={setImageModel}
         />
         <button onClick={() => generateAll.mutate()} disabled={busy || imagesNeeded === 0}>
@@ -629,7 +677,7 @@ export default function ProjectBoard() {
           </button>
         )}
         <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
-        {project.concept && (
+        {proj.concept && (
           <button className="ghost" onClick={() => brainstorm.mutate()} disabled={busy || brainstorm.isPending}>
             {brainstorm.isPending ? "thinking…" : "brainstorm scenes"}
           </button>
@@ -755,11 +803,11 @@ export default function ProjectBoard() {
         </p>
       )}
 
-      {project.outfits.length > 0 && <h2>Outfits</h2>}
-      {project.outfits.map((outfit) => (
+      {proj.outfits.length > 0 && <h2>Outfits</h2>}
+      {proj.outfits.map((outfit) => (
         <div key={outfit.id}>
           <OutfitCard prof={prof} slug={slug} outfit={outfit} allChars={allChars} busy={!!busy} refresh={refresh} />
-          {!project.scenes.some((s) => s.outfit_id === outfit.id) && (
+          {!proj.scenes.some((s) => s.outfit_id === outfit.id) && (
             <div className="row" style={{ marginBottom: 14 }}>
               {allChars.length > 1 ? (
                 <>
@@ -795,22 +843,22 @@ export default function ProjectBoard() {
       ))}
 
       <h2>Scenes</h2>
-      {project.scenes.length === 0 && (
+      {proj.scenes.length === 0 && (
         <p className="muted">No scenes yet — hit "+ scene", or add an outfit and create its pose scenes.</p>
       )}
-      {project.scenes.map((scene, idx) => (
+      {proj.scenes.map((scene, idx) => (
         <SceneCard
           key={scene.id}
           prof={prof}
           slug={slug}
           scene={scene}
-          project={project}
+          project={proj}
           refresh={refresh}
           busy={!!busy}
           isFirst={idx === 0}
-          isLast={idx === project.scenes.length - 1}
+          isLast={idx === proj.scenes.length - 1}
           onMove={(dir) => {
-            const ids = project.scenes.map((s) => s.id);
+            const ids = proj.scenes.map((s) => s.id);
             const j = idx + dir;
             [ids[idx], ids[j]] = [ids[j], ids[idx]];
             api.reorderScenes(prof, slug, ids).then(refresh).catch((e) => toastError(String(e)));

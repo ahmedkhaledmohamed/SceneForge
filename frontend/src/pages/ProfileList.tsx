@@ -2,8 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { DEMO_PROFILES } from "../demo";
+import { useIsDemo } from "../DemoContext";
 
 export default function ProfileList() {
+  const isDemo = useIsDemo();
   const { data: profiles, isLoading, error } = useQuery({
     queryKey: ["profiles"],
     queryFn: api.profiles,
@@ -50,18 +53,15 @@ export default function ProfileList() {
         </form>
       )}
 
-      {isLoading && <p className="muted">Loading…</p>}
-      {error && (
-        <div className="card" style={{ borderColor: "var(--red, #c44)" }}>
-          <b>Cannot reach the SceneForge API</b>
-          <p className="muted">
-            Run <code>sceneforge studio</code> locally, then refresh this page.
-            The Studio SPA needs a running API backend to load profiles and projects.
-          </p>
+      {isLoading && !isDemo && <p className="muted">Loading…</p>}
+      {isDemo && (
+        <div className="card" style={{ borderColor: "var(--gold-dim, #b06f24)", marginBottom: 14 }}>
+          <b>Demo mode</b> — exploring with sample data.
+          Run <code>sceneforge studio</code> locally to create real content.
         </div>
       )}
       <div className="grid-cards">
-        {profiles?.map((p) => (
+        {(profiles ?? (isDemo ? DEMO_PROFILES : []))?.map((p) => (
           <Link key={p.slug} to={`/${p.slug}`} className="card" style={{ display: "block" }}>
             <b>{p.name}</b>
             <div className="row" style={{ marginTop: 10 }}>
@@ -72,7 +72,7 @@ export default function ProfileList() {
           </Link>
         ))}
       </div>
-      {profiles?.length === 0 && !creating && (
+      {!isDemo && profiles?.length === 0 && !creating && (
         <p className="muted">No profiles yet — create one to get started.</p>
       )}
     </>
