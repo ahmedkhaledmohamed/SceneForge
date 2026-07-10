@@ -2,22 +2,28 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, media } from "../api";
+import { DEMO_HISTORY } from "../demo";
+import { useIsDemo } from "../DemoContext";
 
 export default function HistoryView() {
   const { prof = "", slug = "" } = useParams();
+  const isDemo = useIsDemo();
   const [type, setType] = useState("");
   const params = type ? `?type=${type}` : "";
   const { data: rows } = useQuery({
     queryKey: ["history", prof, slug, type],
     queryFn: () => api.history(prof, slug, params),
+    enabled: !isDemo,
   });
 
-  const spend = rows?.reduce((sum, r) => sum + (r.cost_usd ?? 0), 0) ?? 0;
+  const effectiveRows = rows ?? (isDemo ? DEMO_HISTORY : []);
+  const filtered = type ? effectiveRows.filter((r) => r.type === type) : effectiveRows;
+  const spend = filtered.reduce((sum, r) => sum + (r.cost_usd ?? 0), 0);
 
   return (
     <>
       <p><Link to={`/${prof}/p/${slug}`}>← board</Link></p>
-      <h1>History</h1>
+      <h1>History {isDemo && <span className="pill gold">demo</span>}</h1>
       <div className="row" style={{ margin: "10px 0" }}>
         <select value={type} onChange={(e) => setType(e.target.value)}>
           <option value="">everything</option>
@@ -33,10 +39,11 @@ export default function HistoryView() {
           </tr>
         </thead>
         <tbody>
-          {rows?.map((row, i) => (
+          {filtered.map((row, i) => (
             <tr key={i}>
               <td>
                 {row.type === "image" ? (
+                  isDemo ? <span className="pill">img</span> :
                   <img src={media(prof, slug, row.file)} alt="" style={{ width: 44, borderRadius: 4 }} loading="lazy" />
                 ) : (
                   <span className="pill">{row.kept ? "clip ✓" : "clip"}</span>
@@ -51,7 +58,7 @@ export default function HistoryView() {
           ))}
         </tbody>
       </table>
-      {rows?.length === 0 && <p className="muted">Nothing generated yet.</p>}
+      {filtered.length === 0 && <p className="muted">Nothing generated yet.</p>}
     </>
   );
 }
