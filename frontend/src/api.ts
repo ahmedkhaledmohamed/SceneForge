@@ -1,7 +1,9 @@
 import type { HistoryRow, Job, ModelInfo, ProfileDoc, ProfileSummary, Project, ProjectSummary } from "./types";
 
+const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, init);
+  const response = await fetch(`${API_BASE}${path}`, init);
   if (!response.ok) {
     let message = response.statusText;
     try {
@@ -92,7 +94,7 @@ export const api = {
 };
 
 export const media = (prof: string, slug: string, file: string) =>
-  `/api/profiles/${prof}/projects/${slug}/media/${file}`;
+  `${API_BASE}/profiles/${prof}/projects/${slug}/media/${file}`;
 
 export const profileMedia = (prof: string, file: string) =>
-  `/api/profiles/${prof}/media/${file}`;
+  `${API_BASE}/profiles/${prof}/media/${file}`;
