@@ -73,6 +73,8 @@ export const api = {
     request(`${p(prof, slug)}/outfits/${oid}/items`, { method: "POST", body: form }),
   processOutfit: (prof: string, slug: string, oid: string, body: unknown) =>
     request(`${p(prof, slug)}/outfits/${oid}/process`, json(body)),
+  addItemsBulk: (prof: string, slug: string, oid: string, form: FormData) =>
+    request(`${p(prof, slug)}/outfits/${oid}/items/bulk`, { method: "POST", body: form }),
   deleteOutfit: (prof: string, slug: string, oid: string) =>
     request(`${p(prof, slug)}/outfits/${oid}`, { method: "DELETE" }),
   deleteItem: (prof: string, slug: string, oid: string, index: number) =>

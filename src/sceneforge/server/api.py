@@ -347,6 +347,21 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return asdict(outfit)
 
+    @router.post("/profiles/{prof}/projects/{slug}/outfits/{oid}/items/bulk",
+                 status_code=201)
+    async def add_items_bulk(prof: str, slug: str, oid: str,
+                             files: list[UploadFile] = File(...)):
+        from pathlib import Path as P
+        project = load_project(prof, slug)
+        outfit = find_or_404(project.find_outfit, oid)
+        for file in files:
+            dest = await save_upload(file, project.outfit_refs_dir(outfit))
+            name = P(file.filename or "item").stem.replace("-", " ").replace("_", " ").title()
+            item = ClothingItem(name=name, image=str(dest.relative_to(project.root)))
+            outfit.items.append(item)
+        project.save()
+        return asdict(outfit)
+
     @router.delete("/profiles/{prof}/projects/{slug}/outfits/{oid}")
     def delete_outfit(prof: str, slug: str, oid: str):
         project = load_project(prof, slug)

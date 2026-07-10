@@ -65,6 +65,15 @@ function OutfitCard({ prof, slug, outfit, allChars, busy, refresh }: {
     onSuccess: () => { toastOk("outfit deleted"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
+  const bulkItems = useMutation({
+    mutationFn: (files: FileList) => {
+      const form = new FormData();
+      for (const f of files) form.append("files", f);
+      return api.addItemsBulk(prof, slug, outfit.id, form);
+    },
+    onSuccess: () => { toastOk("items added"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
   const processOutfit = useMutation({
     mutationFn: () => {
       const charId = allChars.find((c) => c.main)?.id ?? allChars[0]?.id;
@@ -137,6 +146,29 @@ function OutfitCard({ prof, slug, outfit, allChars, busy, refresh }: {
         <input ref={fileRef} type="file" accept="image/*" className="mono" style={{ width: 180 }} />
         <button className="ghost" disabled={addItem.isPending}>add item</button>
       </form>
+      <div
+        className="drop-zone"
+        style={{
+          marginTop: 8, padding: "12px 16px", borderRadius: 8,
+          border: "1px dashed var(--line)", textAlign: "center",
+          fontSize: "0.78rem", color: "var(--taupe)", cursor: "pointer",
+        }}
+        onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--gold)"; }}
+        onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--line)"; }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.currentTarget.style.borderColor = "var(--line)";
+          if (e.dataTransfer.files.length) bulkItems.mutate(e.dataTransfer.files);
+        }}
+        onClick={() => {
+          const input = document.createElement("input");
+          input.type = "file"; input.accept = "image/*"; input.multiple = true;
+          input.onchange = () => { if (input.files?.length) bulkItems.mutate(input.files); };
+          input.click();
+        }}
+      >
+        {bulkItems.isPending ? "uploading…" : "drop product photos here (bulk add items)"}
+      </div>
     </div>
   );
 }
