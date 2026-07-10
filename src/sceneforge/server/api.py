@@ -506,6 +506,17 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return {"deleted": sid}
 
+    @router.put("/profiles/{prof}/projects/{slug}/scenes/reorder")
+    def reorder_scenes(prof: str, slug: str, payload: dict):
+        project = load_project(prof, slug)
+        order = payload.get("scene_ids", [])
+        by_id = {s.id: s for s in project.scenes}
+        if set(order) != set(by_id):
+            raise _err(400, "invalid", "scene_ids must contain all scene IDs exactly once")
+        project.scenes = [by_id[sid] for sid in order]
+        project.save()
+        return {"order": order}
+
     @router.patch("/profiles/{prof}/projects/{slug}/scenes/{sid}")
     def patch_scene(prof: str, slug: str, sid: str, payload: dict):
         project = load_project(prof, slug)

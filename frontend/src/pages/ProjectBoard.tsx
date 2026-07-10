@@ -271,8 +271,9 @@ function RefineDialog({ prof, slug, scene, project, onClose, refresh }: {
   );
 }
 
-function SceneCard({ prof, slug, scene, project, refresh, busy }: {
+function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast, onMove }: {
   prof: string; slug: string; scene: Scene; project: Project; refresh: () => void; busy: boolean;
+  isFirst: boolean; isLast: boolean; onMove: (dir: -1 | 1) => void;
 }) {
   const [refineOpen, setRefineOpen] = useState(false);
   const [viewing, setViewing] = useState<number | null>(null);
@@ -333,6 +334,8 @@ function SceneCard({ prof, slug, scene, project, refresh, busy }: {
           <button className="ghost" onClick={() => imgImportRef.current?.click()}>
             import
           </button>
+          {!isFirst && <button className="ghost" onClick={() => onMove(-1)} title="move up">↑</button>}
+          {!isLast && <button className="ghost" onClick={() => onMove(1)} title="move down">↓</button>}
           <button
             className="ghost"
             style={{ color: "var(--red, #c44)" }}
@@ -365,6 +368,24 @@ function SceneCard({ prof, slug, scene, project, refresh, busy }: {
           </div>
         ))}
       </div>
+
+      {scene.clips.length > 0 && (() => {
+        const completed = scene.clips.filter((c) => c.status === "completed");
+        const best = completed.find((c) => c.kept) ?? completed[completed.length - 1];
+        return best ? (
+          <div style={{ marginTop: 6 }}>
+            <video
+              controls
+              preload="metadata"
+              src={media(prof, slug, best.file)}
+              style={{ width: 170, borderRadius: 8, border: "1px solid var(--line)" }}
+            />
+            <div className="mono muted" style={{ fontSize: "0.65rem" }}>
+              {best.kept ? "✓ " : ""}take {best.take ?? "–"} · {best.model}
+            </div>
+          </div>
+        ) : null;
+      })()}
 
       {viewingImage && viewing !== null && (
         <Lightbox
@@ -718,7 +739,7 @@ export default function ProjectBoard() {
       {project.scenes.length === 0 && (
         <p className="muted">No scenes yet — hit "+ scene", or add an outfit and create its pose scenes.</p>
       )}
-      {project.scenes.map((scene) => (
+      {project.scenes.map((scene, idx) => (
         <SceneCard
           key={scene.id}
           prof={prof}
@@ -727,6 +748,14 @@ export default function ProjectBoard() {
           project={project}
           refresh={refresh}
           busy={!!busy}
+          isFirst={idx === 0}
+          isLast={idx === project.scenes.length - 1}
+          onMove={(dir) => {
+            const ids = project.scenes.map((s) => s.id);
+            const j = idx + dir;
+            [ids[idx], ids[j]] = [ids[j], ids[idx]];
+            api.reorderScenes(prof, slug, ids).then(refresh).catch((e) => toastError(String(e)));
+          }}
         />
       ))}
     </>

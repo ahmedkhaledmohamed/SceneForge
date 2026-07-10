@@ -92,6 +92,12 @@ export const api = {
     request(`${p(prof, slug)}/scenes/from-outfit`, json(body)),
   generateTakesAll: (prof: string, slug: string, body: unknown) =>
     request(`${p(prof, slug)}/generate-takes-all`, json(body)),
+  reorderScenes: (prof: string, slug: string, sceneIds: string[]) =>
+    request(`${p(prof, slug)}/scenes/reorder`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scene_ids: sceneIds }),
+    }),
   deleteScene: (prof: string, slug: string, sid: string) =>
     request(`${p(prof, slug)}/scenes/${sid}`, { method: "DELETE" }),
   patchScene: (prof: string, slug: string, sid: string, body: unknown) =>
