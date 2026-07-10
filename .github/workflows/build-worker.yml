@@ -8,10 +8,10 @@ on:
     inputs:
       tag:
         description: "Image tag"
-        default: "0.1"
+        default: "0.2"
         required: true
   push:
-    branches: [main, build-worker-ci]  # branch trigger is temporary, for first build pre-merge
+    branches: [main]
     paths: ["runpod-worker/**", ".github/workflows/build-worker.yml"]
 
 permissions:
