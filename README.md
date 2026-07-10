@@ -46,18 +46,43 @@ sceneforge ui --dir ~/videos             # http://127.0.0.1:8000
 
 The web UI and CLI share the same `project.json` state — compare image options side by side, click to select, watch clips inline.
 
+## Outfits, characters, and shop links
+
+Built for shoppable outfit content: define a recurring **character** (reference
+images of your doll/model) and **outfits** (clothing items with product photos
+and shop URLs). Generation then composes the character wearing those exact
+items — garment-fidelity prompting on multi-reference models, and every
+artifact records which reference images conditioned it:
+
+```bash
+sceneforge add-character "Mila" --ref doll-front.png --ref doll-face.png
+sceneforge add-outfit "Spring cafe look" \
+  --item "Linen midi skirt|https://shop.example/skirt|skirt.jpg" \
+  --item "Knit cardigan|https://shop.example/cardigan|cardigan.jpg"
+sceneforge add-outfit-scenes outfit-1                  # two pose scenes by default
+sceneforge generate-images --model flux-2-pro          # $0.03 drafts
+sceneforge regenerate scene-01 image --model nano-banana-pro   # premium winners
+sceneforge links outfit-1 | pbcopy                     # paste-ready shop links
+```
+
+The cost/quality loop is the point: draft every outfit cheap, re-render only
+the keepers on the premium model.
+
 ## Models
 
 Model choice is part of the workflow, not a config constant — pick per run with `--model`, see prices with `sceneforge models`:
 
-| Key | Kind | Price | Notes |
-|---|---|---|---|
-| `flux-schnell` | image | $0.003 | fast drafts (default) |
-| `flux-dev` | image | $0.025 | higher quality |
-| `seedance-2.0` | video | $0.80/clip | most realistic I2V (default) |
-| `veo-3.0-fast` | video | $0.40/clip | mid-price |
-| `kling-2.1` | video | $0.18/clip | cheapest hosted I2V |
-| `fake-image` / `fake-video` | test | $0 | ffmpeg-generated, powers the test suite |
+| Key | Kind | Price | Refs | Notes |
+|---|---|---|---|---|
+| `flux-schnell` | image | $0.003 | – | fast drafts (default) |
+| `flux-dev` | image | $0.025 | – | higher quality |
+| `flux-2-pro` | image | $0.03 | 8 | multi-reference drafts |
+| `nano-banana-pro` | image | $0.134 | 14 | best garment fidelity + character consistency |
+| `seedance-2.0` | video | $0.80/clip | – | most realistic I2V (default) |
+| `veo-3.0-fast` | video | $0.40/clip | – | mid-price |
+| `kling-2.1` | video | $0.18/clip | – | cheapest hosted I2V |
+| `runpod-flux` / `runpod-wan-i2v` | both | ~$0.03/~$0.12 | – | self-hosted GPU (see runpod-worker/) |
+| `fake-image` / `fake-video` | test | $0 | 14 | ffmpeg-generated, powers the test suite |
 
 Generation is **idempotent**: re-running a batch skips what's done, failed jobs are recorded and retried on the next run, `--force`/`regenerate` redoes on demand. `sceneforge status` shows progress and estimated remaining cost.
 

@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2  # v2 adds characters, outfits (shop links), scene refs
 
 PROJECT_FILE = "project.json"
 
@@ -52,6 +52,32 @@ class Settings:
 
 
 @dataclass
+class Character:
+    """A recurring subject (e.g. a brand's character doll) whose reference
+    images condition every generation it appears in."""
+    id: str
+    name: str
+    description: str = ""
+    reference_images: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ClothingItem:
+    name: str
+    url: str | None = None    # shop link, posted with the content
+    image: str | None = None  # product photo, used as a generation reference
+
+
+@dataclass
+class Outfit:
+    """Her unit of work: a set of shoppable items that yields pose scenes,
+    clips, and one shop-links block."""
+    id: str
+    name: str
+    items: list[ClothingItem] = field(default_factory=list)
+
+
+@dataclass
 class ImageArtifact:
     file: str
     prompt: str
@@ -79,6 +105,9 @@ class Scene:
     id: str
     description: str
     style_override: str | None = None
+    character_id: str | None = None  # references Project.characters
+    outfit_id: str | None = None     # references Project.outfits
+    pose: str | None = None          # e.g. "standing, facing camera"
     images: list[ImageArtifact] = field(default_factory=list)
     selected_image: int | None = None
     clips: list[ClipArtifact] = field(default_factory=list)
@@ -103,6 +132,8 @@ class Project:
     concept: str = ""
     style: Style = field(default_factory=Style)
     settings: Settings = field(default_factory=Settings)
+    characters: list[Character] = field(default_factory=list)
+    outfits: list[Outfit] = field(default_factory=list)
     scenes: list[Scene] = field(default_factory=list)
     schema_version: int = SCHEMA_VERSION
     root: Path = field(default=Path("."), compare=False)
@@ -116,6 +147,12 @@ class Project:
     def images_dir(self, scene: Scene) -> Path:
         return self.root / "images" / scene.id
 
+    def character_refs_dir(self, character: Character) -> Path:
+        return self.root / "refs" / "characters" / character.id
+
+    def outfit_refs_dir(self, outfit: Outfit) -> Path:
+        return self.root / "refs" / "outfits" / outfit.id
+
     @property
     def clips_dir(self) -> Path:
         return self.root / "clips"
@@ -128,10 +165,11 @@ class Project:
     def output_dir(self) -> Path:
         return self.root / "output"
 
-    # --- scenes ---
+    # --- scenes / characters / outfits ---
 
-    def add_scene(self, description: str) -> Scene:
-        scene = Scene(id=f"scene-{len(self.scenes) + 1:02d}", description=description)
+    def add_scene(self, description: str, **fields) -> Scene:
+        scene = Scene(id=f"scene-{len(self.scenes) + 1:02d}",
+                      description=description, **fields)
         self.scenes.append(scene)
         return scene
 
@@ -141,6 +179,31 @@ class Project:
                 return scene
         valid = ", ".join(s.id for s in self.scenes) or "(none)"
         raise KeyError(f"No scene '{scene_id}' in project. Scenes: {valid}")
+
+    def add_character(self, name: str, description: str = "") -> Character:
+        character = Character(id=f"char-{len(self.characters) + 1}",
+                              name=name, description=description)
+        self.characters.append(character)
+        return character
+
+    def find_character(self, character_id: str) -> Character:
+        for character in self.characters:
+            if character.id == character_id:
+                return character
+        valid = ", ".join(c.id for c in self.characters) or "(none)"
+        raise KeyError(f"No character '{character_id}'. Characters: {valid}")
+
+    def add_outfit(self, name: str) -> Outfit:
+        outfit = Outfit(id=f"outfit-{len(self.outfits) + 1}", name=name)
+        self.outfits.append(outfit)
+        return outfit
+
+    def find_outfit(self, outfit_id: str) -> Outfit:
+        for outfit in self.outfits:
+            if outfit.id == outfit_id:
+                return outfit
+        valid = ", ".join(o.id for o in self.outfits) or "(none)"
+        raise KeyError(f"No outfit '{outfit_id}'. Outfits: {valid}")
 
     # --- persistence ---
 
@@ -164,17 +227,28 @@ class Project:
                 id=s["id"],
                 description=s["description"],
                 style_override=s.get("style_override"),
+                character_id=s.get("character_id"),
+                outfit_id=s.get("outfit_id"),
+                pose=s.get("pose"),
                 images=[ImageArtifact(**img) for img in s.get("images", [])],
                 selected_image=s.get("selected_image"),
                 clips=[ClipArtifact(**c) for c in s.get("clips", [])],
             )
             for s in data.get("scenes", [])
         ]
+        characters = [Character(**c) for c in data.get("characters", [])]
+        outfits = [
+            Outfit(id=o["id"], name=o["name"],
+                   items=[ClothingItem(**i) for i in o.get("items", [])])
+            for o in data.get("outfits", [])
+        ]
         return cls(
             name=data["name"],
             concept=data.get("concept", ""),
             style=Style(**data.get("style", {})),
             settings=Settings(**data.get("settings", {})),
+            characters=characters,
+            outfits=outfits,
             scenes=scenes,
             schema_version=SCHEMA_VERSION,
             root=root,

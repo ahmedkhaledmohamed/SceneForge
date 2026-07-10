@@ -16,15 +16,20 @@ def _prompt_color(prompt: str) -> str:
 
 class FakeImageBackend(ImageBackend):
     def generate_image(self, prompt, out_path, *, width, height,
-                       reference_image=None, seed=None):
+                       reference_images=None, seed=None):
+        refs = [p.name for p in (reference_images or [])]
         out_path.parent.mkdir(parents=True, exist_ok=True)
         run_ffmpeg([
             "-f", "lavfi",
-            "-i", f"color=c={_prompt_color(prompt)}:s={width}x{height}",
+            # refs participate in the color so tests can assert they arrived
+            "-i", f"color=c={_prompt_color(prompt + ''.join(refs))}:s={width}x{height}",
             "-frames:v", "1",
             str(out_path),
         ])
-        return ImageResult(path=out_path, prompt=prompt, model=self.model["key"])
+        return ImageResult(
+            path=out_path, prompt=prompt, model=self.model["key"],
+            meta={"reference_images": refs} if refs else {},
+        )
 
 
 class FakeVideoBackend(VideoBackend):

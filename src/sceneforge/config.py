@@ -34,6 +34,24 @@ MODELS = {
         "steps": 28,
         "notes": "higher quality, slower",
     },
+    # --- multi-reference models (character + garment conditioning) ---
+    "flux-2-pro": {
+        "kind": "image",
+        "backend": "together",
+        "id": "black-forest-labs/FLUX.2-pro",
+        "price": 0.03,
+        "max_refs": 8,
+        "notes": "multi-ref drafts, $0.03/MP",
+    },
+    "nano-banana-pro": {
+        "kind": "image",
+        "backend": "together",
+        "id": "google/gemini-3-pro-image",
+        "price": 0.134,
+        "max_refs": 14,
+        "fallback": "flux-2-pro",
+        "notes": "best garment fidelity + character consistency",
+    },
     # --- video ---
     "seedance-2.0": {
         "kind": "video",
@@ -87,6 +105,7 @@ MODELS = {
         "backend": "fake",
         "id": "lavfi/color",
         "price": 0.0,
+        "max_refs": 14,  # mirrors nano-banana-pro so ref flow is testable
         "notes": "test backend",
     },
     "fake-video": {

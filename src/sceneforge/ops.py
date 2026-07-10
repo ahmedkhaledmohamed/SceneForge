@@ -36,26 +36,46 @@ def plan_clips(scenes: list[Scene], force: bool) -> list[Scene]:
     return [sc for sc in scenes if force or sc.completed_clip is None]
 
 
+def scene_reference_images(project: Project, scene: Scene) -> list[Path]:
+    """Ordered reference set for a scene: character identity refs first
+    (the prompt calls them 'the first N reference images'), then outfit
+    item photos in listing order, then the project style ref last."""
+    refs: list[Path] = []
+    if scene.character_id:
+        character = project.find_character(scene.character_id)
+        refs += [project.root / r for r in character.reference_images]
+    if scene.outfit_id:
+        outfit = project.find_outfit(scene.outfit_id)
+        refs += [project.root / item.image for item in outfit.items if item.image]
+    if project.style.reference_image:
+        refs.append(project.root / project.style.reference_image)
+    return refs
+
+
 def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
                log: Log = print) -> int:
     backend = get_image_backend(model_key, log)
-    if project.style.reference_image and not backend.supports_reference_image:
-        log(f"note: {model_key} ignores the project reference image")
     count = 0
     for sc, needed in todo:
         prompt = compose_prompt(project, sc)
+        refs = scene_reference_images(project, sc)
+        cap = backend.max_reference_images
+        if refs and cap == 0:
+            log(f"note: {model_key} does not accept reference images — "
+                f"{len(refs)} ignored for {sc.id}")
+            refs = []
+        elif len(refs) > cap:
+            dropped = ", ".join(p.name for p in refs[cap:])
+            log(f"WARNING: {model_key} accepts {cap} reference images — "
+                f"dropping from the tail: {dropped}")
+            refs = refs[:cap]
         for _ in range(needed):
             opt_num = len(sc.images) + 1
             out = project.images_dir(sc) / f"opt-{opt_num}.png"
-            ref = (
-                project.root / project.style.reference_image
-                if project.style.reference_image and backend.supports_reference_image
-                else None
-            )
             result = backend.generate_image(
                 prompt, out,
                 width=project.settings.width, height=project.settings.height,
-                reference_image=ref,
+                reference_images=refs or None,
             )
             sc.images.append(ImageArtifact(
                 file=str(out.relative_to(project.root)),

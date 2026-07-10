@@ -11,7 +11,7 @@ class FallbackImageBackend(ImageBackend):
         self.primary = primary
         self.fallback = fallback
         self.log = log
-        self.supports_reference_image = primary.supports_reference_image
+        # max_reference_images comes from self.model (copied from primary)
 
     def generate_image(self, prompt, out_path, **kwargs):
         try:
