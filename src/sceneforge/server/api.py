@@ -168,6 +168,14 @@ def make_router(home: Path) -> APIRouter:
         profile.save()
         return asdict(character)
 
+    @router.delete("/profiles/{prof}/characters/{cid}")
+    def delete_profile_character(prof: str, cid: str):
+        profile = load_profile(prof)
+        character = find_or_404(profile.find_character, cid)
+        profile.characters.remove(character)
+        profile.save()
+        return {"deleted": cid}
+
     @router.post("/profiles/{prof}/seeds", status_code=201)
     async def add_seed(prof: str, kind: str = Form("note"),
                        text: str = Form(""), tags: str = Form(""),
@@ -265,6 +273,38 @@ def make_router(home: Path) -> APIRouter:
         root = project_root(prof, slug)
         shutil.rmtree(root)
         return {"deleted": slug}
+
+    @router.post("/profiles/{prof}/projects/{slug}/duplicate", status_code=201)
+    def duplicate_project(prof: str, slug: str, payload: dict):
+        profile = load_profile(prof)
+        source = load_project(prof, slug)
+        new_name = (payload.get("name") or f"{source.name} copy").strip()
+        try:
+            copy = ops.create_project(
+                new_name, profile.projects_dir,
+                concept=source.concept,
+                anchor=source.style.anchor,
+                suffix=source.style.suffix or None,
+                aspect=source.settings.aspect,
+                image_model=source.settings.image_model,
+                video_model=source.settings.video_model,
+            )
+            copy.settings.image_options = source.settings.image_options
+            for outfit in source.outfits:
+                o = copy.add_outfit(outfit.name)
+                o.items = [ClothingItem(name=i.name, url=i.url, image=i.image)
+                           for i in outfit.items]
+            for scene in source.scenes:
+                copy.add_scene(
+                    scene.description,
+                    character_id=scene.character_id,
+                    outfit_id=scene.outfit_id,
+                    pose=scene.pose,
+                )
+            copy.save()
+        except (ValueError, FileExistsError) as exc:
+            raise _err(400, "invalid", str(exc))
+        return project_doc(copy, prof, copy.root.name, profile=profile)
 
     # ---------------------------------------- project-level characters
 

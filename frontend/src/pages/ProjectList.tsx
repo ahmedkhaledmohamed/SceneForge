@@ -7,29 +7,84 @@ import type { ProfileDoc } from "../types";
 
 function ProfileHeader({ prof, profile }: { prof: string; profile: ProfileDoc }) {
   const client = useQueryClient();
+  const refresh = () => client.invalidateQueries({ queryKey: ["profile", prof] });
+  const [editingStyle, setEditingStyle] = useState(false);
+  const [anchor, setAnchor] = useState(profile.style.anchor);
+
   const addChar = useMutation({
     mutationFn: (form: FormData) => api.addProfileCharacter(prof, form),
-    onSuccess: () => { toastOk("character added"); client.invalidateQueries({ queryKey: ["profile", prof] }); },
+    onSuccess: () => { toastOk("character added"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+  const deleteChar = useMutation({
+    mutationFn: (cid: string) => api.deleteProfileCharacter(prof, cid),
+    onSuccess: () => { toastOk("character removed"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+  const addRef = useMutation({
+    mutationFn: ({ cid, form }: { cid: string; form: FormData }) =>
+      api.addProfileCharacterRef(prof, cid, form),
+    onSuccess: () => { toastOk("ref added"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+  const patchStyle = useMutation({
+    mutationFn: () => api.patchProfile(prof, { anchor }),
+    onSuccess: () => { toastOk("style updated"); setEditingStyle(false); refresh(); },
     onError: (e) => toastError(String(e)),
   });
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="row" style={{ justifyContent: "space-between" }}>
-        <div>
-          <span className="mono muted">style: </span>
-          {profile.style.anchor || <em className="muted">none set</em>}
-        </div>
-        <div className="mono muted">
-          defaults: {profile.defaults.image_model} / {profile.defaults.video_model}
-        </div>
+        {editingStyle ? (
+          <div className="row" style={{ flex: 1 }}>
+            <input value={anchor} onChange={(e) => setAnchor(e.target.value)}
+                   style={{ flex: 1 }} placeholder="style anchor" />
+            <button onClick={() => patchStyle.mutate()} disabled={patchStyle.isPending}>save</button>
+            <button className="ghost" onClick={() => setEditingStyle(false)}>cancel</button>
+          </div>
+        ) : (
+          <>
+            <div>
+              <span className="mono muted">style: </span>
+              {profile.style.anchor || <em className="muted">none set</em>}
+            </div>
+            <div className="row">
+              <button className="ghost" onClick={() => { setAnchor(profile.style.anchor); setEditingStyle(true); }}>
+                edit style
+              </button>
+              <span className="mono muted">
+                {profile.defaults.image_model} / {profile.defaults.video_model}
+              </span>
+            </div>
+          </>
+        )}
       </div>
       {profile.characters.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <span className="mono muted">characters: </span>
           {profile.characters.map((c) => (
-            <span key={c.id} className="pill" style={{ marginRight: 6 }}>
-              {c.name} ({c.reference_images.length} refs){c.main ? " ★" : ""}
+            <span key={c.id} className="row" style={{ display: "inline-flex", gap: 4, marginRight: 8, marginBottom: 4 }}>
+              <span className="pill">
+                {c.name} ({c.reference_images.length} refs){c.main ? " ★" : ""}
+              </span>
+              <label className="ghost" style={{ cursor: "pointer", fontSize: "0.7rem", padding: "2px 4px" }}>
+                +ref
+                <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const form = new FormData();
+                    form.set("files", file);
+                    addRef.mutate({ cid: c.id, form });
+                  }
+                  e.target.value = "";
+                }} />
+              </label>
+              <button
+                className="ghost"
+                style={{ padding: "0 4px", fontSize: "0.7rem", color: "var(--red, #c44)" }}
+                onClick={() => { if (confirm(`Remove character "${c.name}"?`)) deleteChar.mutate(c.id); }}
+              >×</button>
             </span>
           ))}
         </div>

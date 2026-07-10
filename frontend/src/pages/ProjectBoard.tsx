@@ -456,6 +456,15 @@ export default function ProjectBoard() {
     onSuccess: () => navigate(`/${prof}`),
     onError: (e) => toastError(String(e)),
   });
+  const duplicateProject = useMutation({
+    mutationFn: () => {
+      const name = prompt("Name for the copy?", `${project?.name ?? ""} copy`);
+      if (!name) throw new Error("cancelled");
+      return api.duplicateProject(prof, slug, { name });
+    },
+    onSuccess: (p: Project) => navigate(`/${prof}/p/${p.slug}`),
+    onError: (e) => { if (String(e) !== "Error: cancelled") toastError(String(e)); },
+  });
   const brainstorm = useMutation({
     mutationFn: () => api.brainstorm(prof, slug, { count: 6 }),
     onSuccess: (data) => setBrainstormResults(data.descriptions),
@@ -479,6 +488,7 @@ export default function ProjectBoard() {
   if (isLoading) return <p className="muted">Loading…</p>;
   if (error || !project) return <p className="muted">{String(error ?? "not found")}</p>;
 
+  const { data: models } = useModels();
   const busy = project.job?.status === "running";
   const keptCount = project.scenes.flatMap((s) => s.clips).filter((c) => c.kept).length;
   const allClipsReady = project.scenes.length > 0 &&
@@ -486,6 +496,13 @@ export default function ProjectBoard() {
   const allChars = [...project.profile_characters, ...project.characters];
   const defaultChar = allChars.find((c) => c.main)?.id ?? allChars[0]?.id ?? "";
   const selectedCount = project.scenes.filter((s) => s.selected_image !== null).length;
+  const imgModelKey = imageModel ?? project.settings.image_model;
+  const imgPrice = models?.[imgModelKey]?.price ?? 0;
+  const imagesNeeded = project.scenes.reduce((sum, s) =>
+    sum + Math.max(0, project.settings.image_options - s.images.length), 0);
+  const imgCost = imagesNeeded * imgPrice;
+  const vidPrice = models?.[project.settings.video_model]?.price ?? 0;
+  const takesCost = selectedCount * 2 * vidPrice;
 
   return (
     <>
@@ -493,6 +510,7 @@ export default function ProjectBoard() {
         <h1>{project.name}</h1>
         <div className="row">
           <button className="ghost" onClick={() => setSettingsOpen(true)}>settings</button>
+          <button className="ghost" onClick={() => duplicateProject.mutate()}>duplicate</button>
           <button
             className="ghost"
             style={{ color: "var(--red, #c44)" }}
@@ -527,8 +545,8 @@ export default function ProjectBoard() {
           value={imageModel ?? project.settings.image_model}
           onChange={setImageModel}
         />
-        <button onClick={() => generateAll.mutate()} disabled={busy}>
-          Generate missing images
+        <button onClick={() => generateAll.mutate()} disabled={busy || imagesNeeded === 0}>
+          Generate {imagesNeeded} images{imgCost > 0 ? ` (~$${imgCost.toFixed(2)})` : ""}
         </button>
         <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
         {project.concept && (
@@ -562,7 +580,7 @@ export default function ProjectBoard() {
 
       <div className="row" style={{ marginTop: 8 }}>
         <button className="ghost" onClick={() => takesAll.mutate()} disabled={busy || selectedCount === 0}>
-          generate takes ({selectedCount} scenes)
+          generate takes ({selectedCount} scenes{takesCost > 0 ? `, ~$${takesCost.toFixed(2)}` : ""})
         </button>
         <button className="ghost" onClick={() => runStitch.mutate()} disabled={busy || !allClipsReady}>
           stitch final video
