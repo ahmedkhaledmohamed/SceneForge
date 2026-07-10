@@ -432,6 +432,77 @@ def generate_clips(
     typer.secho("All clips done. Next: sceneforge stitch", fg=typer.colors.GREEN)
 
 
+# ------------------------------------------------------- takes / export
+
+
+@app.command()
+def takes(
+    ctx: typer.Context,
+    scene_id: str,
+    image: int = typer.Option(None, help="1-based image option (default: the selected one)"),
+    count: int = typer.Option(3, help="How many takes to generate"),
+    model: str = typer.Option(None, help="Video model (see 'sceneforge models video')"),
+    prompt: str = typer.Option(None, help="Override the motion prompt for these takes"),
+):
+    """Generate several clip takes from one scene image; compare, keep, export."""
+    project = _load(ctx)
+    sc = project.find_scene(scene_id)
+    index = (image - 1) if image is not None else sc.selected_image
+    if index is None:
+        _fail(f"{scene_id} has no selected image — run 'sceneforge select' or pass --image N")
+    model_key = model or project.settings.video_model
+    resolved = config.resolve_model(model_key, "video")
+    typer.echo(f"Generating {count} takes with {model_key} "
+               f"(~${count * resolved['price']:.2f})")
+    try:
+        failures = ops.run_takes(project, sc, index, count, model_key,
+                                 prompt_override=prompt, log=typer.echo)
+    except ValueError as exc:
+        _fail(str(exc))
+    if failures:
+        _fail(f"{len(failures)} take(s) failed: {', '.join(failures)}")
+    typer.secho("Mark keepers with: sceneforge keep SCENE_ID TAKE_N",
+                fg=typer.colors.GREEN)
+
+
+@app.command()
+def keep(
+    ctx: typer.Context,
+    scene_id: str,
+    take: int,
+    unkeep: bool = typer.Option(False, help="Unmark instead"),
+):
+    """Mark a take as a keeper (included in export)."""
+    project = _load(ctx)
+    sc = project.find_scene(scene_id)
+    for clip in sc.clips:
+        if clip.take == take:
+            clip.kept = not unkeep
+            project.save()
+            state = "kept" if clip.kept else "unmarked"
+            typer.secho(f"{scene_id} take {take}: {state}", fg=typer.colors.GREEN)
+            return
+    valid = ", ".join(str(c.take) for c in sc.clips if c.take) or "(none)"
+    _fail(f"No take {take} on {scene_id}. Takes: {valid}")
+
+
+@app.command()
+def export(
+    ctx: typer.Context,
+    out: Path = typer.Option(None, help="Export directory (default: <project>/export)"),
+):
+    """Copy kept takes (+ links.txt) into a stable folder for CapCut."""
+    project = _load(ctx)
+    try:
+        manifest = ops.run_export(project, out)
+    except ValueError as exc:
+        _fail(str(exc))
+    for path in manifest:
+        typer.echo(f"  {path.name}")
+    typer.secho(f"Exported {len(manifest)} clip(s) to {manifest[0].parent}",
+                fg=typer.colors.GREEN)
+
+
 # ---------------------------------------------------------------- stitch
 
 

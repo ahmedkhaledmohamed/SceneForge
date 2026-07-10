@@ -166,6 +166,126 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
     return failures
 
 
+def run_takes(project: Project, scene: Scene, image_index: int, count: int,
+              model_key: str, *, prompt_override: str | None = None,
+              log: Log = print) -> list[str]:
+    """Generate `count` clip takes from one scene image. Every take is its
+    own file under clips/<scene>/ — takes never overwrite each other, and
+    failures are recorded while the batch continues."""
+    resolved = config.resolve_model(model_key, "video")
+    if not scene.images or not 0 <= image_index < len(scene.images):
+        raise ValueError(
+            f"{scene.id} has {len(scene.images)} image option(s); "
+            f"image index {image_index + 1} is invalid"
+        )
+    supports_i2v = resolved.get("supports_i2v")
+    if supports_i2v is False:
+        log(f"WARNING: {model_key} is text-to-video only — the source image "
+            "will be IGNORED.")
+
+    backend = get_video_backend(model_key, log)
+    prompt = prompt_override or compose_prompt(project, scene)
+    source = scene.images[image_index]
+    image = project.root / source.file if supports_i2v is not False else None
+    takes_dir = project.clips_dir / scene.id
+    next_take = max((c.take for c in scene.clips if c.take), default=0) + 1
+
+    failures = []
+    for i in range(count):
+        take_num = next_take + i
+        out = takes_dir / f"take-{take_num:02d}.mp4"
+        pending = out.with_name(f"take-{take_num:02d}.pending.mp4")
+        log(f"{scene.id} take {take_num}: generating...")
+        try:
+            result = backend.generate_clip(
+                prompt, pending,
+                image=image,
+                width=project.settings.width, height=project.settings.height,
+                timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
+            )
+            pending.rename(out)
+            scene.clips.append(ClipArtifact(
+                file=str(out.relative_to(project.root)),
+                prompt=prompt,
+                source_image=source.file,
+                model=model_key,
+                job_id=result.job_id,
+                duration_s=result.duration_s,
+                status="completed",
+                meta=result.meta,
+                take=take_num,
+                source_image_index=image_index,
+            ))
+            log(f"{scene.id} take {take_num}: done "
+                f"({result.duration_s:.1f}s){_cost_suffix(result.meta)}")
+        except Exception as exc:
+            pending.unlink(missing_ok=True)
+            scene.clips.append(ClipArtifact(
+                file=str(out.relative_to(project.root)),
+                prompt=prompt,
+                source_image=source.file,
+                model=model_key,
+                status="failed",
+                error=str(exc),
+                take=take_num,
+                source_image_index=image_index,
+            ))
+            failures.append(f"{scene.id} take {take_num}")
+            log(f"{scene.id} take {take_num}: FAILED — {exc}")
+        project.save()
+    return failures
+
+
+def run_export(project: Project, out_dir: Path | None = None) -> list[Path]:
+    """Copy kept takes into a stable export folder (for CapCut import),
+    named {outfit}--{scene}--takeN.mp4, plus links.txt with the shop
+    blocks of the outfits involved. Rewritten from scratch each run."""
+    import shutil
+
+    from .util import slugify
+
+    kept = [
+        (sc, clip)
+        for sc in project.scenes
+        for clip in sc.clips
+        if clip.kept and clip.status == "completed"
+    ]
+    if not kept:
+        raise ValueError("No takes marked as kept — mark keepers first")
+
+    export_dir = out_dir or project.root / "export"
+    if export_dir.is_dir():
+        shutil.rmtree(export_dir)
+    export_dir.mkdir(parents=True)
+
+    manifest = []
+    outfit_ids: list[str] = []
+    for sc, clip in kept:
+        stem = "clip"
+        if sc.outfit_id:
+            outfit = project.find_outfit(sc.outfit_id)
+            stem = slugify(outfit.name)
+            if outfit.id not in outfit_ids:
+                outfit_ids.append(outfit.id)
+        name = f"{stem}--{sc.id}--take{clip.take or 0:02d}.mp4"
+        dest = export_dir / name
+        shutil.copy2(project.root / clip.file, dest)
+        manifest.append(dest)
+
+    if outfit_ids:
+        blocks = []
+        for oid in outfit_ids:
+            outfit = project.find_outfit(oid)
+            lines = [outfit.name] + [
+                f"{item.name} — {item.url}" if item.url else item.name
+                for item in outfit.items
+            ]
+            blocks.append("\n".join(lines))
+        (export_dir / "links.txt").write_text("\n\n".join(blocks) + "\n")
+
+    return manifest
+
+
 def run_stitch(project: Project, *, speed: float | None = None,
                fade: float | None = None, out: Path | None = None) -> tuple[Path, float]:
     if not project.scenes:

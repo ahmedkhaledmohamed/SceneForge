@@ -137,7 +137,8 @@ def test_v1_project_loads_with_defaults(tmp_path):
     assert project.characters == [] and project.outfits == []
     assert project.scenes[0].outfit_id is None
     project.save()  # silently upgrades
-    assert json.loads((tmp_path / "project.json").read_text())["schema_version"] == 2
+    from sceneforge.project import SCHEMA_VERSION
+    assert json.loads((tmp_path / "project.json").read_text())["schema_version"] == SCHEMA_VERSION
 
 
 def test_v2_roundtrip(tmp_path):
