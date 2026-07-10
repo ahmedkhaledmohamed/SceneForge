@@ -124,7 +124,7 @@ def models(kind: str = typer.Argument(None, help="Filter: image or video")):
     """List available generation models with prices and capabilities."""
     if kind is not None and kind not in ("image", "video"):
         _fail("Kind must be 'image' or 'video'")
-    typer.echo(f"{'MODEL':<14} {'KIND':<6} {'PRICE':<8} {'I2V':<10} NOTES")
+    typer.echo(f"{'MODEL':<18} {'KIND':<6} {'PRICE':<8} {'I2V':<10} {'REFS':<5} NOTES")
     for key, model in config.MODELS.items():
         if kind and model["kind"] != kind:
             continue
@@ -133,8 +133,9 @@ def models(kind: str = typer.Argument(None, help="Filter: image or video")):
         )
         if model["kind"] == "image":
             i2v = "-"
+        refs = str(model.get("max_refs", 0)) if model["kind"] == "image" else "-"
         typer.echo(
-            f"{key:<14} {model['kind']:<6} ${model['price']:<7.2f} {i2v:<10} "
+            f"{key:<18} {model['kind']:<6} ${model['price']:<7.2f} {i2v:<10} {refs:<5} "
             f"{model.get('notes', '')}"
         )
 
@@ -187,6 +188,139 @@ def add_scenes(
                 fg=typer.colors.GREEN)
 
 
+# ------------------------------------------------ characters / outfits
+
+
+def _import_ref(src: Path, dest_dir: Path) -> str:
+    """Copy a reference image into the project; returns project-relative path."""
+    import shutil
+
+    src = src.expanduser()
+    if not src.is_file():
+        _fail(f"Reference image not found: {src}")
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / src.name
+    shutil.copy2(src, dest)
+    return dest
+
+
+@app.command("add-character")
+def add_character(
+    ctx: typer.Context,
+    name: str,
+    ref: list[Path] = typer.Option(..., "--ref", help="Reference image (repeatable)"),
+    description: str = typer.Option("", help="Short visual description"),
+):
+    """Add a recurring character (e.g. your doll) with its reference images."""
+    project = _load(ctx)
+    character = project.add_character(name, description)
+    for src in ref:
+        dest = _import_ref(src, project.character_refs_dir(character))
+        character.reference_images.append(str(dest.relative_to(project.root)))
+    project.save()
+    typer.secho(f"{character.id}: '{name}' with {len(character.reference_images)} "
+                "reference image(s)", fg=typer.colors.GREEN)
+
+
+@app.command("add-outfit")
+def add_outfit(
+    ctx: typer.Context,
+    name: str,
+    item: list[str] = typer.Option(
+        None, "--item",
+        help="Clothing item as 'NAME|SHOP_URL|IMAGE_PATH' (URL/IMAGE optional, repeatable)",
+    ),
+):
+    """Add an outfit: shoppable clothing items with links and product photos."""
+    from .project import ClothingItem
+
+    project = _load(ctx)
+    outfit = project.add_outfit(name)
+
+    specs = list(item or [])
+    if not specs:
+        typer.echo("Enter items as NAME|SHOP_URL|IMAGE_PATH (empty line to finish):")
+        while True:
+            line = typer.prompt(f"Item {len(outfit.items) + 1}", default="",
+                                show_default=False)
+            if not line.strip():
+                break
+            specs.append(line)
+    if not specs:
+        _fail("An outfit needs at least one item")
+
+    for spec in specs:
+        parts = [p.strip() for p in spec.split("|")]
+        clothing = ClothingItem(name=parts[0])
+        if len(parts) > 1 and parts[1]:
+            clothing.url = parts[1]
+        if len(parts) > 2 and parts[2]:
+            dest = _import_ref(Path(parts[2]), project.outfit_refs_dir(outfit))
+            clothing.image = str(dest.relative_to(project.root))
+        outfit.items.append(clothing)
+
+    project.save()
+    with_images = sum(1 for i in outfit.items if i.image)
+    typer.secho(f"{outfit.id}: '{name}' — {len(outfit.items)} item(s), "
+                f"{with_images} with reference photos", fg=typer.colors.GREEN)
+
+
+DEFAULT_POSES = [
+    "standing, facing the camera, full outfit visible head to toe",
+    "three-quarter turn, looking over the shoulder, showcasing the outfit from a different angle",
+]
+
+
+@app.command("add-outfit-scenes")
+def add_outfit_scenes(
+    ctx: typer.Context,
+    outfit_id: str,
+    character: str = typer.Option(None, help="Character id (default: the only one)"),
+    pose: list[str] = typer.Option(None, "--pose", help="Pose (repeatable; default: two standard poses)"),
+    setting: str = typer.Option("", help="Scene setting, e.g. 'sunlit cafe'"),
+):
+    """Create the pose scenes for an outfit (two standard poses by default)."""
+    project = _load(ctx)
+    outfit = project.find_outfit(outfit_id)
+
+    if character is None:
+        if len(project.characters) == 1:
+            character = project.characters[0].id
+        elif project.characters:
+            _fail("Multiple characters — pick one with --character "
+                  f"({', '.join(c.id for c in project.characters)})")
+    if character:
+        project.find_character(character)  # validate
+
+    poses = list(pose or DEFAULT_POSES)
+    base = f"{outfit.name}" + (f" in {setting}" if setting else "")
+    created = []
+    for p in poses:
+        scene = project.add_scene(base, character_id=character,
+                                  outfit_id=outfit.id, pose=p)
+        created.append(scene.id)
+    project.save()
+    typer.secho(f"Created {', '.join(created)} for {outfit.id}"
+                + (f" with {character}" if character else ""),
+                fg=typer.colors.GREEN)
+
+
+@app.command()
+def links(ctx: typer.Context, outfit_id: str = typer.Argument(None)):
+    """Print a paste-ready shop-links block (pipe to pbcopy)."""
+    project = _load(ctx)
+    outfits = [project.find_outfit(outfit_id)] if outfit_id else project.outfits
+    if not outfits:
+        _fail("No outfits yet — add one with 'sceneforge add-outfit'")
+    blocks = []
+    for outfit in outfits:
+        lines = [outfit.name]
+        for item in outfit.items:
+            lines.append(f"{item.name} — {item.url}" if item.url else item.name)
+        blocks.append("\n".join(lines))
+    typer.echo("\n\n".join(blocks))
+
+
 # ---------------------------------------------------------------- images
 
 
@@ -225,6 +359,10 @@ def generate_images(
     if dry_run:
         for sc, needed in todo:
             typer.echo(f"[dry-run] {sc.id} x{needed}: {compose_prompt(project, sc)}")
+            refs = ops.scene_reference_images(project, sc)
+            if refs:
+                typer.echo(f"[dry-run] {sc.id} references: "
+                           + ", ".join(str(r.relative_to(project.root)) for r in refs))
         return
 
     ops.run_images(project, todo, model_key, log=typer.echo)

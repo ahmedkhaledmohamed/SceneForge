@@ -158,6 +158,37 @@ def create_app(base_dir: Path) -> FastAPI:
                 f"<pre>{html.escape(chr(10).join(job.log[-6:]))}</pre></div>"
             )
 
+        outfits_html = ""
+        if p.outfits:
+            sections = []
+            for outfit in p.outfits:
+                rows = []
+                link_lines = [outfit.name]
+                for item in outfit.items:
+                    thumb = (
+                        f"<img src='/p/{slug}/media/{item.image}' loading='lazy' "
+                        "style='width:44px;border-radius:4px;vertical-align:middle'> "
+                        if item.image else ""
+                    )
+                    link = (f"<a href='{html.escape(item.url)}' target='_blank'>"
+                            f"{html.escape(item.name)}</a>" if item.url
+                            else html.escape(item.name))
+                    rows.append(f"<li>{thumb}{link}</li>")
+                    link_lines.append(f"{item.name} — {item.url}" if item.url
+                                      else item.name)
+                block = html.escape("\n".join(link_lines))
+                sections.append(
+                    f"<div class='scene'><b>{outfit.id}</b> — "
+                    f"{html.escape(outfit.name)}"
+                    f"<ul style='list-style:none;padding:0'>{''.join(rows)}</ul>"
+                    f"<details><summary class='muted'>shop-links block</summary>"
+                    f"<pre id='links-{outfit.id}'>{block}</pre>"
+                    f"<button class='subtle' "
+                    f"onclick=\"navigator.clipboard.writeText(document.getElementById('links-{outfit.id}').textContent);this.textContent='copied'\">"
+                    "copy</button></details></div>"
+                )
+            outfits_html = f"<h2>Outfits</h2>{''.join(sections)}"
+
         scenes_html = []
         for sc in p.scenes:
             opts = []
@@ -180,9 +211,20 @@ def create_app(base_dir: Path) -> FastAPI:
                 f"<div class='muted'>{clip.model}, {clip.duration_s or 0:.1f}s</div>"
                 if clip else "<span class='muted'>no clip yet</span>"
             )
+            context_bits = []
+            if sc.outfit_id:
+                context_bits.append(sc.outfit_id)
+            if sc.character_id:
+                context_bits.append(sc.character_id)
+            if sc.pose:
+                context_bits.append(html.escape(sc.pose))
+            context_html = (
+                f"<div class='muted'>{' · '.join(context_bits)}</div>"
+                if context_bits else ""
+            )
             scenes_html.append(
                 f"<div class='scene'><b>{sc.id}</b> — "
-                f"{html.escape(sc.description)}"
+                f"{html.escape(sc.description)}{context_html}"
                 f"<div class='options'>{''.join(opts) or '<span class=muted>no images yet</span>'}</div>"
                 f"{clip_html}</div>"
             )
@@ -217,7 +259,8 @@ def create_app(base_dir: Path) -> FastAPI:
             f"<h1>{html.escape(p.name)} <span class='muted'>{p.settings.aspect}</span></h1>"
             f"<p class='muted'>{html.escape(p.concept)}</p>"
             f"<p class='muted'>style: {html.escape(p.style.anchor)}</p>"
-            f"{job_html}{actions}{''.join(scenes_html) or '<p>No scenes yet — add them with <code>sceneforge add-scenes</code></p>'}{final_html}"
+            f"{job_html}{actions}{outfits_html}"
+            f"{''.join(scenes_html) or '<p>No scenes yet — add them with <code>sceneforge add-scenes</code></p>'}{final_html}"
         )
         return _page(p.name, body)
 

@@ -9,23 +9,29 @@ import json
 import urllib.request
 
 from ..config import TOGETHER_BASE_URL, together_api_key
-from ..util import download
+from ..util import download, image_data_uri
 from .base import ImageBackend, ImageResult
 
 
 class TogetherImageBackend(ImageBackend):
     def generate_image(self, prompt, out_path, *, width, height,
-                       reference_image=None, seed=None):
+                       reference_images=None, seed=None):
+        # n is deliberately omitted: 1 is the default, and Together's
+        # Gemini-image relay rejects the parameter outright.
         body = {
             "model": self.model["id"],
             "prompt": prompt,
-            "n": 1,
             "width": width,
             "height": height,
-            "steps": self.model.get("steps", 4),
         }
+        if "steps" in self.model:
+            body["steps"] = self.model["steps"]
         if seed is not None:
             body["seed"] = seed
+        if reference_images:
+            # Multi-reference conditioning (FLUX.2 family and Gemini image
+            # models on Together). Images travel inline as data URIs.
+            body["reference_images"] = [image_data_uri(p) for p in reference_images]
         req = urllib.request.Request(
             f"{TOGETHER_BASE_URL}/images/generations",
             data=json.dumps(body).encode(),
@@ -48,9 +54,14 @@ class TogetherImageBackend(ImageBackend):
         else:
             raise RuntimeError(f"No image in response: {list(entry.keys())}")
 
+        meta = {"seed": seed}
+        if "steps" in body:
+            meta["steps"] = body["steps"]
+        if reference_images:
+            meta["reference_images"] = [str(p) for p in reference_images]
         return ImageResult(
             path=out_path,
             prompt=prompt,
             model=self.model["key"],
-            meta={"seed": seed, "steps": body["steps"]},
+            meta=meta,
         )

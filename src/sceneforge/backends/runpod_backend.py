@@ -72,7 +72,7 @@ class _RunPodMixin:
 
 class RunPodImageBackend(_RunPodMixin, ImageBackend):
     def generate_image(self, prompt, out_path: Path, *, width, height,
-                       reference_image=None, seed=None):
+                       reference_images=None, seed=None):
         payload = {"task": "image", "prompt": prompt, "width": width, "height": height}
         if seed is not None:
             payload["seed"] = seed

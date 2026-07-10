@@ -25,10 +25,14 @@ class ClipResult:
 
 
 class ImageBackend(ABC):
-    supports_reference_image: bool = False
-
     def __init__(self, model: dict):
         self.model = model  # resolved registry entry, includes "key" and "id"
+
+    @property
+    def max_reference_images(self) -> int:
+        """How many reference images this model accepts (0 = none).
+        Registry-driven: one backend class serves models with different caps."""
+        return self.model.get("max_refs", 0)
 
     @abstractmethod
     def generate_image(
@@ -38,7 +42,7 @@ class ImageBackend(ABC):
         *,
         width: int,
         height: int,
-        reference_image: Path | None = None,
+        reference_images: list[Path] | None = None,
         seed: int | None = None,
     ) -> ImageResult: ...
 
