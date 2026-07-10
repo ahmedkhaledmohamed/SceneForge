@@ -18,6 +18,39 @@ from .stitch import stitch as stitch_clips
 Log = Callable[[str], None]
 
 
+def create_project(name: str, parent: Path, *, concept: str = "",
+                   anchor: str = "", suffix: str | None = None,
+                   aspect: str = "9:16",
+                   image_model: str | None = None,
+                   video_model: str | None = None) -> Project:
+    """Create a project directory + project.json (shared by CLI and API)."""
+    from . import config as cfg
+    from .project import Settings, Style
+    from .prompts import DEFAULT_SUFFIX
+    from .util import slugify
+
+    if aspect not in cfg.ASPECTS:
+        raise ValueError(f"Unknown aspect '{aspect}'. Options: {', '.join(cfg.ASPECTS)}")
+    root = parent / slugify(name)
+    if (root / "project.json").exists():
+        raise FileExistsError(f"Project already exists at {root}")
+    width, height = cfg.ASPECTS[aspect]
+    project = Project(
+        name=name,
+        concept=concept,
+        style=Style(anchor=anchor, suffix=DEFAULT_SUFFIX if suffix is None else suffix),
+        settings=Settings(
+            aspect=aspect, width=width, height=height,
+            image_model=image_model or cfg.DEFAULT_IMAGE_MODEL,
+            video_model=video_model or cfg.DEFAULT_VIDEO_MODEL,
+        ),
+        root=root,
+    )
+    root.mkdir(parents=True)
+    project.save()
+    return project
+
+
 def plan_images(scenes: list[Scene], options: int, force: bool) -> list[tuple[Scene, int]]:
     """Scenes that still need image options, with how many each needs."""
     todo = []

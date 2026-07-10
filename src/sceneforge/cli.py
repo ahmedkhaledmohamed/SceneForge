@@ -587,6 +587,28 @@ def status(ctx: typer.Context):
         typer.echo(f"Self-hosted GPU spend so far: ${spent:.2f} (from artifact metadata)")
 
 
+# ---------------------------------------------------------------- studio
+
+
+@app.command()
+def studio(
+    directory: Path = typer.Option(
+        None, "--dir", help="Directory containing project folders (default: cwd)"
+    ),
+    host: str = typer.Option("127.0.0.1"),
+    port: int = typer.Option(8000),
+):
+    """Launch SceneForge Studio (JSON API + web app)."""
+    import uvicorn
+
+    from .server import create_app
+
+    base = (directory or Path.cwd()).resolve()
+    typer.secho(f"SceneForge Studio on http://{host}:{port} (projects in {base})",
+                fg=typer.colors.GREEN)
+    uvicorn.run(create_app(base), host=host, port=port, log_level="warning")
+
+
 # ---------------------------------------------------------------- web ui
 
 
