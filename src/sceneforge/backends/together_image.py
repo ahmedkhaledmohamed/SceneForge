@@ -16,10 +16,11 @@ from .base import ImageBackend, ImageResult
 class TogetherImageBackend(ImageBackend):
     def generate_image(self, prompt, out_path, *, width, height,
                        reference_images=None, seed=None):
+        # n is deliberately omitted: 1 is the default, and Together's
+        # Gemini-image relay rejects the parameter outright.
         body = {
             "model": self.model["id"],
             "prompt": prompt,
-            "n": 1,
             "width": width,
             "height": height,
         }
