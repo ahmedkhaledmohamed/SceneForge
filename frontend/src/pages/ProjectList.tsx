@@ -132,6 +132,11 @@ export default function ProjectList() {
     queryFn: () => api.projects(prof),
     enabled: !isDemo,
   });
+  const { data: stats } = useQuery({
+    queryKey: ["stats", prof],
+    queryFn: () => api.profileStats(prof),
+    enabled: !isDemo,
+  });
   const effectiveProfile = profile ?? (isDemo ? DEMO_PROFILE : undefined);
   const effectiveProjects = projects ?? (isDemo ? DEMO_PROJECTS : undefined);
   const [creating, setCreating] = useState(false);
@@ -150,6 +155,24 @@ export default function ProjectList() {
     <>
       <h1>{effectiveProfile?.name ?? prof}</h1>
       {effectiveProfile && <ProfileHeader prof={prof} profile={effectiveProfile} />}
+
+      {stats && stats.images > 0 && (
+        <div className="row" style={{ gap: 16, margin: "0 0 14px", flexWrap: "wrap" }}>
+          <span className="mono muted">{stats.projects} projects</span>
+          <span className="mono muted">{stats.images} images</span>
+          <span className="mono muted">{stats.clips_completed} clips ({stats.clips_kept} kept)</span>
+          {stats.spent_usd > 0 && <span className="mono" style={{ color: "var(--gold)" }}>${stats.spent_usd.toFixed(2)} GPU spend</span>}
+          {Object.keys(stats.models_used).length > 0 && (
+            <span className="mono muted">
+              models: {Object.entries(stats.models_used)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 4)
+                .map(([m, n]) => `${m} (${n})`)
+                .join(", ")}
+            </span>
+          )}
+        </div>
+      )}
 
       {effectiveProfile && effectiveProfile.characters.length === 0 && !isDemo && (
         <div className="card" style={{ borderColor: "var(--gold-dim)", marginBottom: 14 }}>

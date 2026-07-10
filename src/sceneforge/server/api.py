@@ -223,6 +223,41 @@ def make_router(home: Path) -> APIRouter:
             })
         return out
 
+    @router.get("/profiles/{prof}/stats")
+    def profile_stats(prof: str):
+        profile = load_profile(prof)
+        projects = 0
+        scenes = 0
+        images = 0
+        clips_completed = 0
+        clips_kept = 0
+        spent = 0.0
+        models_used: dict[str, int] = {}
+        for pj in profile.projects_dir.glob(f"*/{PROJECT_FILE}"):
+            p = Project.load(pj.parent)
+            projects += 1
+            scenes += len(p.scenes)
+            for sc in p.scenes:
+                images += len(sc.images)
+                for c in sc.clips:
+                    if c.status == "completed":
+                        clips_completed += 1
+                    if c.kept:
+                        clips_kept += 1
+                for a in [*sc.images, *sc.clips]:
+                    spent += a.meta.get("cost_usd", 0.0)
+                    m = a.model
+                    models_used[m] = models_used.get(m, 0) + 1
+        return {
+            "projects": projects,
+            "scenes": scenes,
+            "images": images,
+            "clips_completed": clips_completed,
+            "clips_kept": clips_kept,
+            "spent_usd": round(spent, 4),
+            "models_used": models_used,
+        }
+
     @router.post("/profiles/{prof}/projects", status_code=201)
     def new_project(prof: str, payload: dict):
         profile = load_profile(prof)

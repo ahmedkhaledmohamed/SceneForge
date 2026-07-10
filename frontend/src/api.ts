@@ -50,6 +50,12 @@ export const api = {
     request(`/profiles/${prof}/characters/${cid}/refs`, { method: "POST", body: form }),
   deleteProfileCharacter: (prof: string, cid: string) =>
     request(`/profiles/${prof}/characters/${cid}`, { method: "DELETE" }),
+  profileStats: (prof: string) =>
+    request<{
+      projects: number; scenes: number; images: number;
+      clips_completed: number; clips_kept: number; spent_usd: number;
+      models_used: Record<string, number>;
+    }>(`/profiles/${prof}/stats`),
   addSeed: (prof: string, form: FormData) =>
     request(`/profiles/${prof}/seeds`, { method: "POST", body: form }),
 
