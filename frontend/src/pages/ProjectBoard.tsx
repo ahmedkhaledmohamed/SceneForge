@@ -41,8 +41,9 @@ function CharacterPicker({ characters, value, onChange }: {
   );
 }
 
-function OutfitCard({ prof, slug, outfit, allChars, refresh }: {
-  prof: string; slug: string; outfit: Outfit; allChars: Character[]; refresh: () => void;
+function OutfitCard({ prof, slug, outfit, allChars, busy, refresh }: {
+  prof: string; slug: string; outfit: Outfit; allChars: Character[];
+  busy: boolean; refresh: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [copied, setCopied] = useState(false);
@@ -62,6 +63,14 @@ function OutfitCard({ prof, slug, outfit, allChars, refresh }: {
     onSuccess: () => { toastOk("outfit deleted"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
+  const processOutfit = useMutation({
+    mutationFn: () => {
+      const charId = allChars.find((c) => c.main)?.id ?? allChars[0]?.id;
+      return api.processOutfit(prof, slug, outfit.id, { character_id: charId });
+    },
+    onSuccess: () => { toastOk("processing outfit — scenes + images"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
 
   return (
     <div className="card">
@@ -78,6 +87,13 @@ function OutfitCard({ prof, slug, outfit, allChars, refresh }: {
             }}
           >
             {copied ? "copied" : "copy links"}
+          </button>
+          <button
+            className="ghost"
+            onClick={() => processOutfit.mutate()}
+            disabled={busy || processOutfit.isPending}
+          >
+            {outfit.items.length > 0 ? "process" : "needs items"}
           </button>
           <button
             className="ghost"
@@ -389,6 +405,7 @@ export default function ProjectBoard() {
   const [addingScene, setAddingScene] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
+  const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
 
   const generateAll = useMutation({
     mutationFn: () =>
@@ -439,6 +456,25 @@ export default function ProjectBoard() {
     onSuccess: () => navigate(`/${prof}`),
     onError: (e) => toastError(String(e)),
   });
+  const brainstorm = useMutation({
+    mutationFn: () => api.brainstorm(prof, slug, { count: 6 }),
+    onSuccess: (data) => setBrainstormResults(data.descriptions),
+    onError: (e) => toastError(String(e)),
+  });
+  const acceptBrainstorm = useMutation({
+    mutationFn: (descriptions: string[]) =>
+      api.addScenesBulk(prof, slug, { descriptions, character_id: defaultChar || undefined }),
+    onSuccess: () => { setBrainstormResults(null); toastOk("scenes added"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+  const takesAll = useMutation({
+    mutationFn: () => api.generateTakesAll(prof, slug, {
+      model: project?.settings.video_model,
+      count: 2,
+    }),
+    onSuccess: () => { toastOk("generating takes for all scenes"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
 
   if (isLoading) return <p className="muted">Loading…</p>;
   if (error || !project) return <p className="muted">{String(error ?? "not found")}</p>;
@@ -449,6 +485,7 @@ export default function ProjectBoard() {
     project.scenes.every((s) => s.clips.some((c) => c.status === "completed"));
   const allChars = [...project.profile_characters, ...project.characters];
   const defaultChar = allChars.find((c) => c.main)?.id ?? allChars[0]?.id ?? "";
+  const selectedCount = project.scenes.filter((s) => s.selected_image !== null).length;
 
   return (
     <>
@@ -494,6 +531,11 @@ export default function ProjectBoard() {
           Generate missing images
         </button>
         <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
+        {project.concept && (
+          <button className="ghost" onClick={() => brainstorm.mutate()} disabled={busy || brainstorm.isPending}>
+            {brainstorm.isPending ? "thinking…" : "brainstorm scenes"}
+          </button>
+        )}
         <button
           className="ghost"
           onClick={() => {
@@ -519,6 +561,9 @@ export default function ProjectBoard() {
       </div>
 
       <div className="row" style={{ marginTop: 8 }}>
+        <button className="ghost" onClick={() => takesAll.mutate()} disabled={busy || selectedCount === 0}>
+          generate takes ({selectedCount} scenes)
+        </button>
         <button className="ghost" onClick={() => runStitch.mutate()} disabled={busy || !allClipsReady}>
           stitch final video
         </button>
@@ -531,6 +576,45 @@ export default function ProjectBoard() {
           </span>
         )}
       </div>
+
+      {brainstormResults && (
+        <div className="card">
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <b>Brainstormed scenes</b>
+            <button className="ghost" onClick={() => setBrainstormResults(null)}>dismiss</button>
+          </div>
+          <p className="muted">Edit or remove scenes before adding. Click a scene to edit it.</p>
+          {brainstormResults.map((desc, i) => (
+            <div key={i} className="row" style={{ marginBottom: 6 }}>
+              <input
+                value={desc}
+                onChange={(e) => {
+                  const next = [...brainstormResults];
+                  next[i] = e.target.value;
+                  setBrainstormResults(next);
+                }}
+                style={{ flex: 1 }}
+              />
+              <button
+                className="ghost"
+                style={{ color: "var(--red, #c44)" }}
+                onClick={() => setBrainstormResults(brainstormResults.filter((_, j) => j !== i))}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <div className="row" style={{ marginTop: 10 }}>
+            <button
+              onClick={() => acceptBrainstorm.mutate(brainstormResults.filter((d) => d.trim()))}
+              disabled={acceptBrainstorm.isPending}
+            >
+              add {brainstormResults.filter((d) => d.trim()).length} scenes
+            </button>
+            <button className="ghost" onClick={() => setBrainstormResults(null)}>cancel</button>
+          </div>
+        </div>
+      )}
 
       {addingScene && (
         <form
@@ -576,7 +660,7 @@ export default function ProjectBoard() {
       {project.outfits.length > 0 && <h2>Outfits</h2>}
       {project.outfits.map((outfit) => (
         <div key={outfit.id}>
-          <OutfitCard prof={prof} slug={slug} outfit={outfit} allChars={allChars} refresh={refresh} />
+          <OutfitCard prof={prof} slug={slug} outfit={outfit} allChars={allChars} busy={!!busy} refresh={refresh} />
           {!project.scenes.some((s) => s.outfit_id === outfit.id) && (
             <div className="row" style={{ marginBottom: 14 }}>
               {allChars.length > 1 ? (

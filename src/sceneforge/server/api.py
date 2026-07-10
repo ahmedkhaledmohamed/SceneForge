@@ -338,6 +338,33 @@ def make_router(home: Path) -> APIRouter:
 
     # ----------------------------------------------------------- scenes
 
+    @router.post("/profiles/{prof}/projects/{slug}/brainstorm")
+    def brainstorm(prof: str, slug: str, payload: dict):
+        from ..breakdown import generate_scenes
+        project = load_project(prof, slug)
+        concept = payload.get("concept") or project.concept
+        anchor = payload.get("anchor") or project.style.anchor
+        count = int(payload.get("count", 6))
+        if not concept:
+            raise _err(400, "invalid", "Project has no concept to brainstorm from")
+        descriptions = generate_scenes(concept, anchor, count)
+        return {"descriptions": descriptions}
+
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/bulk", status_code=201)
+    def add_scenes_bulk(prof: str, slug: str, payload: dict):
+        project = load_project(prof, slug)
+        descriptions = payload.get("descriptions", [])
+        if not descriptions:
+            raise _err(400, "invalid", "No scene descriptions provided")
+        character_id = payload.get("character_id")
+        created = []
+        for desc in descriptions:
+            if isinstance(desc, str) and desc.strip():
+                scene = project.add_scene(desc.strip(), character_id=character_id)
+                created.append(asdict(scene))
+        project.save()
+        return created
+
     @router.post("/profiles/{prof}/projects/{slug}/scenes", status_code=201)
     def add_scene(prof: str, slug: str, payload: dict):
         project = load_project(prof, slug)
@@ -379,6 +406,57 @@ def make_router(home: Path) -> APIRouter:
             created.append(asdict(scene))
         project.save()
         return created
+
+    @router.post("/profiles/{prof}/projects/{slug}/outfits/{oid}/process",
+                 status_code=202)
+    def process_outfit(prof: str, slug: str, oid: str, payload: dict):
+        """One-click: create pose scenes + generate images for an outfit."""
+        from ..cli import DEFAULT_POSES
+        from ..profile import resolve_character
+
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        outfit = find_or_404(project.find_outfit, oid)
+        model_key = payload.get("model") or project.settings.image_model
+        try:
+            config.resolve_model(model_key, "image")
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+
+        character_id = payload.get("character_id")
+        if character_id is None:
+            if len(project.characters) == 1:
+                character_id = project.characters[0].id
+            elif profile.main_character:
+                character_id = profile.main_character.id
+        if character_id:
+            find_or_404(resolve_character, project, profile, character_id)
+
+        existing = [s for s in project.scenes if s.outfit_id == outfit.id]
+        if not existing:
+            setting = payload.get("setting") or ""
+            base_desc = outfit.name + (f" in {setting}" if setting else "")
+            for pose in payload.get("poses") or DEFAULT_POSES:
+                project.add_scene(base_desc, character_id=character_id,
+                                  outfit_id=outfit.id, pose=pose)
+            project.save()
+
+        scenes = [s for s in project.scenes if s.outfit_id == outfit.id]
+        options = payload.get("options") or project.settings.image_options
+        todo = ops.plan_images(scenes, options, force=False)
+        if not todo:
+            return {"started": None, "note": "scenes already have images"}
+
+        def job(log):
+            ops.run_images(project, todo, model_key, log=log, profile=profile)
+            for sc in scenes:
+                if sc.selected_image is None and sc.images:
+                    sc.selected_image = 0
+                    log(f"{sc.id}: auto-selected opt-1")
+            project.save()
+
+        return start_job_or_409(
+            prof, slug, f"process {outfit.name} ({model_key})", job)
 
     @router.delete("/profiles/{prof}/projects/{slug}/scenes/{sid}")
     def delete_scene(prof: str, slug: str, sid: str):
@@ -521,6 +599,39 @@ def make_router(home: Path) -> APIRouter:
 
         return start_job_or_409(prof, slug,
                                 f"{count} takes for {sid} ({model_key})", job)
+
+    @router.post("/profiles/{prof}/projects/{slug}/generate-takes-all",
+                 status_code=202)
+    def generate_takes_all(prof: str, slug: str, payload: dict):
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        model_key = payload.get("model") or project.settings.video_model
+        try:
+            config.resolve_model(model_key, "video")
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+        count = int(payload.get("count", 2))
+        ready = [sc for sc in project.scenes if sc.selected_image is not None]
+        if not ready:
+            raise _err(400, "invalid", "No scenes have a selected image")
+
+        def job(log):
+            total_failures = []
+            for sc in ready:
+                log(f"--- {sc.id} ---")
+                failures = ops.run_takes(
+                    project, sc, sc.selected_image, count, model_key,
+                    log=log, profile=profile,
+                )
+                total_failures.extend(failures)
+            if total_failures:
+                raise RuntimeError(
+                    f"{len(total_failures)} take(s) failed: "
+                    + ", ".join(total_failures))
+
+        return start_job_or_409(
+            prof, slug,
+            f"{count} takes x {len(ready)} scenes ({model_key})", job)
 
     @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/clips/{index}/keep")
     def keep_clip(prof: str, slug: str, sid: str, index: int, payload: dict):
