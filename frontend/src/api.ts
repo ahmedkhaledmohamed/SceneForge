@@ -67,6 +67,8 @@ export const api = {
     request(`${p(prof, slug)}/outfits`, json({ name })),
   addItem: (prof: string, slug: string, oid: string, form: FormData) =>
     request(`${p(prof, slug)}/outfits/${oid}/items`, { method: "POST", body: form }),
+  processOutfit: (prof: string, slug: string, oid: string, body: unknown) =>
+    request(`${p(prof, slug)}/outfits/${oid}/process`, json(body)),
   deleteOutfit: (prof: string, slug: string, oid: string) =>
     request(`${p(prof, slug)}/outfits/${oid}`, { method: "DELETE" }),
   deleteItem: (prof: string, slug: string, oid: string, index: number) =>
@@ -76,10 +78,16 @@ export const api = {
   addCharacter: (prof: string, slug: string, form: FormData) =>
     request(`${p(prof, slug)}/characters`, { method: "POST", body: form }),
 
+  brainstorm: (prof: string, slug: string, body: unknown) =>
+    request<{ descriptions: string[] }>(`${p(prof, slug)}/brainstorm`, json(body)),
+  addScenesBulk: (prof: string, slug: string, body: unknown) =>
+    request(`${p(prof, slug)}/scenes/bulk`, json(body)),
   addScene: (prof: string, slug: string, body: unknown) =>
     request(`${p(prof, slug)}/scenes`, json(body)),
   scenesFromOutfit: (prof: string, slug: string, body: unknown) =>
     request(`${p(prof, slug)}/scenes/from-outfit`, json(body)),
+  generateTakesAll: (prof: string, slug: string, body: unknown) =>
+    request(`${p(prof, slug)}/generate-takes-all`, json(body)),
   deleteScene: (prof: string, slug: string, sid: string) =>
     request(`${p(prof, slug)}/scenes/${sid}`, { method: "DELETE" }),
   patchScene: (prof: string, slug: string, sid: string, body: unknown) =>
