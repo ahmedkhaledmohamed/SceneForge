@@ -497,6 +497,11 @@ export default function ProjectBoard() {
     onSuccess: () => { setBrainstormResults(null); toastOk("scenes added"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
+  const selectAll = useMutation({
+    mutationFn: () => api.selectAll(prof, slug),
+    onSuccess: (r) => { toastOk(`auto-selected ${r.selected} scenes`); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
   const takesAll = useMutation({
     mutationFn: () => api.generateTakesAll(prof, slug, {
       model: project?.settings.video_model,
@@ -517,6 +522,7 @@ export default function ProjectBoard() {
   const allChars = [...project.profile_characters, ...project.characters];
   const defaultChar = allChars.find((c) => c.main)?.id ?? allChars[0]?.id ?? "";
   const selectedCount = project.scenes.filter((s) => s.selected_image !== null).length;
+  const unselectedWithImages = project.scenes.filter((s) => s.selected_image === null && s.images.length > 0).length;
   const imgModelKey = imageModel ?? project.settings.image_model;
   const imgPrice = models?.[imgModelKey]?.price ?? 0;
   const imagesNeeded = project.scenes.reduce((sum, s) =>
@@ -548,7 +554,7 @@ export default function ProjectBoard() {
         {project.concept} · <span className="mono">{project.style.anchor}</span>
         {project.spent_usd > 0 && <> · <span className="mono">${project.spent_usd.toFixed(2)} GPU spend</span></>}
       </p>
-      <JobBanner job={project.job} />
+      <JobBanner job={project.job} onRetry={() => generateAll.mutate()} />
 
       {settingsOpen && (
         <SettingsDialog
@@ -569,6 +575,11 @@ export default function ProjectBoard() {
         <button onClick={() => generateAll.mutate()} disabled={busy || imagesNeeded === 0}>
           Generate {imagesNeeded} images{imgCost > 0 ? ` (~$${imgCost.toFixed(2)})` : ""}
         </button>
+        {unselectedWithImages > 0 && (
+          <button className="ghost" onClick={() => selectAll.mutate()}>
+            select all ({unselectedWithImages})
+          </button>
+        )}
         <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
         {project.concept && (
           <button className="ghost" onClick={() => brainstorm.mutate()} disabled={busy || brainstorm.isPending}>

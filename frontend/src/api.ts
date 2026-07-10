@@ -102,6 +102,8 @@ export const api = {
     request(`${p(prof, slug)}/scenes/${sid}`, { method: "DELETE" }),
   patchScene: (prof: string, slug: string, sid: string, body: unknown) =>
     request(`${p(prof, slug)}/scenes/${sid}`, patch(body)),
+  selectAll: (prof: string, slug: string) =>
+    request<{ selected: number }>(`${p(prof, slug)}/select-all`, { method: "POST" }),
   select: (prof: string, slug: string, sid: string, imageIndex: number) =>
     request(`${p(prof, slug)}/scenes/${sid}/select`, json({ image_index: imageIndex })),
 
