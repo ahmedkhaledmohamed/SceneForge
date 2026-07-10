@@ -2,12 +2,15 @@ import { useMutation } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, media } from "../api";
+import { DEMO_PROJECT } from "../demo";
+import { useIsDemo } from "../DemoContext";
 import JobBanner from "../components/JobBanner";
 import { toastError, toastOk } from "../components/toast";
 import { useInvalidateProject, useModels, useProject } from "../hooks";
 
 export default function TakeCompare() {
   const { prof = "", slug = "", sid = "" } = useParams();
+  const isDemo = useIsDemo();
   const { data: project } = useProject(prof, slug);
   const refresh = useInvalidateProject(prof, slug);
   const { data: models } = useModels();
@@ -17,11 +20,12 @@ export default function TakeCompare() {
   const [motion, setMotion] = useState("");
   const clipImportRef = useRef<HTMLInputElement>(null);
 
-  const scene = project?.scenes.find((s) => s.id === sid);
-  if (!project || !scene) return <p className="muted">Loading…</p>;
+  const proj = project ?? (isDemo ? DEMO_PROJECT : null);
+  const scene = proj?.scenes.find((s) => s.id === sid);
+  if (!proj || !scene) return <p className="muted">Loading…</p>;
 
-  const busy = project.job?.status === "running";
-  const videoModel = model ?? project.settings.video_model;
+  const busy = proj.job?.status === "running";
+  const videoModel = model ?? proj.settings.video_model;
   const price = models?.[videoModel]?.price ?? 0;
   const sourceIndex = imageIndex ?? scene.selected_image ?? 0;
 
@@ -54,10 +58,10 @@ export default function TakeCompare() {
 
   return (
     <>
-      <p><Link to={`/${prof}/p/${slug}`}>← {project.name}</Link></p>
+      <p><Link to={`/${prof}/p/${slug}`}>← {proj.name}</Link></p>
       <h1>{sid} takes</h1>
       <p className="muted">{scene.description}{scene.pose ? ` — ${scene.pose}` : ""}</p>
-      <JobBanner job={project.job} />
+      <JobBanner job={proj.job} />
 
       <div className="card">
         <div className="gallery">

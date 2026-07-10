@@ -98,6 +98,17 @@ export const DEMO_PROJECT: Project = {
   profile_characters: [DEMO_CHAR],
 };
 
+export const DEMO_HISTORY = [
+  { type: "image" as const, scene_id: "scene-01", outfit_id: "outfit-1", file: "images/scene-01/opt-1.png", prompt: "(demo) warm golden hour light, Mila in cafe doorway", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:00:00Z" },
+  { type: "image" as const, scene_id: "scene-01", outfit_id: "outfit-1", file: "images/scene-01/opt-2.png", prompt: "(demo) warm golden hour light, Mila in cafe doorway", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:01:00Z" },
+  { type: "image" as const, scene_id: "scene-02", outfit_id: "outfit-1", file: "images/scene-02/opt-1.png", prompt: "(demo) warm golden hour, Mila three-quarter turn", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:02:00Z" },
+  { type: "image" as const, scene_id: "scene-02", outfit_id: "outfit-1", file: "images/scene-02/opt-2.png", prompt: "(demo) warm golden hour, Mila three-quarter turn", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:03:00Z" },
+  { type: "clip" as const, scene_id: "scene-01", outfit_id: "outfit-1", file: "clips/scene-01/take-01.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 1, kept: true, cost_usd: 0.18, created_at: "2026-07-10T10:05:00Z" },
+  { type: "clip" as const, scene_id: "scene-01", outfit_id: "outfit-1", file: "clips/scene-01/take-02.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 2, kept: false, cost_usd: 0.18, created_at: "2026-07-10T10:06:00Z" },
+  { type: "clip" as const, scene_id: "scene-02", outfit_id: "outfit-1", file: "clips/scene-02/take-01.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 1, kept: true, cost_usd: 0.18, created_at: "2026-07-10T10:07:00Z" },
+  { type: "clip" as const, scene_id: "scene-02", outfit_id: "outfit-1", file: "clips/scene-02/take-02.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 2, kept: false, cost_usd: 0.18, created_at: "2026-07-10T10:08:00Z" },
+];
+
 export const DEMO_MODELS = {
   "flux-schnell": { kind: "image" as const, price: 0.003, notes: "fast drafts" },
   "flux-2-pro": { kind: "image" as const, price: 0.03, max_refs: 8, notes: "multi-ref drafts" },
