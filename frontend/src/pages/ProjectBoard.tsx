@@ -890,6 +890,16 @@ export default function ProjectBoard() {
         </p>
       )}
 
+      {proj.outfits.length === 0 && proj.scenes.length === 0 && (
+        <div className="card" style={{ borderColor: "var(--gold-dim)", marginTop: 14 }}>
+          <b>Getting started</b>
+          <p className="muted" style={{ margin: "4px 0" }}>
+            1. Click <b>+ outfit</b> and name it &nbsp; 2. Drop product photos onto the outfit card &nbsp;
+            3. Click <b>process</b> — scenes, images, and selection happen automatically
+          </p>
+        </div>
+      )}
+
       {proj.outfits.length > 0 && <h2>Outfits</h2>}
       {proj.outfits.map((outfit) => (
         <div key={outfit.id}>
