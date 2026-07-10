@@ -27,6 +27,12 @@ def get_pipeline(task: str):
     return pipe
 
 
+def _vram_gb() -> float:
+    import torch
+
+    return torch.cuda.get_device_properties(0).total_memory / 1e9
+
+
 def _load_image():
     import torch
     from diffusers import FluxPipeline
@@ -34,9 +40,11 @@ def _load_image():
     pipe = FluxPipeline.from_pretrained(
         "black-forest-labs/FLUX.1-schnell", torch_dtype=torch.bfloat16
     )
-    # Offloading keeps only the active submodule on the GPU — required
-    # to fit schnell's full weight set next to activations in 24 GB.
-    pipe.enable_model_cpu_offload()
+    if _vram_gb() < 40:
+        # 24 GB cards need offload to fit schnell next to activations
+        pipe.enable_model_cpu_offload()
+    else:
+        pipe.to("cuda")
     return pipe
 
 
@@ -56,7 +64,12 @@ def _load_video():
     pipe = WanImageToVideoPipeline.from_pretrained(
         mid, vae=vae, image_encoder=image_encoder, torch_dtype=torch.bfloat16
     )
-    # Mandatory on 24 GB: the 14B transformer alone is ~28 GB in bf16.
-    # A 48 GB card (A6000) runs without this and is noticeably faster.
-    pipe.enable_model_cpu_offload()
+    if _vram_gb() < 40:
+        # 24 GB cards can't hold the 14B transformer (~28 GB bf16).
+        # Offload swaps blocks through system RAM — slow, and it OOM-kills
+        # workers whose containers have less RAM than the model. Prefer
+        # a 48 GB card (L40S/A6000) where the pipeline runs fully on-GPU.
+        pipe.enable_model_cpu_offload()
+    else:
+        pipe.to("cuda")
     return pipe

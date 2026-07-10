@@ -92,9 +92,10 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
     for sc in todo:
         prompt = compose_prompt(project, sc)
         out = project.clips_dir / f"{sc.id}.mp4"
-        if out.exists():
-            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-            out.rename(out.with_name(f"{sc.id}.{stamp}.mp4"))
+        # Generate to a working name; the existing clip is archived only
+        # after the new one succeeds. A failed regen must never orphan
+        # the completed clip a stitch depends on.
+        pending = out.with_name(f"{sc.id}.pending.mp4")
         image = (
             project.root / sc.selected_image_file
             if supports_i2v is not False
@@ -103,11 +104,21 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
         log(f"{sc.id}: generating...")
         try:
             result = backend.generate_clip(
-                prompt, out,
+                prompt, pending,
                 image=image,
                 width=project.settings.width, height=project.settings.height,
                 timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
             )
+            if out.exists():
+                stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+                archived = out.with_name(f"{sc.id}.{stamp}.mp4")
+                out.rename(archived)
+                rel_old = str(out.relative_to(project.root))
+                rel_new = str(archived.relative_to(project.root))
+                for clip in sc.clips:
+                    if clip.file == rel_old:
+                        clip.file = rel_new
+            pending.rename(out)
             sc.clips.append(ClipArtifact(
                 file=str(out.relative_to(project.root)),
                 prompt=prompt,
@@ -120,6 +131,7 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
             ))
             log(f"{sc.id}: done ({result.duration_s:.1f}s){_cost_suffix(result.meta)}")
         except Exception as exc:
+            pending.unlink(missing_ok=True)
             sc.clips.append(ClipArtifact(
                 file=str(out.relative_to(project.root)),
                 prompt=prompt,
