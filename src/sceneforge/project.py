@@ -59,6 +59,7 @@ class Character:
     name: str
     description: str = ""
     reference_images: list[str] = field(default_factory=list)
+    main: bool = False
 
 
 @dataclass

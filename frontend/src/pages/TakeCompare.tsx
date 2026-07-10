@@ -7,9 +7,9 @@ import { toastError } from "../components/toast";
 import { useInvalidateProject, useModels, useProject } from "../hooks";
 
 export default function TakeCompare() {
-  const { slug = "", sid = "" } = useParams();
-  const { data: project } = useProject(slug);
-  const refresh = useInvalidateProject(slug);
+  const { prof = "", slug = "", sid = "" } = useParams();
+  const { data: project } = useProject(prof, slug);
+  const refresh = useInvalidateProject(prof, slug);
   const { data: models } = useModels();
   const [model, setModel] = useState<string | null>(null);
   const [count, setCount] = useState(3);
@@ -26,7 +26,7 @@ export default function TakeCompare() {
 
   const generate = useMutation({
     mutationFn: () =>
-      api.takes(slug, sid, {
+      api.takes(prof, slug, sid, {
         count,
         model: videoModel,
         image_index: sourceIndex,
@@ -37,14 +37,14 @@ export default function TakeCompare() {
   });
   const keep = useMutation({
     mutationFn: ({ index, kept }: { index: number; kept: boolean }) =>
-      api.keep(slug, sid, index, kept),
+      api.keep(prof, slug, sid, index, kept),
     onSuccess: refresh,
     onError: (e) => toastError(String(e)),
   });
 
   return (
     <>
-      <p><Link to={`/p/${slug}`}>← {project.name}</Link></p>
+      <p><Link to={`/${prof}/p/${slug}`}>← {project.name}</Link></p>
       <h1>{sid} takes</h1>
       <p className="muted">{scene.description}{scene.pose ? ` — ${scene.pose}` : ""}</p>
       <JobBanner job={project.job} />
@@ -59,7 +59,7 @@ export default function TakeCompare() {
               role="button"
               title="animate this image"
             >
-              <img src={media(slug, img.file)} alt={`option ${i + 1}`} />
+              <img src={media(prof, slug, img.file)} alt={`option ${i + 1}`} />
               <div className="cap">source {i + 1}</div>
             </div>
           ))}
@@ -93,7 +93,7 @@ export default function TakeCompare() {
         {scene.clips.map((clip, index) => (
           <div key={index} className={`take${clip.kept ? " kept" : ""}`}>
             {clip.status === "completed" ? (
-              <video controls preload="metadata" src={media(slug, clip.file)} />
+              <video controls preload="metadata" src={media(prof, slug, clip.file)} />
             ) : (
               <div className="muted mono">take {clip.take}: {clip.status}</div>
             )}

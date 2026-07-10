@@ -1,32 +1,99 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { api, profileMedia } from "../api";
+import { toastError, toastOk } from "../components/toast";
+import type { ProfileDoc } from "../types";
+
+function ProfileHeader({ prof, profile }: { prof: string; profile: ProfileDoc }) {
+  const client = useQueryClient();
+  const addChar = useMutation({
+    mutationFn: (form: FormData) => api.addProfileCharacter(prof, form),
+    onSuccess: () => { toastOk("character added"); client.invalidateQueries({ queryKey: ["profile", prof] }); },
+    onError: (e) => toastError(String(e)),
+  });
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <div>
+          <span className="mono muted">style: </span>
+          {profile.style.anchor || <em className="muted">none set</em>}
+        </div>
+        <div className="mono muted">
+          defaults: {profile.defaults.image_model} / {profile.defaults.video_model}
+        </div>
+      </div>
+      {profile.characters.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <span className="mono muted">characters: </span>
+          {profile.characters.map((c) => (
+            <span key={c.id} className="pill" style={{ marginRight: 6 }}>
+              {c.name} ({c.reference_images.length} refs){c.main ? " ★" : ""}
+            </span>
+          ))}
+        </div>
+      )}
+      {profile.seeds.length > 0 && (
+        <div className="gallery" style={{ marginTop: 8 }}>
+          {profile.seeds.filter((s) => s.file).map((s) => (
+            <img key={s.id} src={profileMedia(prof, s.file!)} alt="" style={{ width: 48, borderRadius: 4 }} />
+          ))}
+          {profile.seeds.filter((s) => s.kind === "note").map((s) => (
+            <span key={s.id} className="pill">{s.text}</span>
+          ))}
+        </div>
+      )}
+      <form
+        className="row"
+        style={{ marginTop: 10 }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          const form = new FormData(e.currentTarget);
+          addChar.mutate(form);
+          e.currentTarget.reset();
+        }}
+      >
+        <input name="name" placeholder="character name" style={{ width: 130 }} />
+        <input name="files" type="file" accept="image/*" multiple className="mono" style={{ width: 170 }} />
+        <button className="ghost" disabled={addChar.isPending}>+ profile character</button>
+      </form>
+    </div>
+  );
+}
 
 export default function ProjectList() {
+  const { prof = "" } = useParams();
+  const { data: profile } = useQuery({
+    queryKey: ["profile", prof],
+    queryFn: () => api.profile(prof),
+  });
   const { data: projects, isLoading } = useQuery({
-    queryKey: ["projects"],
-    queryFn: api.projects,
+    queryKey: ["projects", prof],
+    queryFn: () => api.projects(prof),
   });
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
   const client = useQueryClient();
 
   const create = useMutation({
-    mutationFn: (body: Record<string, string>) => api.createProject(body),
+    mutationFn: (body: Record<string, string>) => api.createProject(prof, body),
     onSuccess: (project: { slug: string }) => {
-      client.invalidateQueries({ queryKey: ["projects"] });
-      navigate(`/p/${project.slug}`);
+      client.invalidateQueries({ queryKey: ["projects", prof] });
+      navigate(`/${prof}/p/${project.slug}`);
     },
   });
 
   return (
     <>
-      <h1>Projects</h1>
-      <p className="muted">Each project is one concept — a post, a video, a look.</p>
-      <div className="row" style={{ margin: "14px 0" }}>
+      <h1>{profile?.name ?? prof}</h1>
+      {profile && <ProfileHeader prof={prof} profile={profile} />}
+
+      <div className="row" style={{ justifyContent: "space-between" }}>
+        <h2 style={{ margin: 0 }}>Projects</h2>
         <button onClick={() => setCreating(true)}>New project</button>
       </div>
+      <p className="muted">Each project is one concept — a post, a video, a look.</p>
 
       {creating && (
         <form
@@ -45,8 +112,8 @@ export default function ProjectList() {
           <input name="name" required placeholder="spring looks vol. 3" style={{ width: "100%" }} />
           <label>Concept</label>
           <input name="concept" placeholder="what is this post about?" style={{ width: "100%" }} />
-          <label>Style anchor (mood, palette, lighting)</label>
-          <input name="anchor" placeholder="soft studio light, muted pastels" style={{ width: "100%" }} />
+          <label>Style anchor (overrides profile default)</label>
+          <input name="anchor" placeholder={profile?.style.anchor || "soft studio light, muted pastels"} style={{ width: "100%" }} />
           <div className="row" style={{ marginTop: 12 }}>
             <button type="submit" disabled={create.isPending}>Create</button>
             <button type="button" className="ghost" onClick={() => setCreating(false)}>Cancel</button>
@@ -58,7 +125,7 @@ export default function ProjectList() {
       {isLoading && <p className="muted">Loading…</p>}
       <div className="grid-cards">
         {projects?.map((p) => (
-          <Link key={p.slug} to={`/p/${p.slug}`} className="card" style={{ display: "block" }}>
+          <Link key={p.slug} to={`/${prof}/p/${p.slug}`} className="card" style={{ display: "block" }}>
             <b>{p.name}</b>
             <div className="muted" style={{ fontSize: "0.85rem" }}>{p.concept || "no concept yet"}</div>
             <div className="row" style={{ marginTop: 10 }}>

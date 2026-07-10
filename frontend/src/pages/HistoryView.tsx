@@ -4,19 +4,19 @@ import { Link, useParams } from "react-router-dom";
 import { api, media } from "../api";
 
 export default function HistoryView() {
-  const { slug = "" } = useParams();
+  const { prof = "", slug = "" } = useParams();
   const [type, setType] = useState("");
   const params = type ? `?type=${type}` : "";
   const { data: rows } = useQuery({
-    queryKey: ["history", slug, type],
-    queryFn: () => api.history(slug, params),
+    queryKey: ["history", prof, slug, type],
+    queryFn: () => api.history(prof, slug, params),
   });
 
   const spend = rows?.reduce((sum, r) => sum + (r.cost_usd ?? 0), 0) ?? 0;
 
   return (
     <>
-      <p><Link to={`/p/${slug}`}>← board</Link></p>
+      <p><Link to={`/${prof}/p/${slug}`}>← board</Link></p>
       <h1>History</h1>
       <div className="row" style={{ margin: "10px 0" }}>
         <select value={type} onChange={(e) => setType(e.target.value)}>
@@ -37,7 +37,7 @@ export default function HistoryView() {
             <tr key={i}>
               <td>
                 {row.type === "image" ? (
-                  <img src={media(slug, row.file)} alt="" style={{ width: 44, borderRadius: 4 }} loading="lazy" />
+                  <img src={media(prof, slug, row.file)} alt="" style={{ width: 44, borderRadius: 4 }} loading="lazy" />
                 ) : (
                   <span className="pill">{row.kept ? "clip ✓" : "clip"}</span>
                 )}

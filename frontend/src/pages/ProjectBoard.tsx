@@ -25,14 +25,14 @@ function ModelPicker({ kind, value, onChange }: {
   );
 }
 
-function OutfitCard({ slug, outfit, refresh }: {
-  slug: string; outfit: Outfit; refresh: () => void;
+function OutfitCard({ prof, slug, outfit, refresh }: {
+  prof: string; slug: string; outfit: Outfit; refresh: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [copied, setCopied] = useState(false);
 
   const addItem = useMutation({
-    mutationFn: (form: FormData) => api.addItem(slug, outfit.id, form),
+    mutationFn: (form: FormData) => api.addItem(prof, slug, outfit.id, form),
     onSuccess: refresh,
     onError: (e) => toastError(String(e)),
   });
@@ -44,7 +44,7 @@ function OutfitCard({ slug, outfit, refresh }: {
         <button
           className="ghost"
           onClick={async () => {
-            const text = await api.links(slug, outfit.id);
+            const text = await api.links(prof, slug, outfit.id);
             await navigator.clipboard.writeText(text);
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
@@ -55,7 +55,7 @@ function OutfitCard({ slug, outfit, refresh }: {
       </div>
       {outfit.items.map((item, i) => (
         <div className="item-row" key={i}>
-          {item.image && <img src={media(slug, item.image)} alt="" />}
+          {item.image && <img src={media(prof, slug, item.image)} alt="" />}
           {item.url ? <a href={item.url} target="_blank" rel="noreferrer">{item.name}</a> : <span>{item.name}</span>}
         </div>
       ))}
@@ -80,8 +80,8 @@ function OutfitCard({ slug, outfit, refresh }: {
   );
 }
 
-function RefineDialog({ slug, scene, project, onClose, refresh }: {
-  slug: string; scene: Scene; project: Project;
+function RefineDialog({ prof, slug, scene, project, onClose, refresh }: {
+  prof: string; slug: string; scene: Scene; project: Project;
   onClose: () => void; refresh: () => void;
 }) {
   const [description, setDescription] = useState(scene.description);
@@ -99,7 +99,7 @@ function RefineDialog({ slug, scene, project, onClose, refresh }: {
 
   const save = useMutation({
     mutationFn: () =>
-      api.patchScene(slug, scene.id, {
+      api.patchScene(prof, slug, scene.id, {
         description,
         pose: pose || null,
         style_override: styleOverride || null,
@@ -111,13 +111,13 @@ function RefineDialog({ slug, scene, project, onClose, refresh }: {
   const regen = useMutation({
     mutationFn: async () => {
       if (dirty) {
-        await api.patchScene(slug, scene.id, {
+        await api.patchScene(prof, slug, scene.id, {
           description,
           pose: pose || null,
           style_override: styleOverride || null,
         });
       }
-      return api.regenerateImage(slug, scene.id, { model, options });
+      return api.regenerateImage(prof, slug, scene.id, { model, options });
     },
     onSuccess: () => { onClose(); refresh(); },
     onError: (e) => toastError(String(e)),
@@ -172,14 +172,14 @@ function RefineDialog({ slug, scene, project, onClose, refresh }: {
   );
 }
 
-function SceneCard({ slug, scene, project, refresh, busy }: {
-  slug: string; scene: Scene; project: Project; refresh: () => void; busy: boolean;
+function SceneCard({ prof, slug, scene, project, refresh, busy }: {
+  prof: string; slug: string; scene: Scene; project: Project; refresh: () => void; busy: boolean;
 }) {
   const [refineOpen, setRefineOpen] = useState(false);
   const [viewing, setViewing] = useState<number | null>(null);
 
   const select = useMutation({
-    mutationFn: (index: number) => api.select(slug, scene.id, index),
+    mutationFn: (index: number) => api.select(prof, slug, scene.id, index),
     onSuccess: () => { toastOk("selected"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
@@ -200,7 +200,7 @@ function SceneCard({ slug, scene, project, refresh, busy }: {
           <button className="ghost" onClick={() => setRefineOpen(true)}>
             refine…
           </button>
-          <Link to={`/p/${slug}/scenes/${scene.id}/takes`}>
+          <Link to={`/${prof}/p/${slug}/scenes/${scene.id}/takes`}>
             <button className="ghost">
               takes{completedTakes > 0 ? ` (${completedTakes})` : ""}
             </button>
@@ -223,7 +223,7 @@ function SceneCard({ slug, scene, project, refresh, busy }: {
             tabIndex={0}
             title="view full size"
           >
-            <img src={media(slug, img.file)} alt={`option ${i + 1}`} loading="lazy" />
+            <img src={media(prof, slug, img.file)} alt={`option ${i + 1}`} loading="lazy" />
             <div className="cap">
               {scene.selected_image === i ? "✓ " : ""}opt {i + 1} · {img.model}
             </div>
@@ -233,7 +233,7 @@ function SceneCard({ slug, scene, project, refresh, busy }: {
 
       {viewingImage && viewing !== null && (
         <Lightbox
-          src={media(slug, viewingImage.file)}
+          src={media(prof, slug, viewingImage.file)}
           caption={`opt ${viewing + 1} · ${viewingImage.model}`}
           onClose={() => setViewing(null)}
           actions={
@@ -248,6 +248,7 @@ function SceneCard({ slug, scene, project, refresh, busy }: {
 
       {refineOpen && (
         <RefineDialog
+          prof={prof}
           slug={slug}
           scene={scene}
           project={project}
@@ -260,16 +261,16 @@ function SceneCard({ slug, scene, project, refresh, busy }: {
 }
 
 export default function ProjectBoard() {
-  const { slug = "" } = useParams();
-  const { data: project, isLoading, error } = useProject(slug);
-  const refresh = useInvalidateProject(slug);
+  const { prof = "", slug = "" } = useParams();
+  const { data: project, isLoading, error } = useProject(prof, slug);
+  const refresh = useInvalidateProject(prof, slug);
   const [imageModel, setImageModel] = useState<string | null>(null);
   const [exported, setExported] = useState<string | null>(null);
   const [addingScene, setAddingScene] = useState(false);
 
   const generateAll = useMutation({
     mutationFn: () =>
-      api.generateImages(slug, {
+      api.generateImages(prof, slug, {
         model: imageModel ?? project?.settings.image_model,
         options: project?.settings.image_options,
       }),
@@ -277,28 +278,28 @@ export default function ProjectBoard() {
     onError: (e) => toastError(String(e)),
   });
   const addOutfit = useMutation({
-    mutationFn: (name: string) => api.addOutfit(slug, name),
+    mutationFn: (name: string) => api.addOutfit(prof, slug, name),
     onSuccess: refresh,
     onError: (e) => toastError(String(e)),
   });
   const outfitScenes = useMutation({
-    mutationFn: (outfitId: string) => api.scenesFromOutfit(slug, { outfit_id: outfitId }),
+    mutationFn: (outfitId: string) => api.scenesFromOutfit(prof, slug, { outfit_id: outfitId }),
     onSuccess: refresh,
     onError: (e) => toastError(String(e)),
   });
   const addCharacter = useMutation({
-    mutationFn: (form: FormData) => api.addCharacter(slug, form),
+    mutationFn: (form: FormData) => api.addCharacter(prof, slug, form),
     onSuccess: () => { toastOk("character added"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
   const addScene = useMutation({
     mutationFn: (body: { description: string; pose?: string }) =>
-      api.addScene(slug, body),
+      api.addScene(prof, slug, body),
     onSuccess: () => { setAddingScene(false); refresh(); },
     onError: (e) => toastError(String(e)),
   });
   const runExport = useMutation({
-    mutationFn: () => api.export(slug),
+    mutationFn: () => api.export(prof, slug),
     onSuccess: (result) => { setExported(result.dir); toastOk("exported"); },
     onError: (e) => toastError(String(e)),
   });
@@ -355,7 +356,7 @@ export default function ProjectBoard() {
         </button>
         {exported && (
           <span className="mono muted">
-            → {exported} · <a href={`/api/projects/${slug}/export.zip`}>zip</a>
+            → {exported} · <a href={`/api/profiles/${prof}/projects/${slug}/export.zip`}>zip</a>
           </span>
         )}
       </div>
@@ -395,7 +396,7 @@ export default function ProjectBoard() {
       {project.outfits.length > 0 && <h2>Outfits</h2>}
       {project.outfits.map((outfit) => (
         <div key={outfit.id}>
-          <OutfitCard slug={slug} outfit={outfit} refresh={refresh} />
+          <OutfitCard prof={prof} slug={slug} outfit={outfit} refresh={refresh} />
           {!project.scenes.some((s) => s.outfit_id === outfit.id) && (
             <button
               className="ghost"
@@ -415,6 +416,7 @@ export default function ProjectBoard() {
       {project.scenes.map((scene) => (
         <SceneCard
           key={scene.id}
+          prof={prof}
           slug={slug}
           scene={scene}
           project={project}

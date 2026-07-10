@@ -40,6 +40,13 @@ def _load(ctx: typer.Context) -> Project:
     return Project.load(Path(root))
 
 
+def _load_with_profile(ctx: typer.Context):
+    from .profile import profile_for_project
+
+    project = _load(ctx)
+    return project, profile_for_project(project)
+
+
 def _fail(message: str) -> None:
     typer.secho(message, fg=typer.colors.RED)
     raise typer.Exit(1)
@@ -280,7 +287,9 @@ def add_outfit_scenes(
     setting: str = typer.Option("", help="Scene setting, e.g. 'sunlit cafe'"),
 ):
     """Create the pose scenes for an outfit (two standard poses by default)."""
-    project = _load(ctx)
+    from .profile import resolve_character
+
+    project, profile = _load_with_profile(ctx)
     outfit = project.find_outfit(outfit_id)
 
     if character is None:
@@ -289,8 +298,13 @@ def add_outfit_scenes(
         elif project.characters:
             _fail("Multiple characters — pick one with --character "
                   f"({', '.join(c.id for c in project.characters)})")
+        elif profile and profile.main_character:
+            character = profile.main_character.id
     if character:
-        project.find_character(character)  # validate
+        try:
+            resolve_character(project, profile, character)
+        except KeyError as exc:
+            _fail(str(exc).strip("'\""))
 
     poses = list(pose or DEFAULT_POSES)
     base = f"{outfit.name}" + (f" in {setting}" if setting else "")
@@ -334,7 +348,7 @@ def generate_images(
     dry_run: bool = typer.Option(False, help="Print prompts without generating"),
 ):
     """Generate image options for each scene using the project style context."""
-    project = _load(ctx)
+    project, profile = _load_with_profile(ctx)
     scenes = [project.find_scene(scene_id)] if scene_id else project.scenes
     if not scenes:
         _fail("No scenes yet — run 'sceneforge add-scenes' first")
@@ -358,14 +372,15 @@ def generate_images(
     )
     if dry_run:
         for sc, needed in todo:
-            typer.echo(f"[dry-run] {sc.id} x{needed}: {compose_prompt(project, sc)}")
-            refs = ops.scene_reference_images(project, sc)
+            typer.echo(f"[dry-run] {sc.id} x{needed}: "
+                       f"{compose_prompt(project, sc, profile=profile)}")
+            refs = ops.scene_reference_images(project, sc, profile=profile)
             if refs:
                 typer.echo(f"[dry-run] {sc.id} references: "
                            + ", ".join(str(r.relative_to(project.root)) for r in refs))
         return
 
-    ops.run_images(project, todo, model_key, log=typer.echo)
+    ops.run_images(project, todo, model_key, log=typer.echo, profile=profile)
     typer.secho("Done. Pick with: sceneforge select SCENE_ID OPTION_NUM",
                 fg=typer.colors.GREEN)
 
@@ -395,7 +410,7 @@ def generate_clips(
     dry_run: bool = typer.Option(False, help="Print prompts without generating"),
 ):
     """Animate each scene's selected image into a clip (image-to-video)."""
-    project = _load(ctx)
+    project, profile = _load_with_profile(ctx)
     scenes = [project.find_scene(scene_id)] if scene_id else project.scenes
     if not scenes:
         _fail("No scenes yet — run 'sceneforge add-scenes' first")
@@ -422,10 +437,11 @@ def generate_clips(
     if dry_run:
         for sc in todo:
             typer.echo(f"[dry-run] {sc.id} from {sc.selected_image_file}: "
-                       f"{compose_prompt(project, sc)}")
+                       f"{compose_prompt(project, sc, profile=profile)}")
         return
 
-    failures = ops.run_clips(project, todo, model_key, log=typer.echo)
+    failures = ops.run_clips(project, todo, model_key, log=typer.echo,
+                             profile=profile)
     if failures:
         _fail(f"{len(failures)} clip(s) failed: {', '.join(failures)}. "
               "Re-run generate-clips to retry just those.")
@@ -445,7 +461,7 @@ def takes(
     prompt: str = typer.Option(None, help="Override the motion prompt for these takes"),
 ):
     """Generate several clip takes from one scene image; compare, keep, export."""
-    project = _load(ctx)
+    project, profile = _load_with_profile(ctx)
     sc = project.find_scene(scene_id)
     index = (image - 1) if image is not None else sc.selected_image
     if index is None:
@@ -456,7 +472,8 @@ def takes(
                f"(~${count * resolved['price']:.2f})")
     try:
         failures = ops.run_takes(project, sc, index, count, model_key,
-                                 prompt_override=prompt, log=typer.echo)
+                                 prompt_override=prompt, log=typer.echo,
+                                 profile=profile)
     except ValueError as exc:
         _fail(str(exc))
     if failures:
@@ -593,7 +610,7 @@ def status(ctx: typer.Context):
 @app.command()
 def studio(
     directory: Path = typer.Option(
-        None, "--dir", help="Directory containing project folders (default: cwd)"
+        None, "--dir", help="SCENEFORGE_HOME directory (default: ~/SceneForge)"
     ),
     host: str = typer.Option("127.0.0.1"),
     port: int = typer.Option(8000),
@@ -601,12 +618,14 @@ def studio(
     """Launch SceneForge Studio (JSON API + web app)."""
     import uvicorn
 
+    from .profile import home_dir
     from .server import create_app
 
-    base = (directory or Path.cwd()).resolve()
-    typer.secho(f"SceneForge Studio on http://{host}:{port} (projects in {base})",
+    home = (directory or home_dir()).resolve()
+    home.mkdir(parents=True, exist_ok=True)
+    typer.secho(f"SceneForge Studio on http://{host}:{port} (home: {home})",
                 fg=typer.colors.GREEN)
-    uvicorn.run(create_app(base), host=host, port=port, log_level="warning")
+    uvicorn.run(create_app(home), host=host, port=port, log_level="warning")
 
 
 # ---------------------------------------------------------------- web ui
