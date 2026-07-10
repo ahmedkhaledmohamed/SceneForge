@@ -99,20 +99,25 @@ def _video(inp: dict) -> dict:
     }
 
 
+DEFAULT_WARMUP_REPOS = [
+    "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers",
+    "black-forest-labs/FLUX.1-schnell",  # gated: needs HF_TOKEN + accepted license
+]
+
+
 def _warmup(inp: dict) -> dict:
     """One-time weight download into the network volume's HF cache.
 
-    Run this once after creating the endpoint (~10-15 min of GPU time).
-    Every later cold start loads from the volume instead of the network.
+    Run this once after creating the endpoint (~10-15 min of GPU time);
+    later cold starts load from the volume instead of the network.
+    Pass {"repos": [...]} to control which repos are fetched — useful
+    when a gated repo (FLUX) isn't accessible yet.
     """
     from huggingface_hub import snapshot_download
 
     t0 = time.time()
     paths = {}
-    for repo in (
-        "black-forest-labs/FLUX.1-schnell",
-        "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers",
-    ):
+    for repo in inp.get("repos") or DEFAULT_WARMUP_REPOS:
         paths[repo] = snapshot_download(repo)
     return {"downloaded": paths, "time_s": round(time.time() - t0, 1)}
 
