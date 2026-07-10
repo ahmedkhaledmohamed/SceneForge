@@ -475,6 +475,53 @@ def test_profile_stats(tmp_path):
     assert "fake-image" in stats["models_used"]
 
 
+def test_auth_and_settings(tmp_path):
+    client = make_client(tmp_path)
+    prof = create_profile(client)
+
+    # no password yet — profile should be accessible
+    doc = client.get(f"/api/profiles/{prof}").json()
+    assert doc["has_password"] is False
+    assert doc["has_keys"] is False
+
+    # set password
+    r = client.post(f"/api/profiles/{prof}/set-password",
+                    json={"password": "test123"})
+    assert r.status_code == 200
+    token = r.json()["token"]
+
+    # verify has_password changed
+    doc = client.get(f"/api/profiles/{prof}").json()
+    assert doc["has_password"] is True
+
+    # settings without auth should fail
+    r = client.get(f"/api/profiles/{prof}/settings")
+    assert r.status_code == 401
+
+    # settings with auth should work
+    r = client.get(f"/api/profiles/{prof}/settings",
+                   headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert r.json()["has_together"] is False
+
+    # save a Together key
+    r = client.patch(f"/api/profiles/{prof}/settings",
+                     json={"keys": {"together": "test-key-12345"}},
+                     headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert r.json()["has_together"] is True
+    assert r.json()["keys"]["together"] == "test...2345"
+
+    # login with wrong password
+    r = client.post(f"/api/profiles/{prof}/login", json={"password": "wrong"})
+    assert r.status_code == 401
+
+    # login with correct password
+    r = client.post(f"/api/profiles/{prof}/login", json={"password": "test123"})
+    assert r.status_code == 200
+    assert "token" in r.json()
+
+
 def test_models_route(tmp_path):
     client = make_client(tmp_path)
     models = client.get("/api/models").json()

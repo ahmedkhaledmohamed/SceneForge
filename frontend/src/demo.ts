@@ -25,6 +25,8 @@ export const DEMO_PROFILE: ProfileDoc = {
     video_model: "kling-2.1", aspect: "9:16", image_options: 2,
   },
   characters: [DEMO_CHAR],
+  has_password: false,
+  has_keys: true,
   seeds: [
     { id: "seed-1", kind: "note", file: null, text: "autumn cafe looks", tags: ["fall", "cozy"], created_at: "2026-07-10T10:00:00Z" },
     { id: "seed-2", kind: "note", file: null, text: "pastel spring series", tags: ["spring"], created_at: "2026-07-10T10:00:00Z" },
