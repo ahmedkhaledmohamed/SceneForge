@@ -1,8 +1,8 @@
 # SceneForge RunPod worker
 
 Self-hosted generation on rented GPUs: FLUX.1-schnell (images) and
-Wan2.1-I2V-14B-480P (image-to-video) running on a RunPod serverless
-RTX 4090 for ~$0.10-0.15 per clip vs $0.80 hosted.
+Wan2.2-TI2V-5B (text+image-to-video, 720p) running on a RunPod serverless
+RTX 4090 for ~$0.08-0.12 per clip vs $0.80 hosted.
 
 ## How the pieces fit
 
@@ -33,28 +33,22 @@ artifact from the job's `executionTime` and stores it in project.json.
 2. **Registry**: any Docker registry works; Docker Hub free tier is fine
    (`docker login`).
 3. **Network volume** (Console → Storage): 150 GB (~$10.50/month) in a
-   datacenter that lists both RTX 4090 and RTX A6000 availability — the
-   volume pins your endpoint to that datacenter.
-4. **Build & push the worker** (from the repo root; cross-build since
-   Apple Silicon ≠ RunPod's x86_64):
-
-   ```bash
-   docker buildx build --platform linux/amd64 \
-     -t docker.io/<you>/sceneforge-worker:0.1 --push runpod-worker/
-   ```
-
+   datacenter that lists RTX 4090 availability — the volume pins your
+   endpoint to that datacenter.
+4. **Build & push the worker** — use GitHub Actions (`build-worker.yml`,
+   dispatch with tag input) rather than pushing the multi-GB image from
+   home bandwidth.
 5. **Endpoint** (Console → Serverless → New Endpoint → Import from
    Docker Registry):
-   - GPU priority: RTX 4090, then RTX A6000 (48 GB pressure valve —
-     runs Wan-14B without CPU offload if 4090s are busy/slow)
+   - GPU: RTX 4090 (Wan2.2-TI2V-5B fits 24GB without CPU offload)
    - Max workers **1** (cost control), active (min) workers 0
    - Idle timeout **120s** — keeps the loaded model warm between scenes
-     in a batch (~$0.037/2min ≪ reloading 30 GB of weights)
-   - Execution timeout **1800s** (cold load + 5-8 min generation)
+   - Execution timeout **1800s** (cold load + ~9 min generation)
    - FlashBoot on; attach the network volume
+   - Env: `HF_TOKEN` (for gated models), `HF_HUB_DISABLE_XET=1`
    - Copy the endpoint id → `RUNPOD_ENDPOINT_ID` in `.env`
 6. **Warm the weight cache** (one-off, ~10-15 min ≈ $0.25 — downloads
-   ~100 GB of model weights to the volume so cold starts load from disk):
+   model weights to the volume so cold starts load from disk):
 
    ```bash
    curl -s -X POST "https://api.runpod.ai/v2/$RUNPOD_ENDPOINT_ID/run" \
@@ -73,12 +67,11 @@ flux-schnell).
 
 - `handler.py` — job dispatch: `{"task": "image" | "video" | "warmup"}`.
   Media travels base64 in the payload (10 MB `/run` cap; a PNG in and a
-  5s 480p mp4 out both fit comfortably).
+  5s 720p mp4 out both fit).
 - `pipelines.py` — lazy loading, one pipeline resident at a time
-  (24 GB can't hold FLUX and Wan-14B together); `enable_model_cpu_offload()`
-  is mandatory for Wan-14B on a 4090.
-- Output is **480p** (the 14B-480P model), upscaled at stitch time.
-  Native 720p needs the 14B-720P variant on a 48 GB card.
+  (24 GB can't hold FLUX and Wan2.2 together).
+- Output is **720p** (1280×704 or 704×1280, the TI2V-5B native grid) at
+  24fps with 121 frames (~5s).
 
 Local dispatch check without a GPU:
 
@@ -86,12 +79,19 @@ Local dispatch check without a GPU:
 python handler.py --test_input '{"input": {"task": "bogus"}}'   # → error path
 ```
 
-## Cost reality check (estimates from verified pricing; measured numbers TBD)
+## Model history
 
-| | Together (Seedance 2.0) | RunPod (Wan2.1 480P, 4090) |
+| Version | Model | Resolution | GPU | Status |
+|---|---|---|---|---|
+| 0.1-0.3 | Wan2.1-I2V-14B-480P | 480p | 4090 OOMs, L40S spotty | retired |
+| 0.4 | Wan2.2-TI2V-5B | 720p | 4090 fits | current |
+
+## Cost reality check
+
+| | Together (Seedance 2.0) | RunPod (Wan2.2-TI2V-5B, 4090) |
 |---|---|---|
-| 5s clip, warm worker | $0.80 | ~$0.08-0.15 |
-| 5s clip, cold start | $0.80 | ~$0.13-0.22 (includes model load) |
-| Resolution | 720p | 480p |
-| Wall time | 1-3 min | 5-10 min |
+| 5s clip, warm worker | $0.80 | ~$0.08-0.12 |
+| 5s clip, cold start | $0.80 | ~$0.12-0.18 (includes model load) |
+| Resolution | 720p | 720p |
+| Wall time | 1-3 min | ~9 min |
 | Standing cost | none | $10.50/mo volume |

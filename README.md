@@ -81,7 +81,7 @@ Model choice is part of the workflow, not a config constant — pick per run wit
 | `seedance-2.0` | video | $0.80/clip | – | most realistic I2V (default) |
 | `veo-3.0-fast` | video | $0.40/clip | – | mid-price |
 | `kling-2.1` | video | $0.18/clip | – | cheapest hosted I2V |
-| `runpod-flux` / `runpod-wan-i2v` | both | ~$0.03/~$0.12 | – | self-hosted GPU (see runpod-worker/) |
+| `runpod-flux` / `runpod-wan-i2v` | both | ~$0.03/~$0.10 | – | self-hosted GPU, 720p Wan2.2-TI2V-5B (see runpod-worker/) |
 | `fake-image` / `fake-video` | test | $0 | 14 | ffmpeg-generated, powers the test suite |
 
 Generation is **idempotent**: re-running a batch skips what's done, failed jobs are recorded and retried on the next run, `--force`/`regenerate` redoes on demand. `sceneforge status` shows progress and estimated remaining cost.

@@ -91,13 +91,13 @@ MODELS = {
     "runpod-wan-i2v": {
         "kind": "video",
         "backend": "runpod",
-        "id": "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers",
-        "price": 0.12,  # estimate; actual cost computed per artifact
+        "id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        "price": 0.10,  # estimate; actual cost computed per artifact
         "gpu_price_per_s": 0.000306,
         "supports_i2v": True,
-        "timeout_s": 1800,  # cold model load + 5-8 min generation
+        "timeout_s": 1800,  # cold model load + ~9 min generation
         "fallback": "seedance-2.0",
-        "notes": "self-hosted Wan2.1 on RunPod 4090, 480p",
+        "notes": "self-hosted Wan2.2-TI2V-5B on RunPod 4090, 720p",
     },
     # --- zero-cost test backends (ffmpeg lavfi) ---
     "fake-image": {
