@@ -20,4 +20,10 @@ build/
 
 # Frontend
 frontend/node_modules/
+frontend/dist/
 src/sceneforge/web_dist/
+
+# Vercel
+.vercel/
+frontend/.vercel/
+site/.vercel/
