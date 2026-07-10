@@ -18,14 +18,16 @@ diverge per post); only characters resolve live, because identity refs
 keep improving and must propagate everywhere.
 """
 
+import hashlib
 import json
 import os
+import secrets
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from .project import Character, Project, now_iso
 
-PROFILE_SCHEMA_VERSION = 1
+PROFILE_SCHEMA_VERSION = 2
 
 PROFILE_FILE = "profile.json"
 
@@ -64,14 +66,43 @@ class ProfileDefaults:
 
 
 @dataclass
+class ProfileKeys:
+    together: str = ""
+    runpod_api: str = ""
+    runpod_endpoint: str = ""
+
+
+def _hash_password(password: str, salt: str) -> str:
+    return hashlib.pbkdf2_hmac(
+        "sha256", password.encode(), salt.encode(), 100_000
+    ).hex()
+
+
+@dataclass
 class Profile:
     name: str
     style: ProfileStyle = field(default_factory=ProfileStyle)
     defaults: ProfileDefaults = field(default_factory=ProfileDefaults)
     characters: list[Character] = field(default_factory=list)
     seeds: list[Seed] = field(default_factory=list)
+    keys: ProfileKeys = field(default_factory=ProfileKeys)
+    password_hash: str = ""
+    password_salt: str = ""
     schema_version: int = PROFILE_SCHEMA_VERSION
     root: Path = field(default=Path("."), compare=False)
+
+    @property
+    def has_password(self) -> bool:
+        return bool(self.password_hash)
+
+    def set_password(self, password: str) -> None:
+        self.password_salt = secrets.token_hex(16)
+        self.password_hash = _hash_password(password, self.password_salt)
+
+    def check_password(self, password: str) -> bool:
+        if not self.password_hash:
+            return True
+        return _hash_password(password, self.password_salt) == self.password_hash
 
     @property
     def path(self) -> Path:
@@ -142,6 +173,9 @@ class Profile:
             defaults=ProfileDefaults(**data.get("defaults", {})),
             characters=[Character(**c) for c in data.get("characters", [])],
             seeds=[Seed(**s) for s in data.get("seeds", [])],
+            keys=ProfileKeys(**data.get("keys", {})),
+            password_hash=data.get("password_hash", ""),
+            password_salt=data.get("password_salt", ""),
             schema_version=PROFILE_SCHEMA_VERSION,
             root=root,
         )

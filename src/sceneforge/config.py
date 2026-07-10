@@ -133,31 +133,50 @@ ASPECTS = {
 }
 
 
-def together_api_key() -> str:
+import threading
+_active_profile = threading.local()
+
+
+def set_active_profile(profile) -> None:
+    _active_profile.value = profile
+
+
+def get_active_profile():
+    return getattr(_active_profile, "value", None)
+
+
+def together_api_key(profile=None) -> str:
+    profile = profile or get_active_profile()
+    if profile and profile.keys.together:
+        return profile.keys.together
     key = os.environ.get("TOGETHER_API_KEY")
     if not key:
         raise RuntimeError(
-            "TOGETHER_API_KEY not set. Add it to a .env file (see .env.example)."
+            "No Together API key. Add it in profile settings or .env."
         )
     return key
 
 
-def runpod_api_key() -> str:
+def runpod_api_key(profile=None) -> str:
+    profile = profile or get_active_profile()
+    if profile and profile.keys.runpod_api:
+        return profile.keys.runpod_api
     key = os.environ.get("RUNPOD_API_KEY")
     if not key:
         raise RuntimeError(
-            "RUNPOD_API_KEY not set. Add it to .env (see .env.example and "
-            "runpod-worker/README.md for endpoint setup)."
+            "No RunPod API key. Add it in profile settings or .env."
         )
     return key
 
 
-def runpod_endpoint_id() -> str:
+def runpod_endpoint_id(profile=None) -> str:
+    profile = profile or get_active_profile()
+    if profile and profile.keys.runpod_endpoint:
+        return profile.keys.runpod_endpoint
     endpoint = os.environ.get("RUNPOD_ENDPOINT_ID")
     if not endpoint:
         raise RuntimeError(
-            "RUNPOD_ENDPOINT_ID not set. Create a serverless endpoint "
-            "(runpod-worker/README.md) and add its id to .env."
+            "No RunPod endpoint ID. Add it in profile settings or .env."
         )
     return endpoint
 

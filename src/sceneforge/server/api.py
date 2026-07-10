@@ -13,8 +13,10 @@ import zipfile
 from dataclasses import asdict
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, PlainTextResponse, Response
+
+import secrets
 
 from .. import config, ops
 from ..profile import PROFILE_FILE, Profile, create_profile
@@ -39,8 +41,19 @@ def make_router(home: Path) -> APIRouter:
             raise _err(404, "not_found", f"No profile '{prof}'")
         return root
 
+    # sessions: {token: profile_slug}
+    _sessions: dict[str, str] = {}
+
     def load_profile(prof: str) -> Profile:
         return Profile.load(profile_root(prof))
+
+    def require_auth(request: Request, prof: str) -> None:
+        profile = load_profile(prof)
+        if not profile.has_password:
+            return
+        token = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        if not token or _sessions.get(token) != prof:
+            raise _err(401, "unauthorized", "Login required for this profile")
 
     def project_root(prof: str, slug: str) -> Path:
         base = profile_root(prof) / "projects"
@@ -86,7 +99,16 @@ def make_router(home: Path) -> APIRouter:
         return doc
 
     def start_job_or_409(prof: str, slug: str, name: str, fn) -> dict:
-        if not jobs.start(job_key(prof, slug), name, fn):
+        profile = load_profile(prof)
+
+        def wrapped(log):
+            config.set_active_profile(profile)
+            try:
+                return fn(log)
+            finally:
+                config.set_active_profile(None)
+
+        if not jobs.start(job_key(prof, slug), name, wrapped):
             raise _err(409, "conflict", "A job is already running for this project")
         return {"started": name}
 
@@ -128,8 +150,71 @@ def make_router(home: Path) -> APIRouter:
         profile = load_profile(prof)
         doc = asdict(profile)
         doc.pop("root")
+        doc.pop("password_hash", None)
+        doc.pop("password_salt", None)
+        doc.pop("keys", None)
         doc["slug"] = prof
+        doc["has_password"] = profile.has_password
+        doc["has_keys"] = bool(profile.keys.together)
         return doc
+
+    @router.post("/profiles/{prof}/login")
+    def login(prof: str, payload: dict):
+        profile = load_profile(prof)
+        password = payload.get("password", "")
+        if not profile.check_password(password):
+            raise _err(401, "unauthorized", "Wrong password")
+        token = secrets.token_urlsafe(32)
+        _sessions[token] = prof
+        return {"token": token}
+
+    @router.post("/profiles/{prof}/set-password")
+    def set_password(prof: str, request: Request, payload: dict):
+        profile = load_profile(prof)
+        if profile.has_password:
+            require_auth(request, prof)
+        password = (payload.get("password") or "").strip()
+        if not password:
+            raise _err(400, "invalid", "Password is required")
+        profile.set_password(password)
+        profile.save()
+        token = secrets.token_urlsafe(32)
+        _sessions[token] = prof
+        return {"token": token}
+
+    @router.get("/profiles/{prof}/settings")
+    def get_settings(prof: str, request: Request):
+        require_auth(request, prof)
+        profile = load_profile(prof)
+
+        def mask(s: str) -> str:
+            if len(s) <= 8:
+                return "***" if s else ""
+            return s[:4] + "..." + s[-4:]
+
+        return {
+            "keys": {
+                "together": mask(profile.keys.together),
+                "runpod_api": mask(profile.keys.runpod_api),
+                "runpod_endpoint": profile.keys.runpod_endpoint,
+            },
+            "has_together": bool(profile.keys.together),
+            "has_runpod": bool(profile.keys.runpod_api),
+        }
+
+    @router.patch("/profiles/{prof}/settings")
+    def patch_settings(prof: str, request: Request, payload: dict):
+        require_auth(request, prof)
+        profile = load_profile(prof)
+        keys = payload.get("keys", {})
+        if "together" in keys:
+            profile.keys.together = keys["together"]
+        if "runpod_api" in keys:
+            profile.keys.runpod_api = keys["runpod_api"]
+        if "runpod_endpoint" in keys:
+            profile.keys.runpod_endpoint = keys["runpod_endpoint"]
+        profile.save()
+        return get_settings(prof, request)
 
     @router.patch("/profiles/{prof}")
     def patch_profile(prof: str, payload: dict):

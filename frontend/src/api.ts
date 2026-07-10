@@ -2,8 +2,22 @@ import type { HistoryRow, Job, ModelInfo, ProfileDoc, ProfileSummary, Project, P
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
+let _authToken: string | null = localStorage.getItem("sf_token");
+
+export function setAuthToken(token: string | null) {
+  _authToken = token;
+  if (token) localStorage.setItem("sf_token", token);
+  else localStorage.removeItem("sf_token");
+}
+
+export function getAuthToken() { return _authToken; }
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, init);
+  const headers = new Headers(init?.headers);
+  if (_authToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${_authToken}`);
+  }
+  const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
   if (!response.ok) {
     let message = response.statusText;
     try {
@@ -44,6 +58,14 @@ export const api = {
   createProfile: (name: string) => request<{ slug: string; name: string }>("/profiles", json({ name })),
   profile: (prof: string) => request<ProfileDoc>(`/profiles/${prof}`),
   patchProfile: (prof: string, body: unknown) => request<ProfileDoc>(`/profiles/${prof}`, patch(body)),
+  login: (prof: string, password: string) =>
+    request<{ token: string }>(`/profiles/${prof}/login`, json({ password })),
+  setPassword: (prof: string, password: string) =>
+    request<{ token: string }>(`/profiles/${prof}/set-password`, json({ password })),
+  getSettings: (prof: string) =>
+    request<{ keys: { together: string; runpod_api: string; runpod_endpoint: string }; has_together: boolean; has_runpod: boolean }>(`/profiles/${prof}/settings`),
+  patchSettings: (prof: string, keys: Record<string, string>) =>
+    request(`/profiles/${prof}/settings`, patch({ keys })),
   addProfileCharacter: (prof: string, form: FormData) =>
     request(`/profiles/${prof}/characters`, { method: "POST", body: form }),
   addProfileCharacterRef: (prof: string, cid: string, form: FormData) =>
