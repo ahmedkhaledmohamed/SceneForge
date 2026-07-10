@@ -65,6 +65,15 @@ function OutfitCard({ prof, slug, outfit, allChars, busy, refresh }: {
     onSuccess: () => { toastOk("outfit deleted"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
+  const bulkItems = useMutation({
+    mutationFn: (files: FileList) => {
+      const form = new FormData();
+      for (const f of files) form.append("files", f);
+      return api.addItemsBulk(prof, slug, outfit.id, form);
+    },
+    onSuccess: () => { toastOk("items added"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
   const processOutfit = useMutation({
     mutationFn: () => {
       const charId = allChars.find((c) => c.main)?.id ?? allChars[0]?.id;
@@ -137,6 +146,29 @@ function OutfitCard({ prof, slug, outfit, allChars, busy, refresh }: {
         <input ref={fileRef} type="file" accept="image/*" className="mono" style={{ width: 180 }} />
         <button className="ghost" disabled={addItem.isPending}>add item</button>
       </form>
+      <div
+        className="drop-zone"
+        style={{
+          marginTop: 8, padding: "12px 16px", borderRadius: 8,
+          border: "1px dashed var(--line)", textAlign: "center",
+          fontSize: "0.78rem", color: "var(--taupe)", cursor: "pointer",
+        }}
+        onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--gold)"; }}
+        onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--line)"; }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.currentTarget.style.borderColor = "var(--line)";
+          if (e.dataTransfer.files.length) bulkItems.mutate(e.dataTransfer.files);
+        }}
+        onClick={() => {
+          const input = document.createElement("input");
+          input.type = "file"; input.accept = "image/*"; input.multiple = true;
+          input.onchange = () => { if (input.files?.length) bulkItems.mutate(input.files); };
+          input.click();
+        }}
+      >
+        {bulkItems.isPending ? "uploading…" : "drop product photos here (bulk add items)"}
+      </div>
     </div>
   );
 }
@@ -565,8 +597,13 @@ export default function ProjectBoard() {
   if (isLoading && !isDemo) return <p className="muted">Loading…</p>;
   if (!project && !isDemo) return <p className="muted">{String(error ?? "not found")}</p>;
   if (!project && isDemo) {
-    // demo mode shows a read-only project with sample data
     const dp = DEMO_PROJECT;
+    const gradients = [
+      "linear-gradient(135deg, #b8860b 0%, #d4a04a 40%, #f5deb3 100%)",
+      "linear-gradient(135deg, #8b6914 0%, #c4923a 40%, #ffe4b5 100%)",
+      "linear-gradient(135deg, #a0522d 0%, #cd853f 40%, #ffdead 100%)",
+      "linear-gradient(135deg, #996633 0%, #cc9966 40%, #f5e6cc 100%)",
+    ];
     return (
       <>
         <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
@@ -577,10 +614,23 @@ export default function ProjectBoard() {
           {dp.concept} · <span className="mono">{dp.style.anchor}</span>
           · <span className="mono">${dp.spent_usd.toFixed(2)} GPU spend</span>
         </p>
+
+        <div className="row">
+          <span className="mono muted">
+            models: {dp.settings.image_model} / {dp.settings.video_model} · {dp.settings.image_options} options/scene
+          </span>
+        </div>
+
         {dp.outfits.length > 0 && <h2>Outfits</h2>}
         {dp.outfits.map((outfit) => (
           <div key={outfit.id} className="card">
-            <b>{outfit.name}</b>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <b>{outfit.name}</b>
+              <div className="row">
+                <button className="ghost" disabled>copy links</button>
+                <button className="ghost" disabled>process</button>
+              </div>
+            </div>
             {outfit.items.map((item, i) => (
               <div className="item-row" key={i}>
                 {item.url ? <a href={item.url} target="_blank" rel="noreferrer">{item.name}</a> : <span>{item.name}</span>}
@@ -588,18 +638,55 @@ export default function ProjectBoard() {
             ))}
           </div>
         ))}
+
         <h2>Scenes</h2>
-        {dp.scenes.map((scene) => (
+        {dp.scenes.map((scene, si) => (
           <div key={scene.id} className="card">
-            <b>{scene.id}</b> — {scene.description}
-            <div className="muted mono" style={{ fontSize: "0.75rem" }}>
-              {[scene.outfit_id, scene.character_id, scene.pose].filter(Boolean).join(" · ")}
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <div>
+                <b>{scene.id}</b> — {scene.description}
+                <div className="muted mono" style={{ fontSize: "0.75rem" }}>
+                  {[scene.outfit_id, scene.character_id, scene.pose].filter(Boolean).join(" · ")}
+                </div>
+              </div>
+              <div className="row">
+                <Link to={`/${prof}/p/${slug}/scenes/${scene.id}/takes`}>
+                  <button className="ghost">
+                    takes ({scene.clips.filter((c) => c.status === "completed").length})
+                  </button>
+                </Link>
+                <Link to={`/${prof}/p/${slug}/history`}>
+                  <button className="ghost">history</button>
+                </Link>
+              </div>
             </div>
-            <div className="row" style={{ margin: "8px 0" }}>
-              <span className="pill">{scene.images.length} images</span>
-              <span className="pill">{scene.clips.filter((c) => c.status === "completed").length} clips</span>
-              <span className="pill gold">{scene.clips.filter((c) => c.kept).length} kept</span>
+            <div className="gallery">
+              {scene.images.map((img, i) => (
+                <div key={i} className={`thumb${scene.selected_image === i ? " selected" : ""}`}>
+                  <div style={{
+                    width: "100%", aspectRatio: "9/16",
+                    background: gradients[(si * 2 + i) % gradients.length],
+                    borderRadius: 4,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "rgba(0,0,0,0.3)", fontSize: "0.7rem", fontWeight: 700,
+                  }}>
+                    {img.model}
+                  </div>
+                  <div className="cap">
+                    {scene.selected_image === i ? "✓ " : ""}opt {i + 1} · {img.model} · ${(img.meta.cost_usd as number).toFixed(2)}
+                  </div>
+                </div>
+              ))}
             </div>
+            {scene.clips.filter((c) => c.status === "completed").length > 0 && (
+              <div className="row" style={{ marginTop: 6, gap: 6 }}>
+                {scene.clips.filter((c) => c.status === "completed").map((c, i) => (
+                  <span key={i} className={`pill${c.kept ? " gold" : ""}`}>
+                    take {c.take} · {c.model}{c.kept ? " ✓" : ""}
+                  </span>
+                ))}
+              </div>
+            )}
             {scene.prompt_preview && (
               <div className="prompt-preview">{scene.prompt_preview}</div>
             )}
