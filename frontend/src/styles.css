@@ -120,3 +120,34 @@ dialog::backdrop { background: rgba(10, 8, 6, 0.7); }
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
 .pill { font-family: var(--font-mono); font-size: 0.64rem; border: 1px solid var(--line); border-radius: 20px; padding: 2px 9px; color: var(--taupe); }
 .pill.gold { color: var(--gold); border-color: var(--gold-dim); }
+
+/* ---------- hardening: toasts, lightbox ---------- */
+
+.toaster { position: fixed; bottom: 22px; right: 22px; display: flex; flex-direction: column; gap: 8px; z-index: 60; }
+.toast {
+  font-family: var(--font-mono); font-size: 0.78rem;
+  padding: 10px 16px; border-radius: 8px; max-width: 380px;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--cream);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.toast.error { border-color: var(--danger); color: #f4c0b6; }
+.toast.ok { border-color: var(--gold-dim); color: var(--gold); }
+
+.lightbox {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(10, 8, 6, 0.85);
+  display: flex; align-items: center; justify-content: center;
+}
+.lightbox-inner { max-width: min(92vw, 560px); }
+.lightbox-inner img {
+  width: 100%; max-height: 78vh; object-fit: contain;
+  border-radius: 10px; border: 1px solid var(--line);
+}
+.lightbox-bar { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+
+.prompt-preview {
+  font-family: var(--font-mono); font-size: 0.72rem; color: var(--taupe);
+  background: #14100d; border: 1px solid var(--line); border-radius: 7px;
+  padding: 10px 12px; margin-top: 8px; white-space: pre-wrap;
+}
+.thumb.busy { opacity: 0.5; pointer-events: none; }

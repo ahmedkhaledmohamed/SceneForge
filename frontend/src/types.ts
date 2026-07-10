@@ -31,6 +31,7 @@ export interface Scene {
   images: ImageArtifact[];
   selected_image: number | null;
   clips: ClipArtifact[];
+  prompt_preview?: string | null;
 }
 
 export interface ClothingItem {

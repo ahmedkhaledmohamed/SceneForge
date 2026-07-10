@@ -1,4 +1,5 @@
 import { NavLink, Route, Routes, useParams } from "react-router-dom";
+import { Toaster } from "./components/toast";
 import HistoryView from "./pages/HistoryView";
 import ProjectBoard from "./pages/ProjectBoard";
 import ProjectList from "./pages/ProjectList";
@@ -28,6 +29,7 @@ function WithBar({ children }: { children: React.ReactNode }) {
     <div className="shell">
       <TopBar />
       {children}
+      <Toaster />
     </div>
   );
 }
