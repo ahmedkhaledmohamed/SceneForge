@@ -57,6 +57,7 @@ class ImageArtifact:
     prompt: str
     model: str
     created_at: str = field(default_factory=now_iso)
+    meta: dict = field(default_factory=dict)  # backend extras, e.g. cost_usd
 
 
 @dataclass
@@ -70,6 +71,7 @@ class ClipArtifact:
     status: str = "pending"  # pending | completed | failed
     error: str | None = None
     created_at: str = field(default_factory=now_iso)
+    meta: dict = field(default_factory=dict)  # backend extras, e.g. cost_usd
 
 
 @dataclass

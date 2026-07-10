@@ -59,6 +59,28 @@ MODELS = {
         "supports_i2v": True,
         "notes": "cheapest I2V",
     },
+    # --- self-hosted on RunPod serverless (see runpod-worker/) ---
+    "runpod-flux": {
+        "kind": "image",
+        "backend": "runpod",
+        "id": "black-forest-labs/FLUX.1-schnell",
+        "price": 0.005,  # estimate; actual cost computed per artifact
+        "gpu_price_per_s": 0.000306,  # RTX 4090 flex, verified 2026-07
+        "timeout_s": 600,
+        "fallback": "flux-schnell",
+        "notes": "self-hosted FLUX on RunPod 4090",
+    },
+    "runpod-wan-i2v": {
+        "kind": "video",
+        "backend": "runpod",
+        "id": "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers",
+        "price": 0.12,  # estimate; actual cost computed per artifact
+        "gpu_price_per_s": 0.000306,
+        "supports_i2v": True,
+        "timeout_s": 1800,  # cold model load + 5-8 min generation
+        "fallback": "seedance-2.0",
+        "notes": "self-hosted Wan2.1 on RunPod 4090, 480p",
+    },
     # --- zero-cost test backends (ffmpeg lavfi) ---
     "fake-image": {
         "kind": "image",
@@ -99,6 +121,26 @@ def together_api_key() -> str:
             "TOGETHER_API_KEY not set. Add it to a .env file (see .env.example)."
         )
     return key
+
+
+def runpod_api_key() -> str:
+    key = os.environ.get("RUNPOD_API_KEY")
+    if not key:
+        raise RuntimeError(
+            "RUNPOD_API_KEY not set. Add it to .env (see .env.example and "
+            "runpod-worker/README.md for endpoint setup)."
+        )
+    return key
+
+
+def runpod_endpoint_id() -> str:
+    endpoint = os.environ.get("RUNPOD_ENDPOINT_ID")
+    if not endpoint:
+        raise RuntimeError(
+            "RUNPOD_ENDPOINT_ID not set. Create a serverless endpoint "
+            "(runpod-worker/README.md) and add its id to .env."
+        )
+    return endpoint
 
 
 def resolve_model(key: str, kind: str) -> dict:

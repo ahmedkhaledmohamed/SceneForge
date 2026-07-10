@@ -38,7 +38,7 @@ def plan_clips(scenes: list[Scene], force: bool) -> list[Scene]:
 
 def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
                log: Log = print) -> int:
-    backend = get_image_backend(model_key)
+    backend = get_image_backend(model_key, log)
     if project.style.reference_image and not backend.supports_reference_image:
         log(f"note: {model_key} ignores the project reference image")
     count = 0
@@ -52,7 +52,7 @@ def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
                 if project.style.reference_image and backend.supports_reference_image
                 else None
             )
-            backend.generate_image(
+            result = backend.generate_image(
                 prompt, out,
                 width=project.settings.width, height=project.settings.height,
                 reference_image=ref,
@@ -61,11 +61,18 @@ def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
                 file=str(out.relative_to(project.root)),
                 prompt=prompt,
                 model=model_key,
+                meta=result.meta,
             ))
             project.save()
             count += 1
-            log(f"{sc.id} opt-{opt_num}: {out.relative_to(project.root)}")
+            log(f"{sc.id} opt-{opt_num}: {out.relative_to(project.root)}"
+                + _cost_suffix(result.meta))
     return count
+
+
+def _cost_suffix(meta: dict) -> str:
+    cost = meta.get("cost_usd")
+    return f" (${cost:.3f})" if cost else ""
 
 
 def run_clips(project: Project, todo: list[Scene], model_key: str,
@@ -80,7 +87,7 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
     elif supports_i2v is None:
         log(f"note: I2V support for {model_key} is unverified — attempting")
 
-    backend = get_video_backend(model_key)
+    backend = get_video_backend(model_key, log)
     failures = []
     for sc in todo:
         prompt = compose_prompt(project, sc)
@@ -99,7 +106,7 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
                 prompt, out,
                 image=image,
                 width=project.settings.width, height=project.settings.height,
-                timeout_s=config.VIDEO_TIMEOUT_S,
+                timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
             )
             sc.clips.append(ClipArtifact(
                 file=str(out.relative_to(project.root)),
@@ -109,8 +116,9 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
                 job_id=result.job_id,
                 duration_s=result.duration_s,
                 status="completed",
+                meta=result.meta,
             ))
-            log(f"{sc.id}: done ({result.duration_s:.1f}s)")
+            log(f"{sc.id}: done ({result.duration_s:.1f}s){_cost_suffix(result.meta)}")
         except Exception as exc:
             sc.clips.append(ClipArtifact(
                 file=str(out.relative_to(project.root)),
