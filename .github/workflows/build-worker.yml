@@ -11,8 +11,8 @@ on:
         default: "0.1"
         required: true
   push:
-    branches: [main]
-    paths: ["runpod-worker/**"]
+    branches: [main, build-worker-ci]  # branch trigger is temporary, for first build pre-merge
+    paths: ["runpod-worker/**", ".github/workflows/build-worker.yml"]
 
 permissions:
   contents: read
