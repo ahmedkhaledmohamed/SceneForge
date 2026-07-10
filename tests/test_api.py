@@ -457,6 +457,24 @@ def test_process_outfit(tmp_path):
     assert all(s["selected_image"] == 0 for s in doc["scenes"])
 
 
+def test_profile_stats(tmp_path):
+    client = make_client(tmp_path)
+    prof = create_profile(client)
+    slug = create_project(client, prof)
+    client.post(f"/api/profiles/{prof}/projects/{slug}/scenes",
+                json={"description": "stat scene"})
+    client.post(f"/api/profiles/{prof}/projects/{slug}/generate-images",
+                json={"options": 1})
+    wait_job(client, prof, slug)
+
+    stats = client.get(f"/api/profiles/{prof}/stats").json()
+    assert stats["projects"] == 1
+    assert stats["scenes"] == 1
+    assert stats["images"] == 1
+    assert stats["clips_completed"] == 0
+    assert "fake-image" in stats["models_used"]
+
+
 def test_models_route(tmp_path):
     client = make_client(tmp_path)
     models = client.get("/api/models").json()
