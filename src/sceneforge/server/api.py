@@ -1,9 +1,10 @@
-"""The Studio JSON API (project scope).
+"""The Studio JSON API.
 
-Routes operate on project directories under a base dir — same layout the
-CLI works with. Long-running generation runs as background jobs (one per
-project); the client polls GET .../job. Errors use one shape:
-{"error": {"code": ..., "message": ...}} via HTTPException detail dicts.
+Everything is profile-scoped: /profiles/{prof}/projects/{slug}/...
+A profile owns global context (characters, style defaults, seeds);
+projects live under it and inherit that context. Long-running
+generation runs as background jobs (one per project); the client polls
+GET .../job. Errors: {"error": {"code": ..., "message": ...}}.
 """
 
 import io
@@ -16,6 +17,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 from .. import config, ops
+from ..profile import PROFILE_FILE, Profile, create_profile
 from ..project import PROJECT_FILE, ClothingItem, Project
 from .jobs import JobManager
 from .uploads import save_upload
@@ -25,20 +27,30 @@ def _err(status: int, code: str, message: str) -> HTTPException:
     return HTTPException(status, detail={"code": code, "message": message})
 
 
-def make_router(base: Path) -> APIRouter:
+def make_router(home: Path) -> APIRouter:
     router = APIRouter()
     jobs = JobManager()
 
     # ---------------------------------------------------------- helpers
 
-    def root_of(slug: str) -> Path:
-        root = (base / slug).resolve()
-        if not root.is_relative_to(base) or not (root / PROJECT_FILE).is_file():
-            raise _err(404, "not_found", f"No project '{slug}'")
+    def profile_root(prof: str) -> Path:
+        root = (home / prof).resolve()
+        if not root.is_relative_to(home) or not (root / PROFILE_FILE).is_file():
+            raise _err(404, "not_found", f"No profile '{prof}'")
         return root
 
-    def load(slug: str) -> Project:
-        return Project.load(root_of(slug))
+    def load_profile(prof: str) -> Profile:
+        return Profile.load(profile_root(prof))
+
+    def project_root(prof: str, slug: str) -> Path:
+        base = profile_root(prof) / "projects"
+        root = (base / slug).resolve()
+        if not root.is_relative_to(base) or not (root / PROJECT_FILE).is_file():
+            raise _err(404, "not_found", f"No project '{slug}' in '{prof}'")
+        return root
+
+    def load_project(prof: str, slug: str) -> Project:
+        return Project.load(project_root(prof, slug))
 
     def find_or_404(getter, *args):
         try:
@@ -46,11 +58,15 @@ def make_router(base: Path) -> APIRouter:
         except KeyError as exc:
             raise _err(404, "not_found", str(exc).strip("'\""))
 
-    def project_doc(project: Project, slug: str) -> dict:
+    def job_key(prof: str, slug: str) -> str:
+        return f"{prof}/{slug}"
+
+    def project_doc(project: Project, prof: str, slug: str) -> dict:
         doc = asdict(project)
         doc.pop("root")
         doc["slug"] = slug
-        job = jobs.get(slug)
+        doc["profile"] = prof
+        job = jobs.get(job_key(prof, slug))
         doc["job"] = job.as_dict() if job else None
         doc["spent_usd"] = round(sum(
             artifact.meta.get("cost_usd", 0.0)
@@ -59,8 +75,8 @@ def make_router(base: Path) -> APIRouter:
         ), 4)
         return doc
 
-    def start_job_or_409(slug: str, name: str, fn) -> dict:
-        if not jobs.start(slug, name, fn):
+    def start_job_or_409(prof: str, slug: str, name: str, fn) -> dict:
+        if not jobs.start(job_key(prof, slug), name, fn):
             raise _err(409, "conflict", "A job is already running for this project")
         return {"started": name}
 
@@ -68,17 +84,113 @@ def make_router(base: Path) -> APIRouter:
 
     @router.get("/models")
     def models():
-        return {
-            key: {k: v for k, v in model.items()}
-            for key, model in config.MODELS.items()
-        }
+        return dict(config.MODELS)
+
+    # --------------------------------------------------------- profiles
+
+    @router.get("/profiles")
+    def list_profiles():
+        out = []
+        for pf in sorted(home.glob(f"*/{PROFILE_FILE}")):
+            profile = Profile.load(pf.parent)
+            out.append({
+                "slug": pf.parent.name,
+                "name": profile.name,
+                "characters": len(profile.characters),
+                "seeds": len(profile.seeds),
+                "projects": len(list(profile.projects_dir.glob(f"*/{PROJECT_FILE}"))),
+            })
+        return out
+
+    @router.post("/profiles", status_code=201)
+    def new_profile(payload: dict):
+        name = (payload.get("name") or "").strip()
+        if not name:
+            raise _err(400, "invalid", "Profile name is required")
+        try:
+            profile = create_profile(name, home)
+        except (ValueError, FileExistsError) as exc:
+            raise _err(400, "invalid", str(exc))
+        return {"slug": profile.root.name, "name": profile.name}
+
+    @router.get("/profiles/{prof}")
+    def get_profile(prof: str):
+        profile = load_profile(prof)
+        doc = asdict(profile)
+        doc.pop("root")
+        doc["slug"] = prof
+        return doc
+
+    @router.patch("/profiles/{prof}")
+    def patch_profile(prof: str, payload: dict):
+        profile = load_profile(prof)
+        for field_name in ("anchor", "suffix", "mood", "palette", "lighting"):
+            if field_name in payload:
+                setattr(profile.style, field_name, payload[field_name])
+        for field_name in ("image_model", "final_image_model", "video_model",
+                           "aspect", "image_options"):
+            if field_name in payload:
+                setattr(profile.defaults, field_name, payload[field_name])
+        profile.save()
+        return get_profile(prof)
+
+    @router.post("/profiles/{prof}/characters", status_code=201)
+    async def add_profile_character(prof: str, name: str = Form(...),
+                                    description: str = Form(""),
+                                    main: bool = Form(False),
+                                    files: list[UploadFile] = File(None)):
+        profile = load_profile(prof)
+        character = profile.add_character(name, description, main=main)
+        for file in files or []:
+            dest = await save_upload(file, profile.character_refs_dir(character))
+            character.reference_images.append(str(dest.relative_to(profile.root)))
+        profile.save()
+        return asdict(character)
+
+    @router.post("/profiles/{prof}/characters/{cid}/refs", status_code=201)
+    async def add_profile_character_ref(prof: str, cid: str,
+                                        files: list[UploadFile] = File(...)):
+        profile = load_profile(prof)
+        character = find_or_404(profile.find_character, cid)
+        for file in files:
+            dest = await save_upload(file, profile.character_refs_dir(character))
+            character.reference_images.append(str(dest.relative_to(profile.root)))
+        profile.save()
+        return asdict(character)
+
+    @router.post("/profiles/{prof}/seeds", status_code=201)
+    async def add_seed(prof: str, kind: str = Form("note"),
+                       text: str = Form(""), tags: str = Form(""),
+                       file: UploadFile | None = File(None)):
+        profile = load_profile(prof)
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+        if file is not None and file.filename:
+            dest = await save_upload(file, profile.seeds_dir, kinds=("image", "video"))
+            kind = "clip" if dest.suffix == ".mp4" else "image"
+            seed = profile.add_seed(kind, file=str(dest.relative_to(profile.root)),
+                                    text=text or None, tags=tag_list)
+        elif text.strip():
+            seed = profile.add_seed("note", text=text.strip(), tags=tag_list)
+        else:
+            raise _err(400, "invalid", "A seed needs a file or text")
+        profile.save()
+        return asdict(seed)
+
+    @router.get("/profiles/{prof}/media/{relpath:path}")
+    def profile_media(prof: str, relpath: str):
+        root = profile_root(prof)
+        target = (root / relpath).resolve()
+        if not target.is_relative_to(root) or not target.is_file():
+            raise _err(404, "not_found", "Not found")
+        return FileResponse(target)
 
     # --------------------------------------------------------- projects
 
-    @router.get("/projects")
-    def list_projects():
+    @router.get("/profiles/{prof}/projects")
+    def list_projects(prof: str):
+        profile = load_profile(prof)
         out = []
-        for pj in sorted(base.glob(f"*/{PROJECT_FILE}")):
+        for pj in sorted(profile.projects_dir.glob(f"*/{PROJECT_FILE}")):
             slug = pj.parent.name
             p = Project.load(pj.parent)
             out.append({
@@ -93,38 +205,37 @@ def make_router(base: Path) -> APIRouter:
             })
         return out
 
-    @router.post("/projects", status_code=201)
-    def create_project(payload: dict):
+    @router.post("/profiles/{prof}/projects", status_code=201)
+    def new_project(prof: str, payload: dict):
+        profile = load_profile(prof)
         name = (payload.get("name") or "").strip()
         if not name:
             raise _err(400, "invalid", "Project name is required")
-        for kind, key in (("image", "image_model"), ("video", "video_model")):
-            if payload.get(key):
-                try:
-                    config.resolve_model(payload[key], kind)
-                except ValueError as exc:
-                    raise _err(400, "invalid", str(exc))
         try:
+            # profile style + defaults are COPIED in; characters live-resolve
             project = ops.create_project(
-                name, base,
+                name, profile.projects_dir,
                 concept=payload.get("concept", ""),
-                anchor=payload.get("anchor", ""),
-                suffix=payload.get("suffix"),
-                aspect=payload.get("aspect", "9:16"),
-                image_model=payload.get("image_model"),
-                video_model=payload.get("video_model"),
+                anchor=payload.get("anchor") or profile.style.anchor,
+                suffix=profile.style.suffix or None,
+                aspect=payload.get("aspect") or profile.defaults.aspect,
+                image_model=payload.get("image_model") or profile.defaults.image_model,
+                video_model=payload.get("video_model") or profile.defaults.video_model,
             )
+            project.settings.image_options = profile.defaults.image_options
+            project.style.reference_image = None
+            project.save()
         except (ValueError, FileExistsError) as exc:
             raise _err(400, "invalid", str(exc))
-        return project_doc(project, project.root.name)
+        return project_doc(project, prof, project.root.name)
 
-    @router.get("/projects/{slug}")
-    def get_project(slug: str):
-        return project_doc(load(slug), slug)
+    @router.get("/profiles/{prof}/projects/{slug}")
+    def get_project(prof: str, slug: str):
+        return project_doc(load_project(prof, slug), prof, slug)
 
-    @router.patch("/projects/{slug}")
-    def patch_project(slug: str, payload: dict):
-        project = load(slug)
+    @router.patch("/profiles/{prof}/projects/{slug}")
+    def patch_project(prof: str, slug: str, payload: dict):
+        project = load_project(prof, slug)
         if "concept" in payload:
             project.concept = payload["concept"]
         for field_name in ("anchor", "suffix", "mood", "palette", "lighting"):
@@ -135,15 +246,15 @@ def make_router(base: Path) -> APIRouter:
             if field_name in payload:
                 setattr(project.settings, field_name, payload[field_name])
         project.save()
-        return project_doc(project, slug)
+        return project_doc(project, prof, slug)
 
-    # ------------------------------------------------------- characters
+    # ---------------------------------------- project-level characters
 
-    @router.post("/projects/{slug}/characters", status_code=201)
-    async def add_character(slug: str, name: str = Form(...),
+    @router.post("/profiles/{prof}/projects/{slug}/characters", status_code=201)
+    async def add_character(prof: str, slug: str, name: str = Form(...),
                             description: str = Form(""),
                             files: list[UploadFile] = File(None)):
-        project = load(slug)
+        project = load_project(prof, slug)
         character = project.add_character(name, description)
         for file in files or []:
             dest = await save_upload(file, project.character_refs_dir(character))
@@ -151,21 +262,11 @@ def make_router(base: Path) -> APIRouter:
         project.save()
         return asdict(character)
 
-    @router.post("/projects/{slug}/characters/{cid}/refs", status_code=201)
-    async def add_character_ref(slug: str, cid: str, files: list[UploadFile]):
-        project = load(slug)
-        character = find_or_404(project.find_character, cid)
-        for file in files:
-            dest = await save_upload(file, project.character_refs_dir(character))
-            character.reference_images.append(str(dest.relative_to(project.root)))
-        project.save()
-        return asdict(character)
-
     # ---------------------------------------------------------- outfits
 
-    @router.post("/projects/{slug}/outfits", status_code=201)
-    def add_outfit(slug: str, payload: dict):
-        project = load(slug)
+    @router.post("/profiles/{prof}/projects/{slug}/outfits", status_code=201)
+    def add_outfit(prof: str, slug: str, payload: dict):
+        project = load_project(prof, slug)
         name = (payload.get("name") or "").strip()
         if not name:
             raise _err(400, "invalid", "Outfit name is required")
@@ -173,10 +274,12 @@ def make_router(base: Path) -> APIRouter:
         project.save()
         return asdict(outfit)
 
-    @router.post("/projects/{slug}/outfits/{oid}/items", status_code=201)
-    async def add_item(slug: str, oid: str, name: str = Form(...),
-                       url: str = Form(""), image: UploadFile | None = File(None)):
-        project = load(slug)
+    @router.post("/profiles/{prof}/projects/{slug}/outfits/{oid}/items",
+                 status_code=201)
+    async def add_item(prof: str, slug: str, oid: str, name: str = Form(...),
+                       url: str = Form(""),
+                       image: UploadFile | None = File(None)):
+        project = load_project(prof, slug)
         outfit = find_or_404(project.find_outfit, oid)
         item = ClothingItem(name=name, url=url or None)
         if image is not None and image.filename:
@@ -186,9 +289,9 @@ def make_router(base: Path) -> APIRouter:
         project.save()
         return asdict(outfit)
 
-    @router.delete("/projects/{slug}/outfits/{oid}/items/{index}")
-    def delete_item(slug: str, oid: str, index: int):
-        project = load(slug)
+    @router.delete("/profiles/{prof}/projects/{slug}/outfits/{oid}/items/{index}")
+    def delete_item(prof: str, slug: str, oid: str, index: int):
+        project = load_project(prof, slug)
         outfit = find_or_404(project.find_outfit, oid)
         if not 0 <= index < len(outfit.items):
             raise _err(404, "not_found", f"No item {index} on {oid}")
@@ -196,9 +299,10 @@ def make_router(base: Path) -> APIRouter:
         project.save()
         return asdict(outfit)
 
-    @router.get("/projects/{slug}/outfits/{oid}/links", response_class=PlainTextResponse)
-    def outfit_links(slug: str, oid: str):
-        project = load(slug)
+    @router.get("/profiles/{prof}/projects/{slug}/outfits/{oid}/links",
+                response_class=PlainTextResponse)
+    def outfit_links(prof: str, slug: str, oid: str):
+        project = load_project(prof, slug)
         outfit = find_or_404(project.find_outfit, oid)
         lines = [outfit.name] + [
             f"{item.name} — {item.url}" if item.url else item.name
@@ -208,9 +312,9 @@ def make_router(base: Path) -> APIRouter:
 
     # ----------------------------------------------------------- scenes
 
-    @router.post("/projects/{slug}/scenes", status_code=201)
-    def add_scene(slug: str, payload: dict):
-        project = load(slug)
+    @router.post("/profiles/{prof}/projects/{slug}/scenes", status_code=201)
+    def add_scene(prof: str, slug: str, payload: dict):
+        project = load_project(prof, slug)
         description = (payload.get("description") or "").strip()
         if not description:
             raise _err(400, "invalid", "Scene description is required")
@@ -223,17 +327,23 @@ def make_router(base: Path) -> APIRouter:
         project.save()
         return asdict(scene)
 
-    @router.post("/projects/{slug}/scenes/from-outfit", status_code=201)
-    def scenes_from_outfit(slug: str, payload: dict):
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/from-outfit",
+                 status_code=201)
+    def scenes_from_outfit(prof: str, slug: str, payload: dict):
         from ..cli import DEFAULT_POSES
+        from ..profile import resolve_character
 
-        project = load(slug)
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
         outfit = find_or_404(project.find_outfit, payload.get("outfit_id", ""))
         character_id = payload.get("character_id")
-        if character_id is None and len(project.characters) == 1:
-            character_id = project.characters[0].id
+        if character_id is None:
+            if len(project.characters) == 1:
+                character_id = project.characters[0].id
+            elif profile.main_character:
+                character_id = profile.main_character.id
         if character_id:
-            find_or_404(project.find_character, character_id)
+            find_or_404(resolve_character, project, profile, character_id)
         setting = payload.get("setting") or ""
         base_desc = outfit.name + (f" in {setting}" if setting else "")
         created = []
@@ -244,9 +354,9 @@ def make_router(base: Path) -> APIRouter:
         project.save()
         return created
 
-    @router.patch("/projects/{slug}/scenes/{sid}")
-    def patch_scene(slug: str, sid: str, payload: dict):
-        project = load(slug)
+    @router.patch("/profiles/{prof}/projects/{slug}/scenes/{sid}")
+    def patch_scene(prof: str, slug: str, sid: str, payload: dict):
+        project = load_project(prof, slug)
         scene = find_or_404(project.find_scene, sid)
         for field_name in ("description", "pose", "style_override",
                            "character_id", "outfit_id"):
@@ -255,9 +365,9 @@ def make_router(base: Path) -> APIRouter:
         project.save()
         return asdict(scene)
 
-    @router.post("/projects/{slug}/scenes/{sid}/select")
-    def select_image(slug: str, sid: str, payload: dict):
-        project = load(slug)
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/select")
+    def select_image(prof: str, slug: str, sid: str, payload: dict):
+        project = load_project(prof, slug)
         scene = find_or_404(project.find_scene, sid)
         index = payload.get("image_index")
         if not isinstance(index, int) or not 0 <= index < len(scene.images):
@@ -269,9 +379,11 @@ def make_router(base: Path) -> APIRouter:
 
     # ------------------------------------------------------- generation
 
-    @router.post("/projects/{slug}/generate-images", status_code=202)
-    def generate_images(slug: str, payload: dict):
-        project = load(slug)
+    @router.post("/profiles/{prof}/projects/{slug}/generate-images",
+                 status_code=202)
+    def generate_images(prof: str, slug: str, payload: dict):
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
         model_key = payload.get("model") or project.settings.image_model
         try:
             config.resolve_model(model_key, "image")
@@ -285,25 +397,31 @@ def make_router(base: Path) -> APIRouter:
         if not todo:
             return {"started": None, "note": "nothing to generate"}
         return start_job_or_409(
-            slug, f"generate images ({model_key})",
-            lambda log: ops.run_images(project, todo, model_key, log=log),
+            prof, slug, f"generate images ({model_key})",
+            lambda log: ops.run_images(project, todo, model_key, log=log,
+                                       profile=profile),
         )
 
-    @router.post("/projects/{slug}/scenes/{sid}/regenerate-image", status_code=202)
-    def regenerate_image(slug: str, sid: str, payload: dict):
-        project = load(slug)
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/regenerate-image",
+                 status_code=202)
+    def regenerate_image(prof: str, slug: str, sid: str, payload: dict):
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
         scene = find_or_404(project.find_scene, sid)
         model_key = payload.get("model") or project.settings.image_model
         options = payload.get("options") or 1
         todo = ops.plan_images([scene], options, force=True)
         return start_job_or_409(
-            slug, f"regenerate {sid} ({model_key})",
-            lambda log: ops.run_images(project, todo, model_key, log=log),
+            prof, slug, f"regenerate {sid} ({model_key})",
+            lambda log: ops.run_images(project, todo, model_key, log=log,
+                                       profile=profile),
         )
 
-    @router.post("/projects/{slug}/scenes/{sid}/takes", status_code=202)
-    def generate_takes(slug: str, sid: str, payload: dict):
-        project = load(slug)
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/takes",
+                 status_code=202)
+    def generate_takes(prof: str, slug: str, sid: str, payload: dict):
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
         scene = find_or_404(project.find_scene, sid)
         model_key = payload.get("model") or project.settings.video_model
         try:
@@ -316,18 +434,20 @@ def make_router(base: Path) -> APIRouter:
         count = int(payload.get("count", 3))
 
         def job(log):
-            failures = ops.run_takes(project, scene, image_index, count,
-                                     model_key,
-                                     prompt_override=payload.get("prompt_override"),
-                                     log=log)
+            failures = ops.run_takes(
+                project, scene, image_index, count, model_key,
+                prompt_override=payload.get("prompt_override"),
+                log=log, profile=profile,
+            )
             if failures:
                 raise RuntimeError(f"{len(failures)} take(s) failed")
 
-        return start_job_or_409(slug, f"{count} takes for {sid} ({model_key})", job)
+        return start_job_or_409(prof, slug,
+                                f"{count} takes for {sid} ({model_key})", job)
 
-    @router.post("/projects/{slug}/scenes/{sid}/clips/{index}/keep")
-    def keep_clip(slug: str, sid: str, index: int, payload: dict):
-        project = load(slug)
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/clips/{index}/keep")
+    def keep_clip(prof: str, slug: str, sid: str, index: int, payload: dict):
+        project = load_project(prof, slug)
         scene = find_or_404(project.find_scene, sid)
         if not 0 <= index < len(scene.clips):
             raise _err(404, "not_found", f"No clip {index} on {sid}")
@@ -335,17 +455,17 @@ def make_router(base: Path) -> APIRouter:
         project.save()
         return asdict(scene.clips[index])
 
-    @router.get("/projects/{slug}/job")
-    def job_status(slug: str):
-        root_of(slug)
-        job = jobs.get(slug)
+    @router.get("/profiles/{prof}/projects/{slug}/job")
+    def job_status(prof: str, slug: str):
+        project_root(prof, slug)
+        job = jobs.get(job_key(prof, slug))
         return job.as_dict() if job else {"name": None, "status": "idle", "log": []}
 
     # --------------------------------------------------- export / stitch
 
-    @router.post("/projects/{slug}/export")
-    def export(slug: str):
-        project = load(slug)
+    @router.post("/profiles/{prof}/projects/{slug}/export")
+    def export(prof: str, slug: str):
+        project = load_project(prof, slug)
         try:
             manifest = ops.run_export(project)
         except ValueError as exc:
@@ -353,9 +473,9 @@ def make_router(base: Path) -> APIRouter:
         return {"dir": str(manifest[0].parent),
                 "files": [p.name for p in manifest]}
 
-    @router.get("/projects/{slug}/export.zip")
-    def export_zip(slug: str):
-        project = load(slug)
+    @router.get("/profiles/{prof}/projects/{slug}/export.zip")
+    def export_zip(prof: str, slug: str):
+        project = load_project(prof, slug)
         try:
             manifest = ops.run_export(project)
         except ValueError as exc:
@@ -373,22 +493,22 @@ def make_router(base: Path) -> APIRouter:
                      f"attachment; filename={slug}-export.zip"},
         )
 
-    @router.post("/projects/{slug}/stitch", status_code=202)
-    def stitch(slug: str):
-        project = load(slug)
+    @router.post("/profiles/{prof}/projects/{slug}/stitch", status_code=202)
+    def stitch(prof: str, slug: str):
+        project = load_project(prof, slug)
 
         def job(log):
             out_path, duration = ops.run_stitch(project)
             log(f"final video: {out_path.name} ({duration:.1f}s)")
 
-        return start_job_or_409(slug, "stitch final video", job)
+        return start_job_or_409(prof, slug, "stitch final video", job)
 
     # ---------------------------------------------------------- history
 
-    @router.get("/projects/{slug}/history")
-    def history(slug: str, type: str | None = None, outfit: str | None = None,
-                model: str | None = None):
-        project = load(slug)
+    @router.get("/profiles/{prof}/projects/{slug}/history")
+    def history(prof: str, slug: str, type: str | None = None,
+                outfit: str | None = None, model: str | None = None):
+        project = load_project(prof, slug)
         rows = []
         for sc in project.scenes:
             for img in sc.images:
@@ -417,9 +537,9 @@ def make_router(base: Path) -> APIRouter:
 
     # ------------------------------------------------------------ media
 
-    @router.get("/projects/{slug}/media/{relpath:path}")
-    def media(slug: str, relpath: str):
-        root = root_of(slug)
+    @router.get("/profiles/{prof}/projects/{slug}/media/{relpath:path}")
+    def media(prof: str, slug: str, relpath: str):
+        root = project_root(prof, slug)
         target = (root / relpath).resolve()
         if not target.is_relative_to(root) or not target.is_file():
             raise _err(404, "not_found", "Not found")

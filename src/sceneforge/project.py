@@ -54,11 +54,13 @@ class Settings:
 @dataclass
 class Character:
     """A recurring subject (e.g. a brand's character doll) whose reference
-    images condition every generation it appears in."""
+    images condition every generation it appears in. Lives on a project
+    (char-*) or on a profile (pchar-*, with `main` marking the default)."""
     id: str
     name: str
     description: str = ""
     reference_images: list[str] = field(default_factory=list)
+    main: bool = False
 
 
 @dataclass
