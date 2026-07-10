@@ -113,24 +113,35 @@ export default function TakeCompare() {
         </div>
       </div>
 
-      <div className="takes">
+      {scene.clips.length > 0 && (
+        <div className="row" style={{ margin: "10px 0" }}>
+          <span className="mono muted">
+            {scene.clips.filter((c) => c.status === "completed").length} completed
+            {" · "}{scene.clips.filter((c) => c.kept).length} kept
+            {" · "}{scene.clips.filter((c) => c.status === "failed").length} failed
+          </span>
+        </div>
+      )}
+      <div className="takes" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
         {scene.clips.map((clip, index) => (
-          <div key={index} className={`take${clip.kept ? " kept" : ""}`}>
+          <div key={index} className={`take${clip.kept ? " kept" : ""}`} style={{ width: "auto" }}>
             {clip.status === "completed" ? (
-              <video controls preload="metadata" src={media(prof, slug, clip.file)} />
+              <video controls preload="metadata" src={media(prof, slug, clip.file)}
+                     style={{ width: "100%", borderRadius: 8, border: clip.kept ? "3px solid var(--gold)" : "1px solid var(--line)" }} />
             ) : (
-              <div className="muted mono">take {clip.take}: {clip.status}</div>
+              <div className="muted mono" style={{ padding: 12 }}>take {clip.take}: {clip.status}
+                {clip.error && <div style={{ color: "var(--danger)", fontSize: "0.7rem" }}>{clip.error}</div>}
+              </div>
             )}
             <div className="row" style={{ justifyContent: "space-between", marginTop: 4 }}>
-              <span className="mono muted">
-                take {clip.take ?? "–"}
-                {clip.source_image_index != null && ` · src ${clip.source_image_index + 1}`}
-                {" · "}{clip.model}
+              <span className="mono muted" style={{ fontSize: "0.68rem" }}>
+                take {clip.take ?? "–"} · {clip.model}
                 {typeof clip.meta?.cost_usd === "number" && ` · $${(clip.meta.cost_usd as number).toFixed(2)}`}
               </span>
               {clip.status === "completed" && (
                 <button
-                  className="ghost"
+                  className={clip.kept ? "btn" : "ghost"}
+                  style={{ padding: "3px 10px", fontSize: "0.7rem" }}
                   onClick={() => keep.mutate({ index, kept: !clip.kept })}
                 >
                   {clip.kept ? "✓ kept" : "keep"}
@@ -139,7 +150,7 @@ export default function TakeCompare() {
             </div>
           </div>
         ))}
-        {scene.clips.length === 0 && <p className="muted">No takes yet.</p>}
+        {scene.clips.length === 0 && <p className="muted">No takes yet — generate some above.</p>}
       </div>
     </>
   );
