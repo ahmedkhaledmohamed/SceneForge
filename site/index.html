@@ -27,9 +27,10 @@
 <section class="hero no-rule">
   <p class="eyebrow">Local-first AI video production</p>
   <h1>Concept to final cut,<br>one consistent look.</h1>
-  <p class="lede">SceneForge turns a video idea into a finished 9:16 short — scene breakdown,
-  image options, image-to-video clips, and the stitched cut — from one CLI, on your machine.
-  Every generation carries the project's <em>style anchor</em>, so scene six still looks like scene one.</p>
+  <p class="lede">SceneForge turns a video concept into a finished 9:16 short — character dolls wearing
+  real clothing items, multi-reference image composition, video clips, and CapCut-ready exports — from
+  a Studio SPA or CLI, on your machine. A project-level <em>style anchor</em> plus profile characters
+  keep every scene visually consistent without manual prompt engineering.</p>
 
   <div class="filmstrip" id="filmstrip" aria-label="A scene moving through the SceneForge pipeline">
     <div class="frame" data-stage="0">
@@ -92,42 +93,43 @@
 
 <section>
   <p class="eyebrow">The workflow</p>
-  <h2>Six commands, start to finish.</h2>
+  <h2>Profile → outfit → done.</h2>
   <div class="ruler">
     <div class="step">
+      <span class="tc">once</span>
+      <div><h3>Create a profile + character</h3>
+      <p>A profile is your brand — style defaults, a character doll with reference images, and seeds.
+      Characters are global: update the refs once, every project resolves them.</p></div>
+    </div>
+    <div class="step">
       <span class="tc">00:00</span>
-      <div><h3><span class="cmd">sceneforge create "autumn morning"</span></h3>
-      <p>Answers four questions — concept, mood, palette, lighting — and composes them into the
-      project's style anchor. Creates a plain directory with a <span class="mono">project.json</span>.</p></div>
+      <div><h3>New project + outfit</h3>
+      <p>One project per post. Add an outfit with clothing item photos and shop links.
+      The project inherits your profile style automatically.</p></div>
     </div>
     <div class="step">
       <span class="tc">00:01</span>
-      <div><h3><span class="cmd">sceneforge add-scenes</span></h3>
-      <p>An LLM breaks the concept into single-image moments. You review before anything is saved,
-      or write scenes yourself with <span class="mono">--scene</span>.</p></div>
-    </div>
-    <div class="step">
-      <span class="tc">00:02</span>
-      <div><h3><span class="cmd">sceneforge generate-images</span></h3>
-      <p>Two or three options per scene, anchor applied. Every artifact records its full prompt
-      and model — the project file is its own generation history.</p></div>
+      <div><h3>Process outfit (one click)</h3>
+      <p>Creates pose scenes, generates multi-reference images (character refs + item photos →
+      dressed character), and auto-selects the first option. Or brainstorm scenes with an LLM.</p></div>
     </div>
     <div class="step">
       <span class="tc">00:05</span>
-      <div><h3><span class="cmd">sceneforge select scene-01 2</span></h3>
-      <p>Pick winners per scene — in the terminal, or side by side in the local web UI.</p></div>
+      <div><h3>Refine + select</h3>
+      <p>View images full-size in the lightbox. Refine with prompt editing, model swapping,
+      or regeneration. Cost shown before each operation.</p></div>
     </div>
     <div class="step">
       <span class="tc">00:06</span>
-      <div><h3><span class="cmd">sceneforge generate-clips</span></h3>
-      <p>Each selected still becomes a 5-second image-to-video clip. Failed jobs are recorded and
-      picked up on the next run; nothing regenerates unless you ask.</p></div>
+      <div><h3>Generate takes</h3>
+      <p>Batch video clips for all selected scenes at once. Compare takes,
+      mark keepers. 2-6 clips per scene with different motions.</p></div>
     </div>
     <div class="step">
       <span class="tc">00:14</span>
-      <div><h3><span class="cmd">sceneforge stitch</span></h3>
-      <p>ffmpeg normalizes every clip (2× speed, geometry, fps), then chains crossfades with
-      measured offsets. Out comes <span class="mono">output/final.mp4</span>, 720×1280, ready to post.</p></div>
+      <div><h3>Export + stitch</h3>
+      <p>Kept takes + <span class="mono">links.txt</span> exported as a CapCut-ready folder or zip.
+      Optional: stitch a final cut with crossfades.</p></div>
     </div>
   </div>
 </section>
@@ -142,11 +144,12 @@
     <thead><tr><th>Model</th><th>Kind</th><th>Where it runs</th><th>Price</th></tr></thead>
     <tbody>
       <tr><td class="mono">flux-schnell</td><td>image</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.003</td></tr>
-      <tr><td class="mono">flux-dev</td><td>image</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.025</td></tr>
+      <tr><td class="mono">flux-2-pro</td><td>image (8 refs)</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.03</td></tr>
+      <tr><td class="mono">nano-banana-pro</td><td>image (14 refs)</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.134</td></tr>
       <tr><td class="mono">runpod-flux</td><td>image</td><td><span class="tag selfhosted">self-hosted · RunPod 4090</span></td><td>~$0.005</td></tr>
       <tr><td class="mono">seedance-2.0</td><td>video</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.80 / clip</td></tr>
       <tr><td class="mono">kling-2.1</td><td>video</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.18 / clip</td></tr>
-      <tr><td class="mono">runpod-wan-i2v</td><td>video</td><td><span class="tag selfhosted">self-hosted · RunPod 4090</span></td><td>~$0.12 / clip</td></tr>
+      <tr><td class="mono">runpod-wan-i2v</td><td>video (720p)</td><td><span class="tag selfhosted">self-hosted · Wan2.2-TI2V-5B</span></td><td>~$0.10 / clip</td></tr>
       <tr><td class="mono">fake-image / fake-video</td><td>both</td><td><span class="tag test">local · ffmpeg</span></td><td>$0</td></tr>
     </tbody>
   </table>
@@ -156,14 +159,18 @@
   <p class="eyebrow">Local-first</p>
   <h2>A project is a folder.</h2>
   <p class="lede">No accounts, no database, no cloud dependency beyond the generation APIs you
-  choose. State lives in <span class="mono">project.json</span> next to your media — the CLI and
-  the local web UI read and write the same files, so use whichever fits the moment.</p>
-  <div class="term" role="img" aria-label="A SceneForge project directory tree">
-<pre style="margin:0">autumn-morning/
-├── project.json          <span class="out">← concept, style anchor, scenes, full prompt history</span>
-├── images/scene-01/      <span class="out">← options; pick in the terminal or the web UI</span>
-├── clips/scene-01.mp4    <span class="out">← image-to-video results, per scene</span>
-└── output/final.mp4      <span class="out">← the stitched cut</span></pre>
+  choose. Profiles and projects are plain directories — <span class="mono">profile.json</span> and
+  <span class="mono">project.json</span> next to your media. The Studio SPA and CLI read the same files.</p>
+  <div class="term" role="img" aria-label="A SceneForge home directory tree">
+<pre style="margin:0">~/SceneForge/
+└── my-brand/
+    ├── profile.json           <span class="out">← style defaults, character refs, seeds</span>
+    ├── refs/characters/pchar-1/ <span class="out">← shared character doll photos</span>
+    └── projects/spring-look/
+        ├── project.json       <span class="out">← scenes, outfits, full prompt history</span>
+        ├── images/scene-01/   <span class="out">← image options per scene</span>
+        ├── clips/scene-01/    <span class="out">← video takes</span>
+        └── export/            <span class="out">← kept takes + links.txt for CapCut</span></pre>
   </div>
 </section>
 

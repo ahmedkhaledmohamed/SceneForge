@@ -27,11 +27,10 @@
 <section class="no-rule" style="padding-top: 40px; padding-bottom: 24px">
   <p class="eyebrow">Getting started</p>
   <h1>First video in<br>ten minutes.</h1>
-  <p class="lede">Everything runs on your machine; the only cloud involved is the generation
-  API you pick. You'll need Python 3.12+, ffmpeg, and a
-  <a href="https://api.together.ai">Together AI</a> key (~$0.05 covers a full test project's
-  images; video clips are priced per model). Prefer to spend nothing while exploring? The
-  built-in <span class="mono">fake</span> models run the whole pipeline for $0.</p>
+  <p class="lede">Everything runs on your machine; the only cloud is the generation API.
+  You'll need Python 3.12+, ffmpeg, and a
+  <a href="https://api.together.ai">Together AI</a> key (~$0.05 covers a full test project).
+  Prefer to spend nothing? The <span class="mono">fake</span> models run the whole pipeline for $0.</p>
 </section>
 
 <h2 id="install"><span class="n">1</span>Install</h2>
@@ -46,72 +45,55 @@
 <span class="cmt"># open .env and set:</span>
 TOGETHER_API_KEY=your-key-here</pre></div>
 
-<h2 id="create"><span class="n">3</span>Create a project</h2>
-<p>Four questions — concept, mood, palette, lighting — become the project's style anchor,
-the phrase prepended to every generation from here on.</p>
+<h2 id="studio"><span class="n">3</span>Launch Studio</h2>
+<p>The daily-driver interface — a React SPA over a FastAPI JSON API. Profile-scoped: create a
+brand, set a style, add your character doll, then create projects under it.</p>
+<div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge studio
+<span class="out">SceneForge Studio on http://127.0.0.1:8000 (home: ~/SceneForge)</span></pre></div>
+
+<h2 id="profile"><span class="n">4</span>Create a profile + character</h2>
+<p>A profile is your brand — style defaults and a character doll with reference images.
+Click "New profile", name it, then add a character with photos. The character is global:
+update the refs once, every project resolves them.</p>
+
+<h2 id="outfit"><span class="n">5</span>New project + outfit</h2>
+<p>One project per post. Click "New project" — it inherits your profile style. Add an outfit
+with clothing item photos and shop links. Each item's product photo becomes a generation reference.</p>
+
+<h2 id="process"><span class="n">6</span>Process outfit (one click)</h2>
+<p>Click "process" on the outfit card. SceneForge creates pose scenes, generates multi-reference
+images (character refs + item photos → dressed character), and auto-selects the first option.
+Cost shown before you commit.</p>
+
+<h2 id="refine"><span class="n">7</span>Refine + generate takes</h2>
+<p>View images full-size, refine with prompt editing or model swapping. Then "generate takes" —
+batch video clips for all selected scenes. Compare takes, mark keepers.</p>
+
+<h2 id="export"><span class="n">8</span>Export for CapCut</h2>
+<p>Click "export" — kept takes + <span class="mono">links.txt</span> in a folder, or download as
+zip. Optional: "stitch final video" chains crossfades into one clip.</p>
+
+<h2 id="cli"><span class="n">9</span>Or use the CLI</h2>
+<p>Everything the Studio does is also a CLI command. Good for scripting and batch work.</p>
 <div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge create "autumn morning"
-<span class="out">Concept (what is this video about?): a cozy autumn morning routine, slow and comforting
-Mood: calm, intimate, unhurried
-Color palette: muted earth tones, amber, cream
-Lighting: warm golden hour light through windows
-Created project at ./autumn-morning</span>
-<span class="ps1">$</span> cd autumn-morning</pre></div>
-
-<h2 id="scenes"><span class="n">4</span>Break it into scenes</h2>
-<p>The LLM proposes; you approve before anything is saved. Or skip the LLM entirely and
-pass your own with repeated <span class="mono">--scene</span> flags.</p>
-<div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge add-scenes --count 3
-<span class="out">  1. Soft golden light streams through windows, illuminating a warm breakfast table
-  2. A person slowly pours steaming coffee into a cream-colored mug
-  3. A book lies open on a plush couch, surrounded by autumn leaves and blankets
-Add these scenes? [y/N]: y</span></pre></div>
-
-<h2 id="images"><span class="n">5</span>Generate and pick images</h2>
-<p>A few options per scene, each carrying the anchor. Look at the files — or run
-<span class="mono">sceneforge ui</span> and compare them side by side in the browser — then select.</p>
-<div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge generate-images --options 2
-<span class="out">Generating 6 images with flux-schnell (~$0.02)</span>
+<span class="ps1">$</span> sceneforge add-scenes --count 6
+<span class="ps1">$</span> sceneforge generate-images
 <span class="ps1">$</span> sceneforge select scene-01 2
-<span class="ps1">$</span> sceneforge select scene-02 1
-<span class="ps1">$</span> sceneforge select scene-03 1</pre></div>
-
-<h2 id="clips"><span class="n">6</span>Animate the stills</h2>
-<p>Image-to-video, per scene. This is the spend step — check
-<span class="mono">sceneforge models</span> for prices first. Re-runs skip finished scenes,
-so a failed batch just resumes.</p>
-<div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge generate-clips
-<span class="out">Generating 3 clips with seedance-2.0 (~$2.40)
-scene-01: done (5.1s)
-scene-02: done (5.1s)
-scene-03: done (5.0s)</span></pre></div>
-
-<h2 id="stitch"><span class="n">7</span>Stitch the final cut</h2>
-<div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge stitch
-<span class="out">Final video: output/final.mp4 (7.0s, 720x1280)</span></pre></div>
-<p>2× speed and 0.3s crossfades by default; both are flags. The output is silent by design —
-music and text belong to your editor.</p>
-
-<h2 id="ui"><span class="n">8</span>Or drive it from the browser</h2>
-<p>The web UI shares state with the CLI — same <span class="mono">project.json</span>,
-same operations. Selection with thumbnails beats selection with filenames.</p>
-<div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge ui --dir ~/videos
-<span class="out">SceneForge UI on http://127.0.0.1:8000</span></pre></div>
-
-<h2 id="free"><span class="n">9</span>Try everything for free</h2>
-<p>The fake models are real registry entries backed by ffmpeg — the entire pipeline runs,
-files and all, for nothing. Good for learning the flow before spending.</p>
-<div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge generate-images --model fake-image
-<span class="ps1">$</span> sceneforge generate-clips --model fake-video
+<span class="ps1">$</span> sceneforge generate-clips
 <span class="ps1">$</span> sceneforge stitch</pre></div>
 
-<h2 id="selfhost"><span class="n">10</span>Optional: your own GPU backend</h2>
-<p>The <span class="mono">runpod-wan-i2v</span> and <span class="mono">runpod-flux</span> models
-run on a serverless RTX 4090 you rent per second — roughly $0.12 a clip instead of $0.80,
-with automatic fallback to the hosted APIs when your endpoint is down.</p>
-<div class="callout">Setting it up means creating a RunPod account, a network volume for model
-weights, and a serverless endpoint from the provided Docker worker — the full runbook lives at
-<a href="https://github.com/ahmedkhaledmohamed/SceneForge/tree/main/runpod-worker">runpod-worker/README.md</a>.
-Budget ~$10 of credit and ~$10.50/month for weight storage.</div>
+<h2 id="free"><span class="n">10</span>Try everything for free</h2>
+<p>The <span class="mono">fake</span> models are real registry entries backed by ffmpeg.
+The entire pipeline runs — files and all — for $0. Set them in project settings or via CLI:</p>
+<div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge generate-images --model fake-image
+<span class="ps1">$</span> sceneforge generate-clips --model fake-video</pre></div>
+
+<h2 id="selfhost"><span class="n">11</span>Optional: self-hosted GPU</h2>
+<p><span class="mono">runpod-wan-i2v</span> runs Wan2.2-TI2V-5B on a rented RTX 4090 —
+~$0.10/clip vs $0.80 hosted, with automatic fallback when the endpoint is down.</p>
+<div class="callout">Full setup: RunPod account, network volume, serverless endpoint from the Docker worker.
+See <a href="https://github.com/ahmedkhaledmohamed/SceneForge/tree/main/runpod-worker">runpod-worker/README.md</a>.
+Budget ~$10 credit + $10.50/mo storage.</div>
 
 </main>
 

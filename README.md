@@ -2,75 +2,49 @@
 
 [![CI](https://github.com/ahmedkhaledmohamed/SceneForge/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmedkhaledmohamed/SceneForge/actions/workflows/ci.yml)
 
-**Local-first AI video production.** One pipeline from concept to finished short-form video:
+**Local-first AI video production.** Concept to finished short-form video in one tool:
 
 ```
-concept → LLM scene breakdown → image options per scene → pick → image-to-video → stitched 9:16 final cut
+profile → project → outfit + items → scenes → image options → select → video takes → export
 ```
 
-Built to replace a real content creator's manual workflow (Midjourney → Higgsfield → CapCut) where every generation is an isolated prompt and scenes drift apart visually.
+Built for a real content creator's workflow: shoppable outfit posts where a consistent character doll wears photographed clothing items, multiple clips are compared, and the best takes are exported to CapCut with shop links.
 
-## Why it exists: the style context
+## Studio
 
-The core problem with prompt-by-prompt generation is **visual inconsistency across scenes**. SceneForge fixes this with a project-level *style anchor* — mood, palette, lighting captured once at project creation and prepended to every image and video prompt automatically:
-
-```
-"warm golden hour light through windows, muted earth tones, amber, cream. {scene description}. photorealistic, cinematic composition, no text."
- └────────────────── style anchor (per project) ─────────────────┘                └───────── suffix (per project) ─────────┘
-```
-
-Per-scene overrides are supported, and every generated artifact records the exact composed prompt and model used — the project file is a full generation history.
-
-## Quick start
+The daily-driver interface. Run locally — it serves a React SPA backed by a FastAPI JSON API:
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
 pip install -e .
-cp .env.example .env    # add your TOGETHER_API_KEY
-brew install ffmpeg     # if you don't have it
-
-sceneforge create "autumn morning"       # prompts for concept + style
-cd autumn-morning
-sceneforge add-scenes --count 6          # LLM breakdown, confirm before saving
-sceneforge generate-images               # N options per scene, style anchor applied
-sceneforge select scene-01 2             # pick winners
-sceneforge generate-clips                # animate stills (image-to-video)
-sceneforge stitch                        # 2x speed + crossfades → output/final.mp4
+sceneforge studio        # http://127.0.0.1:8000 (~/SceneForge as home)
 ```
 
-Or drive everything from a browser:
+Everything is **profile-scoped**: a profile is a brand/workspace with global characters, style defaults, and seeds shared across all projects within it.
 
-```bash
-sceneforge ui --dir ~/videos             # http://127.0.0.1:8000
-```
+### The workflow
 
-The web UI and CLI share the same `project.json` state — compare image options side by side, click to select, watch clips inline.
+1. **Create a profile** — name your brand, set a style anchor, add your character doll with reference images
+2. **New project** — one project per post/video, inherits profile defaults
+3. **Add outfit + items** — clothing pieces with product photos and shop URLs
+4. **Process outfit** — one click: creates pose scenes, generates multi-reference images (character + garment refs), auto-selects the first option
+5. **Refine** — swap models, edit descriptions, regenerate individual scenes with prompt preview
+6. **Generate takes** — batch video clips for all scenes, compare, mark keepers
+7. **Export** — kept takes + links.txt in a CapCut-ready folder, or download as zip
+8. **Stitch** — optional: speed-adjusted crossfade final cut
 
-## Outfits, characters, and shop links
+### Key features
 
-Built for shoppable outfit content: define a recurring **character** (reference
-images of your doll/model) and **outfits** (clothing items with product photos
-and shop URLs). Generation then composes the character wearing those exact
-items — garment-fidelity prompting on multi-reference models, and every
-artifact records which reference images conditioned it:
-
-```bash
-sceneforge add-character "Mila" --ref doll-front.png --ref doll-face.png
-sceneforge add-outfit "Spring cafe look" \
-  --item "Linen midi skirt|https://shop.example/skirt|skirt.jpg" \
-  --item "Knit cardigan|https://shop.example/cardigan|cardigan.jpg"
-sceneforge add-outfit-scenes outfit-1                  # two pose scenes by default
-sceneforge generate-images --model flux-2-pro          # $0.03 drafts
-sceneforge regenerate scene-01 image --model nano-banana-pro   # premium winners
-sceneforge links outfit-1 | pbcopy                     # paste-ready shop links
-```
-
-The cost/quality loop is the point: draft every outfit cheap, re-render only
-the keepers on the premium model.
+- **Multi-reference image composition** — character identity refs + outfit item photos → dressed character (FLUX.2-pro $0.03 drafts, Nano Banana Pro $0.134 premium)
+- **LLM brainstorm** — describe the concept, the AI suggests scene descriptions
+- **Cost tracking** — every artifact records its GPU cost; buttons show estimated totals before you commit
+- **Profile characters** — `pchar-*` IDs resolve across all projects; identity refs update globally
+- **Import existing assets** — bring in images and clips from your library
+- **Scene reorder** — order determines stitch output
+- **Duplicate project** — copy settings + scenes without generated media
 
 ## Models
 
-Model choice is part of the workflow, not a config constant — pick per run with `--model`, see prices with `sceneforge models`:
+Pick per operation with model dropdowns, see prices live:
 
 | Key | Kind | Price | Refs | Notes |
 |---|---|---|---|---|
@@ -84,40 +58,72 @@ Model choice is part of the workflow, not a config constant — pick per run wit
 | `runpod-flux` / `runpod-wan-i2v` | both | ~$0.03/~$0.10 | – | self-hosted GPU, 720p Wan2.2-TI2V-5B (see runpod-worker/) |
 | `fake-image` / `fake-video` | test | $0 | 14 | ffmpeg-generated, powers the test suite |
 
-Generation is **idempotent**: re-running a batch skips what's done, failed jobs are recorded and retried on the next run, `--force`/`regenerate` redoes on demand. `sceneforge status` shows progress and estimated remaining cost.
-
 ## Architecture
 
 ```
 src/sceneforge/
-├── cli.py          typer commands (create/add-scenes/generate-*/select/stitch/status/ui)
-├── web.py          FastAPI + htmx local UI, background jobs over the same ops
-├── ops.py          generation loops shared by CLI and web
-├── project.py      data model + project.json persistence (atomic writes)
-├── prompts.py      style-context composition
-├── breakdown.py    LLM scene breakdown (JSON-validated, retry on parse failure)
-├── stitch.py       two-pass ffmpeg: normalize (speed/fps/geometry) → xfade chain
-└── backends/       pluggable generation backends
-    ├── base.py             ImageBackend / VideoBackend interfaces
-    ├── together_image.py   FLUX via Together AI REST
-    ├── together_video.py   Seedance/Veo/Kling via Together AI (submit → poll → download)
-    └── fake.py             zero-cost lavfi backends for tests
+├── cli.py              typer CLI (create/add-scenes/generate/select/stitch/studio)
+├── profile.py          profile data model (SCENEFORGE_HOME layout)
+├── project.py          project data model + project.json persistence
+├── ops.py              generation loops shared by CLI and API
+├── prompts.py          style-context + character/garment prompt composition
+├── breakdown.py        LLM scene breakdown (Together AI)
+├── stitch.py           two-pass ffmpeg: normalize → xfade chain
+├── config.py           model registry + env config
+├── server/
+│   ├── api.py          FastAPI JSON API (profile-scoped routes)
+│   ├── jobs.py         background job management
+│   └── uploads.py      multipart upload validation
+└── backends/
+    ├── together_image.py   FLUX via Together AI
+    ├── together_video.py   Seedance/Veo/Kling via Together AI
+    ├── runpod_backend.py   self-hosted FLUX/Wan on RunPod
+    └── fake.py             zero-cost test backends
+
+frontend/               React SPA (Vite + react-query + react-router)
+runpod-worker/          RunPod serverless GPU worker (Wan2.2-TI2V-5B + FLUX.1-schnell)
+site/                   static landing page (Vercel)
 ```
 
 Projects are plain directories — `project.json` plus `images/`, `clips/`, `output/`. No database, no accounts, no cloud dependency beyond the generation APIs.
+
+## Quick start
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .
+cp .env.example .env    # add your TOGETHER_API_KEY
+brew install ffmpeg     # if you don't have it
+
+sceneforge studio       # Studio SPA at http://127.0.0.1:8000
+```
+
+Or drive everything from the CLI:
+
+```bash
+sceneforge create "autumn morning"       # concept + style → project
+sceneforge add-scenes --count 6          # LLM breakdown
+sceneforge generate-images               # N options per scene
+sceneforge select scene-01 2             # pick winners
+sceneforge generate-clips                # I2V animation
+sceneforge stitch                        # final cut
+```
 
 ## Development
 
 ```bash
 pip install -e ".[dev]"
-pytest        # entire suite runs at $0 — fake backends + synthetic ffmpeg fixtures
+pytest                   # 68 tests, $0 (fake backends)
+cd frontend && npm i && npm run dev     # SPA dev server at :5173
 ```
 
 CI runs the full suite on every PR (no API secrets needed).
 
-## Roadmap
+## Deploy
 
-- **Cloud GPU backend** — self-hosted Wan2.1 I2V + FLUX on RunPod serverless (~$0.10/clip vs $0.80), with automatic fallback to hosted APIs
-- Audio/music track support
-- Text overlays
-- Local Apple Silicon backends (`pip install -e ".[local]"`) once the PyTorch/Python 3.14 story settles
+```bash
+cd frontend && vercel --prod     # sceneforge-studio project
+cd site && vercel --prod         # sceneforge landing page
+```
+
+RunPod worker images are built via GitHub Actions — see `runpod-worker/README.md`.

@@ -41,7 +41,7 @@
       <div class="lane">
         <span class="lane-label">Interfaces — two fronts, zero duplicated logic</span>
         <button class="node" id="n-cli" aria-pressed="false">cli.py<small>typer commands</small></button>
-        <button class="node" id="n-web" aria-pressed="false">web.py<small>FastAPI + htmx, local only</small></button>
+        <button class="node" id="n-web" aria-pressed="false">server/ + frontend/<small>Studio SPA + JSON API</small></button>
       </div>
 
       <div class="lane">
@@ -62,6 +62,7 @@
 
       <div class="lane">
         <span class="lane-label">State &amp; output — plain files, atomic writes</span>
+        <button class="node" id="n-profile" aria-pressed="false">profile.py<small>profiles + characters</small></button>
         <button class="node" id="n-project" aria-pressed="false">project.py<small>project.json</small></button>
         <button class="node" id="n-stitch" aria-pressed="false">stitch.py<small>ffmpeg two-pass</small></button>
         <button class="node cat-selfhosted" id="n-worker" aria-pressed="false">runpod-worker/<small>Docker + diffusers</small></button>
@@ -136,13 +137,13 @@ const NODES = {
     ],
   },
   "n-web": {
-    title: "The local web UI",
-    file: "src/sceneforge/web.py",
-    role: "FastAPI + htmx over the same operations: browse projects, compare image options side by side, click to select, run generation as background jobs with live status.",
+    title: "Studio (SPA + JSON API)",
+    file: "src/sceneforge/server/ + frontend/",
+    role: "React SPA (Vite + react-query) over a FastAPI JSON API. Profile-scoped: everything under /profiles/{prof}/projects/{slug}/... Background jobs, live cost tracking, lightbox, refine dialog, brainstorm, batch operations.",
     notes: [
-      "Binds to 127.0.0.1 by design — generation, ffmpeg, and media are local; there is nothing to deploy.",
-      "One background job per project at a time; the page polls and refreshes itself when a job lands.",
-      "Media serving resolves paths against the project root and refuses anything that escapes it.",
+      "Profile-scoped routes: characters, style defaults, and seeds shared across all projects in a profile.",
+      "One background job per project; the SPA polls every 2s while running and refreshes on completion.",
+      "Deployed to Vercel as a static SPA; daily use via `sceneforge studio` which serves API + SPA together.",
     ],
   },
   "n-ops": {
@@ -245,22 +246,34 @@ const NODES = {
       "Normalizing first is what makes xfade reliable: it demands identical size, fps, and timebase.",
     ],
   },
+  "n-profile": {
+    title: "Profiles",
+    file: "src/sceneforge/profile.py",
+    role: "A profile is a brand/workspace: global characters (pchar-* IDs), style defaults, and seed assets shared across all projects. Characters resolve live — update refs once, every project sees them.",
+    notes: [
+      "Profile characters use pchar-* IDs; project characters use char-*. resolve_character() dispatches by prefix.",
+      "Style and model defaults are COPIED into new projects; characters resolve live because identity refs keep improving.",
+      "SCENEFORGE_HOME (~/SceneForge by default) contains profile directories, each with projects/ inside.",
+    ],
+  },
   "n-worker": {
     title: "The GPU worker",
     file: "runpod-worker/ — Dockerfile, handler.py, pipelines.py",
-    role: "The Docker image RunPod runs: one handler dispatching image (FLUX.1-schnell), video (Wan2.1-I2V-14B), and warmup tasks.",
+    role: "The Docker image RunPod runs: one handler dispatching image (FLUX.1-schnell), video (Wan2.2-TI2V-5B, 720p), and warmup tasks.",
     notes: [
-      "Weights live on a network volume (HF_HOME) — cold starts load ~60GB from disk instead of the internet.",
-      "One pipeline resident at a time: 24GB can't hold FLUX and Wan-14B together; swapping evicts and reloads.",
-      "Built on GitHub Actions and pushed registry-to-registry — an 11GB image does not travel over home Wi-Fi twice.",
+      "Weights live on a network volume (HF_HOME) — cold starts load from disk instead of the internet.",
+      "One pipeline resident at a time: 24GB can't hold FLUX and Wan2.2 together; swapping evicts and reloads.",
+      "Wan2.2-TI2V-5B outputs native 720p (1280×704) at 24fps. Previous Wan2.1-I2V-14B OOM'd on 4090.",
     ],
   },
 };
 
 const EDGES = [
   ["n-cli", "n-ops"], ["n-web", "n-ops"],
-  ["n-cli", "n-breakdown"],
+  ["n-cli", "n-breakdown"], ["n-web", "n-breakdown"],
   ["n-ops", "n-prompts"], ["n-ops", "n-registry"], ["n-ops", "n-project"], ["n-ops", "n-stitch"],
+  ["n-ops", "n-profile"],
+  ["n-profile", "n-project"],
   ["n-registry", "n-fallback"],
   ["n-fallback", "n-runpod"], ["n-fallback", "n-together"],
   ["n-registry", "n-fake"],
@@ -271,9 +284,10 @@ const TRACE = [
   ["n-cli", "sceneforge generate-clips --model runpod-wan-i2v"],
   ["n-ops", "plan: 3 scenes selected, 0 clips exist → 3 jobs"],
   ["n-prompts", "anchor + scene description + suffix → the prompt"],
-  ["n-registry", "runpod-wan-i2v: $0.12 est · i2v ✓ · fallback: seedance-2.0"],
+  ["n-profile", "profile character pchar-1 → resolve refs from profile root"],
+  ["n-registry", "runpod-wan-i2v: $0.10 est · i2v ✓ · fallback: seedance-2.0"],
   ["n-runpod", "POST /run with the still as base64 … polling /status"],
-  ["n-worker", "Wan2.1 loads from the volume, 81 frames render"],
+  ["n-worker", "Wan2.2-TI2V-5B loads from the volume, 121 frames at 720p"],
   ["n-fallback", "scene-02: endpoint timeout → falling back"],
   ["n-together", "seedance-2.0 rescues scene-02 ($0.80, tagged fallback_from)"],
   ["n-project", "artifacts saved atomically: prompt, model, cost, source image"],
