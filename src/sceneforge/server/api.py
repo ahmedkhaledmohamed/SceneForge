@@ -540,6 +540,18 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return asdict(scene)
 
+    @router.post("/profiles/{prof}/projects/{slug}/select-all")
+    def select_all(prof: str, slug: str):
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        count = 0
+        for sc in project.scenes:
+            if sc.selected_image is None and sc.images:
+                sc.selected_image = 0
+                count += 1
+        project.save()
+        return {"selected": count}
+
     # ---------------------------------------------------------- import
 
     @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/import-image",
