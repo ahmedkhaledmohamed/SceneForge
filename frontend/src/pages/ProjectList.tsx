@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, profileMedia } from "../api";
+import { DEMO_PROFILE, DEMO_PROJECTS } from "../demo";
+import { useIsDemo } from "../DemoContext";
 import { toastError, toastOk } from "../components/toast";
 import type { ProfileDoc } from "../types";
 
@@ -119,14 +121,19 @@ function ProfileHeader({ prof, profile }: { prof: string; profile: ProfileDoc })
 
 export default function ProjectList() {
   const { prof = "" } = useParams();
+  const isDemo = useIsDemo();
   const { data: profile } = useQuery({
     queryKey: ["profile", prof],
     queryFn: () => api.profile(prof),
+    enabled: !isDemo,
   });
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects", prof],
     queryFn: () => api.projects(prof),
+    enabled: !isDemo,
   });
+  const effectiveProfile = profile ?? (isDemo ? DEMO_PROFILE : undefined);
+  const effectiveProjects = projects ?? (isDemo ? DEMO_PROJECTS : undefined);
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -141,8 +148,8 @@ export default function ProjectList() {
 
   return (
     <>
-      <h1>{profile?.name ?? prof}</h1>
-      {profile && <ProfileHeader prof={prof} profile={profile} />}
+      <h1>{effectiveProfile?.name ?? prof}</h1>
+      {effectiveProfile && <ProfileHeader prof={prof} profile={effectiveProfile} />}
 
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h2 style={{ margin: 0 }}>Projects</h2>
@@ -168,7 +175,7 @@ export default function ProjectList() {
           <label>Concept</label>
           <input name="concept" placeholder="what is this post about?" style={{ width: "100%" }} />
           <label>Style anchor (overrides profile default)</label>
-          <input name="anchor" placeholder={profile?.style.anchor || "soft studio light, muted pastels"} style={{ width: "100%" }} />
+          <input name="anchor" placeholder={effectiveProfile?.style.anchor || "soft studio light, muted pastels"} style={{ width: "100%" }} />
           <div className="row" style={{ marginTop: 12 }}>
             <button type="submit" disabled={create.isPending}>Create</button>
             <button type="button" className="ghost" onClick={() => setCreating(false)}>Cancel</button>
@@ -177,9 +184,9 @@ export default function ProjectList() {
         </form>
       )}
 
-      {isLoading && <p className="muted">Loading…</p>}
+      {isLoading && !isDemo && <p className="muted">Loading…</p>}
       <div className="grid-cards">
-        {projects?.map((p) => (
+        {effectiveProjects?.map((p) => (
           <Link key={p.slug} to={`/${prof}/p/${p.slug}`} className="card" style={{ display: "block" }}>
             <b>{p.name}</b>
             <div className="muted" style={{ fontSize: "0.85rem" }}>{p.concept || "no concept yet"}</div>
@@ -191,7 +198,7 @@ export default function ProjectList() {
           </Link>
         ))}
       </div>
-      {projects?.length === 0 && !creating && (
+      {effectiveProjects?.length === 0 && !creating && (
         <p className="muted">No projects yet — create the first one.</p>
       )}
     </>
