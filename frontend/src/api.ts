@@ -15,9 +15,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(message);
   }
   const contentType = response.headers.get("content-type") ?? "";
-  return (contentType.includes("json")
-    ? response.json()
-    : response.text()) as Promise<T>;
+  if (contentType.includes("json")) return response.json() as Promise<T>;
+  if (contentType.includes("text/plain")) return response.text() as Promise<T>;
+  throw new Error("API returned non-JSON response — is the backend running?");
 }
 
 const json = (body: unknown): RequestInit => ({
