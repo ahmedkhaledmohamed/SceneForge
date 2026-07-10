@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, media } from "../api";
 import JobBanner from "../components/JobBanner";
+import { toastError } from "../components/toast";
 import { useInvalidateProject, useModels, useProject } from "../hooks";
 
 export default function TakeCompare() {
@@ -32,11 +33,13 @@ export default function TakeCompare() {
         prompt_override: motion || undefined,
       }),
     onSuccess: refresh,
+    onError: (e) => toastError(String(e)),
   });
   const keep = useMutation({
     mutationFn: ({ index, kept }: { index: number; kept: boolean }) =>
       api.keep(slug, sid, index, kept),
     onSuccess: refresh,
+    onError: (e) => toastError(String(e)),
   });
 
   return (
@@ -96,7 +99,9 @@ export default function TakeCompare() {
             )}
             <div className="row" style={{ justifyContent: "space-between", marginTop: 4 }}>
               <span className="mono muted">
-                take {clip.take ?? "–"} · {clip.model}
+                take {clip.take ?? "–"}
+                {clip.source_image_index != null && ` · src ${clip.source_image_index + 1}`}
+                {" · "}{clip.model}
                 {typeof clip.meta?.cost_usd === "number" && ` · $${(clip.meta.cost_usd as number).toFixed(2)}`}
               </span>
               {clip.status === "completed" && (

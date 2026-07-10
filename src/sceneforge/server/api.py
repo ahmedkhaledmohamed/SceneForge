@@ -47,9 +47,18 @@ def make_router(base: Path) -> APIRouter:
             raise _err(404, "not_found", str(exc).strip("'\""))
 
     def project_doc(project: Project, slug: str) -> dict:
+        from ..prompts import compose_prompt
+
         doc = asdict(project)
         doc.pop("root")
         doc["slug"] = slug
+        # the exact prompt each scene would generate with right now —
+        # refinement means seeing what you're about to run
+        for scene_doc, scene in zip(doc["scenes"], project.scenes):
+            try:
+                scene_doc["prompt_preview"] = compose_prompt(project, scene)
+            except Exception:
+                scene_doc["prompt_preview"] = None
         job = jobs.get(slug)
         doc["job"] = job.as_dict() if job else None
         doc["spent_usd"] = round(sum(

@@ -3,6 +3,8 @@ import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, media } from "../api";
 import JobBanner from "../components/JobBanner";
+import Lightbox from "../components/Lightbox";
+import { toastError, toastOk } from "../components/toast";
 import { useInvalidateProject, useModels, useProject } from "../hooks";
 import type { Outfit, Project, Scene } from "../types";
 
@@ -32,6 +34,7 @@ function OutfitCard({ slug, outfit, refresh }: {
   const addItem = useMutation({
     mutationFn: (form: FormData) => api.addItem(slug, outfit.id, form),
     onSuccess: refresh,
+    onError: (e) => toastError(String(e)),
   });
 
   return (
@@ -77,26 +80,112 @@ function OutfitCard({ slug, outfit, refresh }: {
   );
 }
 
+function RefineDialog({ slug, scene, project, onClose, refresh }: {
+  slug: string; scene: Scene; project: Project;
+  onClose: () => void; refresh: () => void;
+}) {
+  const [description, setDescription] = useState(scene.description);
+  const [pose, setPose] = useState(scene.pose ?? "");
+  const [styleOverride, setStyleOverride] = useState(scene.style_override ?? "");
+  const [model, setModel] = useState(project.settings.image_model);
+  const [options, setOptions] = useState(1);
+  const { data: models } = useModels();
+  const price = (models?.[model]?.price ?? 0) * options;
+
+  const dirty =
+    description !== scene.description ||
+    pose !== (scene.pose ?? "") ||
+    styleOverride !== (scene.style_override ?? "");
+
+  const save = useMutation({
+    mutationFn: () =>
+      api.patchScene(slug, scene.id, {
+        description,
+        pose: pose || null,
+        style_override: styleOverride || null,
+      }),
+    onSuccess: () => { toastOk("scene updated"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+
+  const regen = useMutation({
+    mutationFn: async () => {
+      if (dirty) {
+        await api.patchScene(slug, scene.id, {
+          description,
+          pose: pose || null,
+          style_override: styleOverride || null,
+        });
+      }
+      return api.regenerateImage(slug, scene.id, { model, options });
+    },
+    onSuccess: () => { onClose(); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+
+  return (
+    <dialog open>
+      <h2 style={{ marginTop: 0 }}>Refine {scene.id}</h2>
+      <label>Scene description</label>
+      <textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows={2}
+        style={{ width: "100%" }}
+      />
+      <label>Pose / framing</label>
+      <input value={pose} onChange={(e) => setPose(e.target.value)} style={{ width: "100%" }} />
+      <label>Style override (replaces the project anchor for this scene)</label>
+      <input
+        value={styleOverride}
+        onChange={(e) => setStyleOverride(e.target.value)}
+        placeholder={project.style.anchor}
+        style={{ width: "100%" }}
+      />
+      {scene.prompt_preview && (
+        <>
+          <label>Current full prompt</label>
+          <div className="prompt-preview">{scene.prompt_preview}</div>
+        </>
+      )}
+      <label>Model &amp; options</label>
+      <div className="row">
+        <ModelPicker kind="image" value={model} onChange={setModel} />
+        <input
+          type="number" min={1} max={4} value={options}
+          onChange={(e) => setOptions(Number(e.target.value))}
+          style={{ width: 56 }}
+        />
+      </div>
+      <div className="row" style={{ marginTop: 14 }}>
+        <button onClick={() => regen.mutate()} disabled={regen.isPending}>
+          generate {options} (~${price.toFixed(2)})
+        </button>
+        {dirty && (
+          <button className="ghost" onClick={() => save.mutate()} disabled={save.isPending}>
+            save without generating
+          </button>
+        )}
+        <button className="ghost" onClick={onClose}>close</button>
+      </div>
+    </dialog>
+  );
+}
+
 function SceneCard({ slug, scene, project, refresh, busy }: {
   slug: string; scene: Scene; project: Project; refresh: () => void; busy: boolean;
 }) {
-  const [regenOpen, setRegenOpen] = useState(false);
-  const [model, setModel] = useState(project.settings.image_model);
-  const [pose, setPose] = useState(scene.pose ?? "");
+  const [refineOpen, setRefineOpen] = useState(false);
+  const [viewing, setViewing] = useState<number | null>(null);
 
   const select = useMutation({
     mutationFn: (index: number) => api.select(slug, scene.id, index),
-    onSuccess: refresh,
-  });
-  const regen = useMutation({
-    mutationFn: async () => {
-      if (pose !== (scene.pose ?? "")) await api.patchScene(slug, scene.id, { pose });
-      return api.regenerateImage(slug, scene.id, { model, options: 1 });
-    },
-    onSuccess: () => { setRegenOpen(false); refresh(); },
+    onSuccess: () => { toastOk("selected"); refresh(); },
+    onError: (e) => toastError(String(e)),
   });
 
   const completedTakes = scene.clips.filter((c) => c.status === "completed").length;
+  const viewingImage = viewing !== null ? scene.images[viewing] : null;
 
   return (
     <div className="card">
@@ -108,8 +197,8 @@ function SceneCard({ slug, scene, project, refresh, busy }: {
           </div>
         </div>
         <div className="row">
-          <button className="ghost" onClick={() => setRegenOpen(true)} disabled={busy}>
-            regenerate…
+          <button className="ghost" onClick={() => setRefineOpen(true)}>
+            refine…
           </button>
           <Link to={`/p/${slug}/scenes/${scene.id}/takes`}>
             <button className="ghost">
@@ -120,15 +209,19 @@ function SceneCard({ slug, scene, project, refresh, busy }: {
       </div>
 
       <div className="gallery">
-        {scene.images.length === 0 && <span className="muted">no images yet</span>}
+        {scene.images.length === 0 && (
+          <span className="muted">
+            no images yet — use "refine…" or the generate button above
+          </span>
+        )}
         {scene.images.map((img, i) => (
           <div
             key={i}
-            className={`thumb${scene.selected_image === i ? " selected" : ""}`}
-            onClick={() => select.mutate(i)}
+            className={`thumb${scene.selected_image === i ? " selected" : ""}${busy ? " busy" : ""}`}
+            onClick={() => setViewing(i)}
             role="button"
             tabIndex={0}
-            title={`${img.model} — click to select`}
+            title="view full size"
           >
             <img src={media(slug, img.file)} alt={`option ${i + 1}`} loading="lazy" />
             <div className="cap">
@@ -138,20 +231,29 @@ function SceneCard({ slug, scene, project, refresh, busy }: {
         ))}
       </div>
 
-      {regenOpen && (
-        <dialog open>
-          <h2 style={{ marginTop: 0 }}>Regenerate {scene.id}</h2>
-          <label>Pose / framing</label>
-          <input value={pose} onChange={(e) => setPose(e.target.value)} style={{ width: "100%" }} />
-          <label>Model</label>
-          <ModelPicker kind="image" value={model} onChange={setModel} />
-          <div className="row" style={{ marginTop: 14 }}>
-            <button onClick={() => regen.mutate()} disabled={regen.isPending}>
-              generate 1 option
+      {viewingImage && viewing !== null && (
+        <Lightbox
+          src={media(slug, viewingImage.file)}
+          caption={`opt ${viewing + 1} · ${viewingImage.model}`}
+          onClose={() => setViewing(null)}
+          actions={
+            <button
+              onClick={() => { select.mutate(viewing); setViewing(null); }}
+            >
+              {scene.selected_image === viewing ? "✓ selected" : "select this"}
             </button>
-            <button className="ghost" onClick={() => setRegenOpen(false)}>close</button>
-          </div>
-        </dialog>
+          }
+        />
+      )}
+
+      {refineOpen && (
+        <RefineDialog
+          slug={slug}
+          scene={scene}
+          project={project}
+          onClose={() => setRefineOpen(false)}
+          refresh={refresh}
+        />
       )}
     </div>
   );
@@ -163,6 +265,7 @@ export default function ProjectBoard() {
   const refresh = useInvalidateProject(slug);
   const [imageModel, setImageModel] = useState<string | null>(null);
   const [exported, setExported] = useState<string | null>(null);
+  const [addingScene, setAddingScene] = useState(false);
 
   const generateAll = useMutation({
     mutationFn: () =>
@@ -171,22 +274,33 @@ export default function ProjectBoard() {
         options: project?.settings.image_options,
       }),
     onSuccess: refresh,
+    onError: (e) => toastError(String(e)),
   });
   const addOutfit = useMutation({
     mutationFn: (name: string) => api.addOutfit(slug, name),
     onSuccess: refresh,
+    onError: (e) => toastError(String(e)),
   });
   const outfitScenes = useMutation({
     mutationFn: (outfitId: string) => api.scenesFromOutfit(slug, { outfit_id: outfitId }),
     onSuccess: refresh,
+    onError: (e) => toastError(String(e)),
   });
   const addCharacter = useMutation({
     mutationFn: (form: FormData) => api.addCharacter(slug, form),
-    onSuccess: refresh,
+    onSuccess: () => { toastOk("character added"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+  const addScene = useMutation({
+    mutationFn: (body: { description: string; pose?: string }) =>
+      api.addScene(slug, body),
+    onSuccess: () => { setAddingScene(false); refresh(); },
+    onError: (e) => toastError(String(e)),
   });
   const runExport = useMutation({
     mutationFn: () => api.export(slug),
-    onSuccess: (result) => setExported(result.dir),
+    onSuccess: (result) => { setExported(result.dir); toastOk("exported"); },
+    onError: (e) => toastError(String(e)),
   });
 
   if (isLoading) return <p className="muted">Loading…</p>;
@@ -213,6 +327,7 @@ export default function ProjectBoard() {
         <button onClick={() => generateAll.mutate()} disabled={busy}>
           Generate missing images
         </button>
+        <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
         <button
           className="ghost"
           onClick={() => {
@@ -245,6 +360,32 @@ export default function ProjectBoard() {
         )}
       </div>
 
+      {addingScene && (
+        <form
+          className="card"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const data = new FormData(e.currentTarget);
+            const description = String(data.get("description") ?? "").trim();
+            if (!description) return;
+            addScene.mutate({
+              description,
+              pose: String(data.get("pose") ?? "") || undefined,
+            });
+          }}
+        >
+          <label>Scene description</label>
+          <input name="description" required style={{ width: "100%" }}
+                 placeholder="a single visual moment, describable in one image" />
+          <label>Pose / framing (optional)</label>
+          <input name="pose" style={{ width: "100%" }} />
+          <div className="row" style={{ marginTop: 10 }}>
+            <button type="submit" disabled={addScene.isPending}>add scene</button>
+            <button type="button" className="ghost" onClick={() => setAddingScene(false)}>cancel</button>
+          </div>
+        </form>
+      )}
+
       {project.characters.length > 0 && (
         <p className="muted mono" style={{ marginTop: 10 }}>
           characters: {project.characters.map((c) => `${c.name} (${c.reference_images.length} refs)`).join(" · ")}
@@ -269,7 +410,7 @@ export default function ProjectBoard() {
 
       <h2>Scenes</h2>
       {project.scenes.length === 0 && (
-        <p className="muted">No scenes yet — add an outfit and create its pose scenes, or add scenes via the CLI.</p>
+        <p className="muted">No scenes yet — hit "+ scene", or add an outfit and create its pose scenes.</p>
       )}
       {project.scenes.map((scene) => (
         <SceneCard
