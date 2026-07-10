@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, media } from "../api";
 import JobBanner from "../components/JobBanner";
@@ -277,6 +277,7 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
 }) {
   const [refineOpen, setRefineOpen] = useState(false);
   const [viewing, setViewing] = useState<number | null>(null);
+  const [comparing, setComparing] = useState(false);
   const imgImportRef = useRef<HTMLInputElement>(null);
 
   const select = useMutation({
@@ -299,6 +300,16 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
     onError: (e) => toastError(String(e)),
   });
 
+  useEffect(() => {
+    if (!comparing) return;
+    const handler = (e: KeyboardEvent) => {
+      const n = parseInt(e.key);
+      if (n >= 1 && n <= scene.images.length) select.mutate(n - 1);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [comparing, scene.images.length]);
+
   const completedTakes = scene.clips.filter((c) => c.status === "completed").length;
   const viewingImage = viewing !== null ? scene.images[viewing] : null;
 
@@ -315,6 +326,11 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
           <button className="ghost" onClick={() => setRefineOpen(true)}>
             refine…
           </button>
+          {scene.images.length >= 2 && (
+            <button className="ghost" onClick={() => setComparing(!comparing)}>
+              {comparing ? "thumbnails" : "compare"}
+            </button>
+          )}
           <Link to={`/${prof}/p/${slug}/scenes/${scene.id}/takes`}>
             <button className="ghost">
               takes{completedTakes > 0 ? ` (${completedTakes})` : ""}
@@ -346,28 +362,60 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
         </div>
       </div>
 
-      <div className="gallery">
-        {scene.images.length === 0 && (
-          <span className="muted">
-            no images yet — use "refine…" or the generate button above
-          </span>
-        )}
-        {scene.images.map((img, i) => (
-          <div
-            key={i}
-            className={`thumb${scene.selected_image === i ? " selected" : ""}${busy ? " busy" : ""}`}
-            onClick={() => setViewing(i)}
-            role="button"
-            tabIndex={0}
-            title="view full size"
-          >
-            <img src={media(prof, slug, img.file)} alt={`option ${i + 1}`} loading="lazy" />
-            <div className="cap">
-              {scene.selected_image === i ? "✓ " : ""}opt {i + 1} · {img.model}
+      {scene.images.length === 0 ? (
+        <p className="muted" style={{ margin: "10px 0" }}>
+          no images yet — use "refine…" or the generate button above
+        </p>
+      ) : comparing ? (
+        <div className="compare-grid" style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${Math.min(scene.images.length, 3)}, 1fr)`,
+          gap: 10, margin: "10px 0",
+        }}>
+          {scene.images.map((img, i) => (
+            <div key={i} style={{ textAlign: "center" }}>
+              <img
+                src={media(prof, slug, img.file)}
+                alt={`option ${i + 1}`}
+                style={{
+                  width: "100%", borderRadius: 8,
+                  border: scene.selected_image === i ? "3px solid var(--gold)" : "1px solid var(--line)",
+                  cursor: "pointer",
+                }}
+                onClick={() => { select.mutate(i); }}
+              />
+              <div className="mono muted" style={{ fontSize: "0.7rem", marginTop: 4 }}>
+                {scene.selected_image === i ? "✓ " : ""}opt {i + 1} · {img.model}
+              </div>
+              <button
+                className={scene.selected_image === i ? "btn" : "ghost"}
+                style={{ marginTop: 4, padding: "4px 12px", fontSize: "0.72rem" }}
+                onClick={() => select.mutate(i)}
+              >
+                {scene.selected_image === i ? "selected" : "select"}
+              </button>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="gallery">
+          {scene.images.map((img, i) => (
+            <div
+              key={i}
+              className={`thumb${scene.selected_image === i ? " selected" : ""}${busy ? " busy" : ""}`}
+              onClick={() => setViewing(i)}
+              role="button"
+              tabIndex={0}
+              title="view full size"
+            >
+              <img src={media(prof, slug, img.file)} alt={`option ${i + 1}`} loading="lazy" />
+              <div className="cap">
+                {scene.selected_image === i ? "✓ " : ""}opt {i + 1} · {img.model}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {scene.clips.length > 0 && (() => {
         const completed = scene.clips.filter((c) => c.status === "completed");
