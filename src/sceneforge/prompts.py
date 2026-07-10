@@ -31,10 +31,11 @@ def build_anchor(mood: str, palette: str, lighting: str, extra: str = "") -> str
     return ", ".join(p.strip() for p in parts if p.strip())
 
 
-def _character_clause(project: Project, scene: Scene) -> str | None:
+def _character_clause(project: Project, scene: Scene, profile=None) -> str | None:
     if not scene.character_id:
         return None
-    character = project.find_character(scene.character_id)
+    from .profile import resolve_character
+    character, _ = resolve_character(project, profile, scene.character_id)
     n = len(character.reference_images)
     if n == 0:
         return None
@@ -64,7 +65,7 @@ def _garment_clause(project: Project, scene: Scene) -> str | None:
     )
 
 
-def compose_prompt(project: Project, scene: Scene) -> str:
+def compose_prompt(project: Project, scene: Scene, profile=None) -> str:
     anchor = scene.style_override or project.style.anchor
     description = scene.description
     if scene.pose:
@@ -75,7 +76,7 @@ def compose_prompt(project: Project, scene: Scene) -> str:
     parts = [
         anchor,
         description,
-        _character_clause(project, scene),
+        _character_clause(project, scene, profile=profile),
         _garment_clause(project, scene),
         suffix,
     ]

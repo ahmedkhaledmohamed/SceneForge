@@ -1,7 +1,7 @@
 """SceneForge Studio server: JSON API + static SPA serving.
 
-create_app(base_dir) serves:
-  /api/...   — the JSON API over the projects in base_dir
+create_app(home) serves:
+  /api/...   — the JSON API over profiles in home (SCENEFORGE_HOME)
   /          — the built React app from sceneforge/web_dist (when present)
 """
 
@@ -13,9 +13,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from .api import make_router
 
 
-def create_app(base_dir: Path) -> FastAPI:
+def create_app(home: Path) -> FastAPI:
     app = FastAPI(title="SceneForge Studio")
-    app.include_router(make_router(base_dir.resolve()), prefix="/api")
+    app.include_router(make_router(home.resolve()), prefix="/api")
 
     @app.exception_handler(HTTPException)
     async def error_shape(request, exc: HTTPException):
@@ -31,9 +31,8 @@ def create_app(base_dir: Path) -> FastAPI:
         app.mount("/assets", StaticFiles(directory=web_dist / "assets"), name="assets")
 
         @app.get("/{path:path}", include_in_schema=False)
-        def spa(path: str):  # SPA catch-all: client-side routing
+        def spa(path: str):
             if path == "api" or path.startswith("api/"):
-                # unmatched API paths are 404s, never index.html
                 return JSONResponse(
                     {"error": {"code": "not_found", "message": "No such route"}},
                     status_code=404,

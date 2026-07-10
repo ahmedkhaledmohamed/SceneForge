@@ -1,7 +1,9 @@
-import type { HistoryRow, Job, ModelInfo, Project, ProjectSummary } from "./types";
+import type { HistoryRow, Job, ModelInfo, ProfileDoc, ProfileSummary, Project, ProjectSummary } from "./types";
+
+const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, init);
+  const response = await fetch(`${API_BASE}${path}`, init);
   if (!response.ok) {
     let message = response.statusText;
     try {
@@ -24,51 +26,93 @@ const json = (body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 });
 
+const patch = (body: unknown): RequestInit => ({
+  method: "PATCH",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+function p(prof: string, slug: string) {
+  return `/profiles/${prof}/projects/${slug}`;
+}
+
 export const api = {
   models: () => request<Record<string, ModelInfo>>("/models"),
-  projects: () => request<ProjectSummary[]>("/projects"),
-  project: (slug: string) => request<Project>(`/projects/${slug}`),
-  createProject: (body: unknown) => request<Project>("/projects", json(body)),
-  job: (slug: string) => request<Job>(`/projects/${slug}/job`),
 
-  addOutfit: (slug: string, name: string) =>
-    request(`/projects/${slug}/outfits`, json({ name })),
-  addItem: (slug: string, oid: string, form: FormData) =>
-    request(`/projects/${slug}/outfits/${oid}/items`, { method: "POST", body: form }),
-  links: (slug: string, oid: string) =>
-    request<string>(`/projects/${slug}/outfits/${oid}/links`),
-  addCharacter: (slug: string, form: FormData) =>
-    request(`/projects/${slug}/characters`, { method: "POST", body: form }),
+  // profiles
+  profiles: () => request<ProfileSummary[]>("/profiles"),
+  createProfile: (name: string) => request<{ slug: string; name: string }>("/profiles", json({ name })),
+  profile: (prof: string) => request<ProfileDoc>(`/profiles/${prof}`),
+  patchProfile: (prof: string, body: unknown) => request<ProfileDoc>(`/profiles/${prof}`, patch(body)),
+  addProfileCharacter: (prof: string, form: FormData) =>
+    request(`/profiles/${prof}/characters`, { method: "POST", body: form }),
+  addProfileCharacterRef: (prof: string, cid: string, form: FormData) =>
+    request(`/profiles/${prof}/characters/${cid}/refs`, { method: "POST", body: form }),
+  addSeed: (prof: string, form: FormData) =>
+    request(`/profiles/${prof}/seeds`, { method: "POST", body: form }),
 
-  addScene: (slug: string, body: unknown) =>
-    request(`/projects/${slug}/scenes`, json(body)),
-  scenesFromOutfit: (slug: string, body: unknown) =>
-    request(`/projects/${slug}/scenes/from-outfit`, json(body)),
-  patchScene: (slug: string, sid: string, body: unknown) =>
-    request(`/projects/${slug}/scenes/${sid}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }),
-  select: (slug: string, sid: string, imageIndex: number) =>
-    request(`/projects/${slug}/scenes/${sid}/select`, json({ image_index: imageIndex })),
+  // projects
+  projects: (prof: string) => request<ProjectSummary[]>(`/profiles/${prof}/projects`),
+  project: (prof: string, slug: string) => request<Project>(p(prof, slug)),
+  createProject: (prof: string, body: unknown) =>
+    request<Project>(`/profiles/${prof}/projects`, json(body)),
+  job: (prof: string, slug: string) => request<Job>(`${p(prof, slug)}/job`),
 
-  generateImages: (slug: string, body: unknown) =>
-    request(`/projects/${slug}/generate-images`, json(body)),
-  regenerateImage: (slug: string, sid: string, body: unknown) =>
-    request(`/projects/${slug}/scenes/${sid}/regenerate-image`, json(body)),
-  takes: (slug: string, sid: string, body: unknown) =>
-    request(`/projects/${slug}/scenes/${sid}/takes`, json(body)),
-  keep: (slug: string, sid: string, index: number, kept: boolean) =>
-    request(`/projects/${slug}/scenes/${sid}/clips/${index}/keep`, json({ kept })),
+  deleteProject: (prof: string, slug: string) =>
+    request(`${p(prof, slug)}`, { method: "DELETE" }),
+  patchProject: (prof: string, slug: string, body: unknown) =>
+    request<Project>(`${p(prof, slug)}`, patch(body)),
 
-  export: (slug: string) =>
-    request<{ dir: string; files: string[] }>(`/projects/${slug}/export`, {
+  addOutfit: (prof: string, slug: string, name: string) =>
+    request(`${p(prof, slug)}/outfits`, json({ name })),
+  addItem: (prof: string, slug: string, oid: string, form: FormData) =>
+    request(`${p(prof, slug)}/outfits/${oid}/items`, { method: "POST", body: form }),
+  deleteOutfit: (prof: string, slug: string, oid: string) =>
+    request(`${p(prof, slug)}/outfits/${oid}`, { method: "DELETE" }),
+  deleteItem: (prof: string, slug: string, oid: string, index: number) =>
+    request(`${p(prof, slug)}/outfits/${oid}/items/${index}`, { method: "DELETE" }),
+  links: (prof: string, slug: string, oid: string) =>
+    request<string>(`${p(prof, slug)}/outfits/${oid}/links`),
+  addCharacter: (prof: string, slug: string, form: FormData) =>
+    request(`${p(prof, slug)}/characters`, { method: "POST", body: form }),
+
+  addScene: (prof: string, slug: string, body: unknown) =>
+    request(`${p(prof, slug)}/scenes`, json(body)),
+  scenesFromOutfit: (prof: string, slug: string, body: unknown) =>
+    request(`${p(prof, slug)}/scenes/from-outfit`, json(body)),
+  deleteScene: (prof: string, slug: string, sid: string) =>
+    request(`${p(prof, slug)}/scenes/${sid}`, { method: "DELETE" }),
+  patchScene: (prof: string, slug: string, sid: string, body: unknown) =>
+    request(`${p(prof, slug)}/scenes/${sid}`, patch(body)),
+  select: (prof: string, slug: string, sid: string, imageIndex: number) =>
+    request(`${p(prof, slug)}/scenes/${sid}/select`, json({ image_index: imageIndex })),
+
+  importImage: (prof: string, slug: string, sid: string, form: FormData) =>
+    request(`${p(prof, slug)}/scenes/${sid}/import-image`, { method: "POST", body: form }),
+  importClip: (prof: string, slug: string, sid: string, form: FormData) =>
+    request(`${p(prof, slug)}/scenes/${sid}/import-clip`, { method: "POST", body: form }),
+
+  generateImages: (prof: string, slug: string, body: unknown) =>
+    request(`${p(prof, slug)}/generate-images`, json(body)),
+  regenerateImage: (prof: string, slug: string, sid: string, body: unknown) =>
+    request(`${p(prof, slug)}/scenes/${sid}/regenerate-image`, json(body)),
+  takes: (prof: string, slug: string, sid: string, body: unknown) =>
+    request(`${p(prof, slug)}/scenes/${sid}/takes`, json(body)),
+  keep: (prof: string, slug: string, sid: string, index: number, kept: boolean) =>
+    request(`${p(prof, slug)}/scenes/${sid}/clips/${index}/keep`, json({ kept })),
+
+  stitch: (prof: string, slug: string) =>
+    request(`${p(prof, slug)}/stitch`, { method: "POST" }),
+  export: (prof: string, slug: string) =>
+    request<{ dir: string; files: string[] }>(`${p(prof, slug)}/export`, {
       method: "POST",
     }),
-  history: (slug: string, params = "") =>
-    request<HistoryRow[]>(`/projects/${slug}/history${params}`),
+  history: (prof: string, slug: string, params = "") =>
+    request<HistoryRow[]>(`${p(prof, slug)}/history${params}`),
 };
 
-export const media = (slug: string, file: string) =>
-  `/api/projects/${slug}/media/${file}`;
+export const media = (prof: string, slug: string, file: string) =>
+  `${API_BASE}/profiles/${prof}/projects/${slug}/media/${file}`;
+
+export const profileMedia = (prof: string, file: string) =>
+  `${API_BASE}/profiles/${prof}/media/${file}`;

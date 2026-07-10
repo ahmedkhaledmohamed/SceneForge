@@ -51,10 +51,12 @@ export interface Character {
   name: string;
   description: string;
   reference_images: string[];
+  main?: boolean;
 }
 
 export interface Project {
   slug: string;
+  profile: string;
   name: string;
   concept: string;
   style: { anchor: string; suffix: string };
@@ -69,6 +71,7 @@ export interface Project {
   scenes: Scene[];
   job: Job | null;
   spent_usd: number;
+  profile_characters: Character[];
 }
 
 export interface ProjectSummary {
@@ -79,6 +82,38 @@ export interface ProjectSummary {
   outfits: number;
   clips: number;
   kept: number;
+}
+
+export interface ProfileSummary {
+  slug: string;
+  name: string;
+  characters: number;
+  seeds: number;
+  projects: number;
+}
+
+export interface ProfileDoc {
+  slug: string;
+  name: string;
+  style: { anchor: string; suffix: string; mood: string; palette: string; lighting: string };
+  defaults: {
+    image_model: string;
+    final_image_model: string;
+    video_model: string;
+    aspect: string;
+    image_options: number;
+  };
+  characters: Character[];
+  seeds: Seed[];
+}
+
+export interface Seed {
+  id: string;
+  kind: "image" | "clip" | "note";
+  file: string | null;
+  text: string | null;
+  tags: string[];
+  created_at: string;
 }
 
 export interface Job {

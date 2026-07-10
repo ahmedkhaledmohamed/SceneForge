@@ -69,14 +69,17 @@ def plan_clips(scenes: list[Scene], force: bool) -> list[Scene]:
     return [sc for sc in scenes if force or sc.completed_clip is None]
 
 
-def scene_reference_images(project: Project, scene: Scene) -> list[Path]:
+def scene_reference_images(project: Project, scene: Scene,
+                           profile=None) -> list[Path]:
     """Ordered reference set for a scene: character identity refs first
     (the prompt calls them 'the first N reference images'), then outfit
-    item photos in listing order, then the project style ref last."""
+    item photos in listing order, then the project style ref last.
+    Profile characters (pchar-*) resolve against the profile root."""
     refs: list[Path] = []
     if scene.character_id:
-        character = project.find_character(scene.character_id)
-        refs += [project.root / r for r in character.reference_images]
+        from .profile import resolve_character
+        character, base = resolve_character(project, profile, scene.character_id)
+        refs += [base / r for r in character.reference_images]
     if scene.outfit_id:
         outfit = project.find_outfit(scene.outfit_id)
         refs += [project.root / item.image for item in outfit.items if item.image]
@@ -86,12 +89,12 @@ def scene_reference_images(project: Project, scene: Scene) -> list[Path]:
 
 
 def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
-               log: Log = print) -> int:
+               log: Log = print, profile=None) -> int:
     backend = get_image_backend(model_key, log)
     count = 0
     for sc, needed in todo:
-        prompt = compose_prompt(project, sc)
-        refs = scene_reference_images(project, sc)
+        prompt = compose_prompt(project, sc, profile=profile)
+        refs = scene_reference_images(project, sc, profile=profile)
         cap = backend.max_reference_images
         if refs and cap == 0:
             log(f"note: {model_key} does not accept reference images — "
@@ -129,7 +132,7 @@ def _cost_suffix(meta: dict) -> str:
 
 
 def run_clips(project: Project, todo: list[Scene], model_key: str,
-              log: Log = print) -> list[str]:
+              log: Log = print, profile=None) -> list[str]:
     """Generate clips for scenes with a selected image. Failures are
     recorded on the scene and returned; the batch continues."""
     resolved = config.resolve_model(model_key, "video")
@@ -143,7 +146,7 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
     backend = get_video_backend(model_key, log)
     failures = []
     for sc in todo:
-        prompt = compose_prompt(project, sc)
+        prompt = compose_prompt(project, sc, profile=profile)
         out = project.clips_dir / f"{sc.id}.mp4"
         # Generate to a working name; the existing clip is archived only
         # after the new one succeeds. A failed regen must never orphan
@@ -201,7 +204,7 @@ def run_clips(project: Project, todo: list[Scene], model_key: str,
 
 def run_takes(project: Project, scene: Scene, image_index: int, count: int,
               model_key: str, *, prompt_override: str | None = None,
-              log: Log = print) -> list[str]:
+              log: Log = print, profile=None) -> list[str]:
     """Generate `count` clip takes from one scene image. Every take is its
     own file under clips/<scene>/ — takes never overwrite each other, and
     failures are recorded while the batch continues."""
@@ -217,7 +220,7 @@ def run_takes(project: Project, scene: Scene, image_index: int, count: int,
             "will be IGNORED.")
 
     backend = get_video_backend(model_key, log)
-    prompt = prompt_override or compose_prompt(project, scene)
+    prompt = prompt_override or compose_prompt(project, scene, profile=profile)
     source = scene.images[image_index]
     image = project.root / source.file if supports_i2v is not False else None
     takes_dir = project.clips_dir / scene.id
