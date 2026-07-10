@@ -151,6 +151,16 @@ export default function ProjectList() {
       <h1>{effectiveProfile?.name ?? prof}</h1>
       {effectiveProfile && <ProfileHeader prof={prof} profile={effectiveProfile} />}
 
+      {effectiveProfile && effectiveProfile.characters.length === 0 && !isDemo && (
+        <div className="card" style={{ borderColor: "var(--gold-dim)", marginBottom: 14 }}>
+          <b>Add your character first</b>
+          <p className="muted" style={{ margin: "4px 0" }}>
+            Upload reference photos of your character doll above — these will be used in
+            every project to keep the character consistent. After that, create your first project.
+          </p>
+        </div>
+      )}
+
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h2 style={{ margin: 0 }}>Projects</h2>
         <button onClick={() => setCreating(true)}>New project</button>
