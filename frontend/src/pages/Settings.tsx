@@ -30,6 +30,15 @@ export default function Settings() {
   const [runpodApi, setRunpodApi] = useState("");
   const [runpodEndpoint, setRunpodEndpoint] = useState("");
 
+  const doLogout = useMutation({
+    mutationFn: () => api.logout(prof),
+    onSuccess: () => {
+      setAuthToken(null);
+      toastOk("logged out");
+      client.invalidateQueries({ queryKey: ["settings", prof] });
+    },
+  });
+
   const login = useMutation({
     mutationFn: () => api.login(prof, loginPw),
     onSuccess: (r) => {
@@ -93,13 +102,18 @@ export default function Settings() {
         {profile?.has_password ? (
           <>
             <p className="muted">This profile is password-protected.</p>
-            {needsLogin && (
+            {needsLogin ? (
               <form className="row" onSubmit={(e) => { e.preventDefault(); login.mutate(); }}>
                 <input type="password" value={loginPw}
                        onChange={(e) => setLoginPw(e.target.value)}
                        placeholder="enter password" style={{ width: 200 }} />
                 <button type="submit" disabled={login.isPending}>unlock</button>
               </form>
+            ) : (
+              <div className="row">
+                <span className="mono muted">authenticated</span>
+                <button className="ghost" onClick={() => doLogout.mutate()}>log out</button>
+              </div>
             )}
           </>
         ) : (
