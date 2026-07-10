@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 2  # v2 adds characters, outfits (shop links), scene refs
+SCHEMA_VERSION = 3  # v2: characters/outfits/scene refs · v3: clip takes + kept
 
 PROJECT_FILE = "project.json"
 
@@ -98,6 +98,11 @@ class ClipArtifact:
     error: str | None = None
     created_at: str = field(default_factory=now_iso)
     meta: dict = field(default_factory=dict)  # backend extras, e.g. cost_usd
+    # Takes: several short clips per scene image, compared and hand-picked
+    # for external editing. None = legacy single-clip flow.
+    take: int | None = None                # 1-based per scene
+    source_image_index: int | None = None  # which sc.images entry it animates
+    kept: bool = False                     # marked for export
 
 
 @dataclass
