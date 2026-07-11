@@ -25,10 +25,10 @@ def _sniff(head: bytes) -> str | None:
         return ".jpg"
     if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
         return ".webp"
-    if head[4:8] == b"ftyp":
-        return ".mp4"
     if head[4:12] in (b"ftypheic", b"ftypmif1", b"ftypavif"):
         return ".jpg"
+    if head[4:8] == b"ftyp":
+        return ".mp4"
     return None
 
 
