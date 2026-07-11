@@ -61,6 +61,7 @@ export const api = {
   createProfile: (name: string) => request<{ slug: string; name: string }>("/profiles", json({ name })),
   profile: (prof: string) => request<ProfileDoc>(`/profiles/${prof}`),
   patchProfile: (prof: string, body: unknown) => request<ProfileDoc>(`/profiles/${prof}`, patch(body)),
+  deleteProfile: (prof: string) => request(`/profiles/${prof}`, { method: "DELETE" }),
   login: (prof: string, password: string) =>
     request<{ token: string }>(`/profiles/${prof}/login`, json({ password })),
   logout: (prof: string) =>

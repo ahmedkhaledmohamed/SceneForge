@@ -89,7 +89,7 @@ label { display: block; font-family: var(--font-mono); font-size: 0.68rem; text-
 
 .gallery { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
 .thumb {
-  width: 132px; border-radius: 8px; overflow: hidden;
+  width: 160px; border-radius: 8px; overflow: hidden;
   border: 1px solid var(--line); background: var(--surface-2);
   cursor: pointer; text-align: center;
 }

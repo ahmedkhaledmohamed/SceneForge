@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, getAuthToken, setAuthToken } from "../api";
 import { useIsDemo } from "../DemoContext";
 import { toastError, toastOk } from "../components/toast";
@@ -9,6 +9,7 @@ export default function Settings() {
   const { prof = "" } = useParams();
   const isDemo = useIsDemo();
   const client = useQueryClient();
+  const navigate = useNavigate();
   const token = getAuthToken();
 
   const { data: profile } = useQuery({
@@ -30,6 +31,11 @@ export default function Settings() {
   const [runpodApi, setRunpodApi] = useState("");
   const [runpodEndpoint, setRunpodEndpoint] = useState("");
 
+  const deleteProf = useMutation({
+    mutationFn: () => api.deleteProfile(prof),
+    onSuccess: () => navigate("/"),
+    onError: (e) => toastError(String(e)),
+  });
   const doLogout = useMutation({
     mutationFn: () => api.logout(prof),
     onSuccess: () => {
@@ -180,6 +186,22 @@ export default function Settings() {
       {!settings && !needsLogin && (
         <p className="muted">Loading settings…</p>
       )}
+
+      {/* Danger zone */}
+      <div className="card" style={{ borderColor: "var(--danger, #c44)", marginTop: 24 }}>
+        <h2 style={{ marginTop: 0, color: "var(--danger)" }}>Danger zone</h2>
+        <p className="muted">Permanently delete this profile and all its projects, images, and clips.</p>
+        <button
+          className="ghost"
+          style={{ color: "var(--danger)" }}
+          onClick={() => {
+            if (confirm(`Delete profile "${prof}" and ALL its data? This cannot be undone.`))
+              deleteProf.mutate();
+          }}
+        >
+          delete profile
+        </button>
+      </div>
     </>
   );
 }

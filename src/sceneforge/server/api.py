@@ -158,6 +158,14 @@ def make_router(home: Path) -> APIRouter:
         doc["has_keys"] = bool(profile.keys.together)
         return doc
 
+    @router.delete("/profiles/{prof}")
+    def delete_profile(prof: str, request: Request):
+        import shutil
+        require_auth(request, prof)
+        root = profile_root(prof)
+        shutil.rmtree(root)
+        return {"deleted": prof}
+
     @router.post("/profiles/{prof}/login")
     def login(prof: str, payload: dict):
         profile = load_profile(prof)
