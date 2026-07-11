@@ -31,6 +31,14 @@ export default function Settings() {
   const [runpodApi, setRunpodApi] = useState("");
   const [runpodEndpoint, setRunpodEndpoint] = useState("");
 
+  const { data: balance } = useQuery({
+    queryKey: ["balance", prof, token],
+    queryFn: () => api.getBalance(prof),
+    enabled: !isDemo && !!settings,
+    retry: false,
+    staleTime: 60000,
+  });
+
   const deleteProf = useMutation({
     mutationFn: () => api.deleteProfile(prof),
     onSuccess: () => navigate("/"),
@@ -134,6 +142,50 @@ export default function Settings() {
           </>
         )}
       </div>
+
+      {/* Account balance */}
+      {balance && (
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Account Status</h2>
+          <div className="row" style={{ gap: 24 }}>
+            <div>
+              <label>Together AI</label>
+              {balance.together.status === "active" ? (
+                <div className="row" style={{ gap: 8 }}>
+                  <span className="pill gold">active</span>
+                  <a href={balance.together.dashboard} target="_blank" rel="noreferrer"
+                     className="mono muted" style={{ fontSize: "0.72rem" }}>
+                    view billing →
+                  </a>
+                </div>
+              ) : balance.together.status === "invalid_key" ? (
+                <span className="pill" style={{ borderColor: "var(--danger)", color: "var(--danger)" }}>invalid key</span>
+              ) : (
+                <span className="pill">not configured</span>
+              )}
+            </div>
+            <div>
+              <label>RunPod</label>
+              {balance.runpod.status === "active" ? (
+                <div>
+                  <span className="pill gold">
+                    ${balance.runpod.credit_balance?.toFixed(2) ?? "?"} credits
+                  </span>
+                  {balance.runpod.spend_per_hr != null && balance.runpod.spend_per_hr > 0 && (
+                    <span className="mono muted" style={{ marginLeft: 8, fontSize: "0.72rem" }}>
+                      ${balance.runpod.spend_per_hr.toFixed(4)}/hr active
+                    </span>
+                  )}
+                </div>
+              ) : balance.runpod.status === "not_configured" ? (
+                <span className="pill">not configured</span>
+              ) : (
+                <span className="pill" style={{ borderColor: "var(--danger)", color: "var(--danger)" }}>error</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* API Keys section */}
       {settings && (
