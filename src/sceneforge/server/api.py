@@ -259,7 +259,8 @@ def make_router(home: Path) -> APIRouter:
                     "spend_per_hr": me.get("currentSpendPerHr"),
                 }
             except Exception:
-                result["runpod"] = {"status": "error"}
+                has_endpoint = bool(profile.keys.runpod_endpoint or os.environ.get("RUNPOD_ENDPOINT_ID"))
+                result["runpod"] = {"status": "no endpoint configured" if not has_endpoint else "error"}
         else:
             result["runpod"] = {"status": "not_configured"}
 
