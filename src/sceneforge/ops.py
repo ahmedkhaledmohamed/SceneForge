@@ -83,6 +83,8 @@ def scene_reference_images(project: Project, scene: Scene,
     if scene.outfit_id:
         outfit = project.find_outfit(scene.outfit_id)
         refs += [project.root / item.image for item in outfit.items if item.image]
+    for ref in project.refs:
+        refs.append(project.root / ref.file)
     if project.style.reference_image:
         refs.append(project.root / project.style.reference_image)
     return refs

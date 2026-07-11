@@ -79,6 +79,13 @@ class Outfit:
 
 
 @dataclass
+class ReferenceImage:
+    file: str
+    role: str = "style"  # style | background | prop | other
+    label: str = ""
+
+
+@dataclass
 class ImageArtifact:
     file: str
     prompt: str
@@ -140,6 +147,7 @@ class Project:
     style: Style = field(default_factory=Style)
     settings: Settings = field(default_factory=Settings)
     characters: list[Character] = field(default_factory=list)
+    refs: list[ReferenceImage] = field(default_factory=list)
     outfits: list[Outfit] = field(default_factory=list)
     scenes: list[Scene] = field(default_factory=list)
     notes: str = ""
@@ -256,8 +264,10 @@ class Project:
             style=Style(**data.get("style", {})),
             settings=Settings(**data.get("settings", {})),
             characters=characters,
+            refs=[ReferenceImage(**r) for r in data.get("refs", [])],
             outfits=outfits,
             scenes=scenes,
+            notes=data.get("notes", ""),
             schema_version=SCHEMA_VERSION,
             root=root,
         )

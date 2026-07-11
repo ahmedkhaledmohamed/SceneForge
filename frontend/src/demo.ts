@@ -53,6 +53,7 @@ export const DEMO_PROJECT: Project = {
     image_options: 2, aspect: "9:16",
   },
   characters: [],
+  refs: [],
   outfits: [{
     id: "outfit-1", name: "Linen Cafe Set",
     items: [

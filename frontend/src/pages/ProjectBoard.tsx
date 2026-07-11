@@ -524,9 +524,9 @@ export default function ProjectBoard() {
     onSuccess: refresh,
     onError: (e) => toastError(String(e)),
   });
-  const addCharacter = useMutation({
-    mutationFn: (form: FormData) => api.addCharacter(prof, slug, form),
-    onSuccess: () => { toastOk("character added"); refresh(); },
+  const addRef = useMutation({
+    mutationFn: (form: FormData) => api.addProjectRef(prof, slug, form),
+    onSuccess: () => { toastOk("reference added"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
   const addScene = useMutation({
@@ -691,7 +691,7 @@ export default function ProjectBoard() {
   const keptCount = proj.scenes.flatMap((s) => s.clips).filter((c) => c.kept).length;
   const allClipsReady = proj.scenes.length > 0 &&
     proj.scenes.every((s) => s.clips.some((c) => c.status === "completed"));
-  const allChars = [...proj.profile_characters, ...proj.characters];
+  const allChars = proj.profile_characters;
   const defaultChar = allChars.find((c) => c.main)?.id ?? allChars[0]?.id ?? "";
   const selectedCount = proj.scenes.filter((s) => s.selected_image !== null).length;
   const unselectedWithImages = proj.scenes.filter((s) => s.selected_image === null && s.images.length > 0).length;
@@ -789,13 +789,18 @@ export default function ProjectBoard() {
           onSubmit={(e) => {
             e.preventDefault();
             const form = new FormData(e.currentTarget);
-            addCharacter.mutate(form);
+            addRef.mutate(form);
             e.currentTarget.reset();
           }}
         >
-          <input name="name" placeholder="character name" style={{ width: 130 }} />
-          <input name="files" type="file" accept="image/*" multiple className="mono" style={{ width: 170 }} />
-          <button className="ghost" disabled={addCharacter.isPending}>+ character</button>
+          <select name="role" style={{ width: 90 }}>
+            <option value="style">style</option>
+            <option value="background">background</option>
+            <option value="prop">prop</option>
+            <option value="other">other</option>
+          </select>
+          <input name="file" type="file" accept="image/*" className="mono" style={{ width: 170 }} />
+          <button className="ghost" disabled={addRef.isPending}>+ ref</button>
         </form>
       </div>
 
@@ -894,6 +899,22 @@ export default function ProjectBoard() {
             `${c.main ? "★ " : ""}${c.name} (${c.id}, ${c.reference_images.length} refs)`
           ).join(" · ")}
         </p>
+      )}
+
+      {proj.refs.length > 0 && (
+        <div className="row" style={{ marginTop: 6, gap: 8, flexWrap: "wrap" }}>
+          <span className="mono muted" style={{ fontSize: "0.72rem" }}>refs:</span>
+          {proj.refs.map((r, i) => (
+            <span key={i} className="pill" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {r.role}: {r.label || r.file.split("/").pop()}
+              <button
+                className="ghost"
+                style={{ padding: "0 3px", fontSize: "0.65rem", color: "var(--danger)" }}
+                onClick={() => api.deleteProjectRef(prof, slug, i).then(refresh)}
+              >×</button>
+            </span>
+          ))}
+        </div>
       )}
 
       {proj.outfits.length === 0 && proj.scenes.length === 0 && (
