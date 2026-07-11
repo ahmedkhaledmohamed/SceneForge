@@ -703,7 +703,7 @@ export default function ProjectBoard() {
         </div>
 
         <div className="toolbar-section">
-          <span className="toolbar-label">images</span>
+          <span className="toolbar-label">images — generate options → select the best</span>
           <div className="row">
             <ModelPicker
               kind="image"
@@ -722,10 +722,15 @@ export default function ProjectBoard() {
         </div>
 
         <div className="toolbar-section">
-          <span className="toolbar-label">clips</span>
+          <span className="toolbar-label">clips — 2 per selected image → compare → keep best</span>
           <div className="row">
+            <ModelPicker
+              kind="video"
+              value={proj.settings.video_model}
+              onChange={(v) => api.patchProject(prof, slug, { video_model: v }).then(refresh)}
+            />
             <button className="ghost" onClick={() => takesAll.mutate()} disabled={busy || selectedCount === 0}>
-              Generate clips ({selectedCount} scenes{takesCost > 0 ? `, ~$${takesCost.toFixed(2)}` : ""})
+              Generate {selectedCount * 2} clips from {selectedCount} scenes{takesCost > 0 ? ` (~$${takesCost.toFixed(2)})` : ""}
             </button>
           </div>
         </div>
