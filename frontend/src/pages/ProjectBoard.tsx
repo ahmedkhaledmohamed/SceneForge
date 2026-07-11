@@ -938,29 +938,13 @@ export default function ProjectBoard() {
         </div>
       )}
 
-      {proj.outfits.length > 0 && <h2>Collections</h2>}
-      {proj.outfits.map((outfit) => (
-        <div key={outfit.id}>
-          <OutfitCard prof={prof} slug={slug} outfit={outfit} allChars={allChars} busy={!!busy} refresh={refresh} />
-          {!proj.scenes.some((s) => s.outfit_id === outfit.id) && outfit.items.length > 0 && (
-            <div className="row" style={{ marginBottom: 14 }}>
-              {allChars.length > 1 ? (
-                <>
-                  <CharacterPicker characters={allChars} value={defaultChar} onChange={() => {}} />
-                  <button
-                    className="ghost"
-                    onClick={() => {
-                      const charSelect = document.querySelector(`[data-outfit-char="${outfit.id}"]`) as HTMLSelectElement | null;
-                      outfitScenes.mutate({
-                        outfitId: outfit.id,
-                        characterId: charSelect?.value || defaultChar,
-                      });
-                    }}
-                  >
-                    create pose scenes
-                  </button>
-                </>
-              ) : (
+      {proj.outfits.map((outfit) => {
+        const collectionScenes = proj.scenes.filter((s) => s.outfit_id === outfit.id);
+        return (
+          <div key={outfit.id} style={{ marginBottom: 20 }}>
+            <OutfitCard prof={prof} slug={slug} outfit={outfit} allChars={allChars} busy={!!busy} refresh={refresh} />
+            {collectionScenes.length === 0 && outfit.items.length > 0 && (
+              <div className="row" style={{ marginBottom: 10, marginLeft: 18 }}>
                 <button
                   className="ghost"
                   onClick={() => outfitScenes.mutate({
@@ -968,38 +952,74 @@ export default function ProjectBoard() {
                     characterId: defaultChar || undefined,
                   })}
                 >
-                  create scenes for {outfit.name}
-                  {defaultChar && ` (${allChars.find((c) => c.id === defaultChar)?.name})`}
+                  create scenes{defaultChar ? ` (${allChars.find((c) => c.id === defaultChar)?.name})` : ""}
                 </button>
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+              </div>
+            )}
+            {collectionScenes.length > 0 && (
+              <div style={{ marginLeft: 18, borderLeft: "2px solid var(--line)", paddingLeft: 14 }}>
+                {collectionScenes.map((scene, idx) => {
+                  const globalIdx = proj.scenes.indexOf(scene);
+                  return (
+                    <SceneCard
+                      key={scene.id}
+                      prof={prof}
+                      slug={slug}
+                      scene={scene}
+                      project={proj}
+                      refresh={refresh}
+                      busy={!!busy}
+                      isFirst={idx === 0}
+                      isLast={idx === collectionScenes.length - 1}
+                      onMove={(dir) => {
+                        const ids = proj.scenes.map((s) => s.id);
+                        const j = globalIdx + dir;
+                        [ids[globalIdx], ids[j]] = [ids[j], ids[globalIdx]];
+                        api.reorderScenes(prof, slug, ids).then(refresh).catch((e) => toastError(String(e)));
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
-      <h2>Scenes</h2>
-      {proj.scenes.length === 0 && (
-        <p className="muted">No scenes yet — hit "+ scene", or add a collection and create its scenes and create its pose scenes.</p>
-      )}
-      {proj.scenes.map((scene, idx) => (
-        <SceneCard
-          key={scene.id}
-          prof={prof}
-          slug={slug}
-          scene={scene}
-          project={proj}
-          refresh={refresh}
-          busy={!!busy}
-          isFirst={idx === 0}
-          isLast={idx === proj.scenes.length - 1}
-          onMove={(dir) => {
-            const ids = proj.scenes.map((s) => s.id);
-            const j = idx + dir;
-            [ids[idx], ids[j]] = [ids[j], ids[idx]];
-            api.reorderScenes(prof, slug, ids).then(refresh).catch((e) => toastError(String(e)));
-          }}
-        />
-      ))}
+      {(() => {
+        const standalone = proj.scenes.filter((s) => !s.outfit_id);
+        if (standalone.length === 0 && proj.outfits.length > 0) return null;
+        return (
+          <>
+            <h2>Scenes</h2>
+            {standalone.length === 0 && proj.outfits.length === 0 && (
+              <p className="muted">No scenes yet — hit "+ scene", or add a collection first.</p>
+            )}
+            {standalone.map((scene, idx) => {
+              const globalIdx = proj.scenes.indexOf(scene);
+              return (
+                <SceneCard
+                  key={scene.id}
+                  prof={prof}
+                  slug={slug}
+                  scene={scene}
+                  project={proj}
+                  refresh={refresh}
+                  busy={!!busy}
+                  isFirst={idx === 0}
+                  isLast={idx === standalone.length - 1}
+                  onMove={(dir) => {
+                    const ids = proj.scenes.map((s) => s.id);
+                    const j = globalIdx + dir;
+                    [ids[globalIdx], ids[j]] = [ids[j], ids[globalIdx]];
+                    api.reorderScenes(prof, slug, ids).then(refresh).catch((e) => toastError(String(e)));
+                  }}
+                />
+              );
+            })}
+          </>
+        );
+      })()}
     </>
   );
 }
