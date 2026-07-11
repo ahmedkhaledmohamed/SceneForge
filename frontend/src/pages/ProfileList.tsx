@@ -42,11 +42,13 @@ export default function ProfileList() {
         A profile is a brand or workspace — its characters, style defaults, and seed
         assets are shared across all projects within it.
       </p>
-      <div className="row" style={{ margin: "14px 0" }}>
-        <button onClick={() => setCreating(true)}>New profile</button>
-      </div>
+      {!isDemo && (
+        <div className="row" style={{ margin: "14px 0" }}>
+          <button onClick={() => setCreating(true)}>New profile</button>
+        </div>
+      )}
 
-      {creating && (
+      {creating && !isDemo && (
         <form
           className="card"
           onSubmit={(e) => {

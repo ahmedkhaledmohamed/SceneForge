@@ -14,7 +14,12 @@ from .api import make_router
 
 
 def create_app(home: Path) -> FastAPI:
-    app = FastAPI(title="SceneForge Studio")
+    app = FastAPI(
+        title="SceneForge Studio API",
+        description="Profile-scoped AI video production — 53 endpoints for generation, "
+                    "outfits, scenes, clips, export, and settings.",
+        version="1.0.0",
+    )
     app.include_router(make_router(home.resolve()), prefix="/api")
 
     @app.exception_handler(HTTPException)

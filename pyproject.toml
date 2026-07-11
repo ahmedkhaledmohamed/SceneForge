@@ -4,8 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sceneforge"
-version = "0.1.0"
+version = "1.0.0"
 description = "Local-first AI video production: concept to stitched short-form video with consistent visual style"
+license = "MIT"
+authors = [{name = "Ahmed Khaled"}]
 requires-python = ">=3.12"
 dependencies = [
     "typer>=0.12",
@@ -30,6 +32,8 @@ dev = [
 
 [project.urls]
 Repository = "https://github.com/ahmedkhaledmohamed/SceneForge"
+Homepage = "https://sceneforge-sandy.vercel.app"
+Studio = "https://sceneforge-studio-three.vercel.app"
 
 [project.scripts]
 sceneforge = "sceneforge.cli:app"
