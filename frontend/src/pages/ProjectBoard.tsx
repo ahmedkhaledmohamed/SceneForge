@@ -219,6 +219,17 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
     onSuccess: refresh,
     onError: (e) => toastError(String(e)),
   });
+  const { data: sceneModels } = useModels();
+  const [sceneModel, setSceneModel] = useState(project.settings.image_model);
+  const generateScene = useMutation({
+    mutationFn: () => api.generateImages(prof, slug, {
+      model: sceneModel,
+      options: project.settings.image_options,
+      scene_ids: [scene.id],
+    }),
+    onSuccess: refresh,
+    onError: (e) => toastError(String(e)),
+  });
 
   useEffect(() => {
     if (!comparing) return;
@@ -362,9 +373,24 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
         </div>
       </div>
 
+      <div className="row" style={{ margin: "8px 0" }}>
+        <ModelPicker kind="image" value={sceneModel} onChange={setSceneModel} />
+        <button
+          onClick={() => generateScene.mutate()}
+          disabled={busy || generateScene.isPending}
+          style={{ fontSize: "0.78rem" }}
+        >
+          Generate {project.settings.image_options} images
+          {" "}(~${((sceneModels?.[sceneModel]?.price ?? 0) * project.settings.image_options).toFixed(2)})
+        </button>
+        <span className="mono muted" style={{ fontSize: "0.68rem" }}>
+          {scene.refs.length} refs · {scene.images.length} images
+        </span>
+      </div>
+
       {scene.images.length === 0 ? (
-        <p className="muted" style={{ margin: "10px 0" }}>
-          no images yet — use "refine…" or the generate button above
+        <p className="muted" style={{ margin: "4px 0" }}>
+          Add reference images above, then generate.
         </p>
       ) : (() => {
         const lanes = new Map<string, { images: typeof scene.images; indices: number[] }>();
@@ -397,9 +423,17 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
                     <img src={media(prof, slug, img.file)} alt={`option ${globalIdx + 1}`} loading="lazy" />
                     <div className="cap">
                       {scene.selected_image === globalIdx ? "✓ " : ""}opt {globalIdx + 1} · {img.model}
+                      <a
+                        href={media(prof, slug, img.file)}
+                        download
+                        onClick={(e) => e.stopPropagation()}
+                        className="ghost"
+                        style={{ padding: "1px 5px", fontSize: "0.55rem", marginLeft: 2 }}
+                        title="download image"
+                      >↓</a>
                       <button
                         className="ghost"
-                        style={{ padding: "1px 5px", fontSize: "0.55rem", marginLeft: 4 }}
+                        style={{ padding: "1px 5px", fontSize: "0.55rem", marginLeft: 2 }}
                         onClick={(e) => {
                           e.stopPropagation();
                           api.createClip(prof, slug, {
@@ -725,32 +759,8 @@ export default function ProjectBoard() {
         </div>
 
         <div className="toolbar-section">
-          <span className="toolbar-label">images — generate options → select the best</span>
+          <span className="toolbar-label">clips</span>
           <div className="row">
-            <ModelPicker
-              kind="image"
-              value={imageModel ?? proj.settings.image_model}
-              onChange={setImageModel}
-            />
-            <button onClick={() => generateAll.mutate()} disabled={busy || imagesNeeded === 0}>
-              Generate {imagesNeeded} images{imgCost > 0 ? ` (~$${imgCost.toFixed(2)})` : ""}
-            </button>
-            {unselectedWithImages > 0 && (
-              <button className="ghost" onClick={() => selectAll.mutate()}>
-                auto-pick first ({unselectedWithImages})
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="toolbar-section">
-          <span className="toolbar-label">clips — create from scene images, then generate</span>
-          <div className="row">
-            <ModelPicker
-              kind="video"
-              value={proj.settings.video_model}
-              onChange={(v) => api.patchProject(prof, slug, { video_model: v }).then(refresh)}
-            />
             <button className="ghost" onClick={() => {
               api.generateAllClips(prof, slug).then(refresh).catch((e) => toastError(String(e)));
             }} disabled={busy || proj.clips.filter((c) => c.status === "pending").length === 0}>
