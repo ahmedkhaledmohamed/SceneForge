@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/ahmedkhaledmohamed/SceneForge/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmedkhaledmohamed/SceneForge/actions/workflows/ci.yml)
 
-**Local-first AI video production.** Concept to finished short-form video in one tool:
+**AI video production studio.** Concept to finished short-form video in one tool:
 
 ```
 profile → project → scenes + reference images → generate → select → clips → export
@@ -12,14 +12,16 @@ Built for a real content creator's workflow: a consistent character doll, refere
 
 ## Studio
 
-The daily-driver interface. Run locally — it serves a React SPA backed by a FastAPI JSON API:
+A React SPA backed by a FastAPI API. Deploy on Railway or run locally:
 
 ```bash
+# Railway (recommended): connect repo, add volume at /data, set TOGETHER_API_KEY
+# Or locally:
 pip install -e .
-sceneforge studio        # http://127.0.0.1:8000 (~/SceneForge as home)
+sceneforge studio
 ```
 
-Everything is **profile-scoped**: a profile is a brand/workspace with global characters, style defaults, and seeds shared across all projects within it.
+Everything is **profile-scoped**: a profile is a brand/workspace with global characters, style defaults, and API keys shared across all projects within it.
 
 ### The workflow
 

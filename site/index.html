@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SceneForge — local-first AI video production</title>
-<meta name="description" content="One pipeline from concept to finished short-form video, with one consistent look. A local-first CLI and web UI for AI video production.">
+<title>SceneForge — AI video production studio</title>
+<meta name="description" content="One pipeline from concept to finished short-form video, with one consistent look. AI video production studio with multi-reference image composition and clip generation.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=Fragment+Mono&display=swap" rel="stylesheet">
@@ -25,12 +25,12 @@
 <main>
 
 <section class="hero no-rule">
-  <p class="eyebrow">Local-first AI video production</p>
+  <p class="eyebrow">AI video production studio</p>
   <h1>Concept to final cut,<br>one consistent look.</h1>
   <p class="lede">SceneForge turns a video concept into a finished 9:16 short — character dolls wearing
   real clothing items, multi-reference image composition, video clips, and CapCut-ready exports — from
-  a Studio SPA or CLI, on your machine. A project-level <em>style anchor</em> plus profile characters
-  keep every scene visually consistent without manual prompt engineering.</p>
+  a web-based Studio with multi-reference image composition, per-scene generation, and clip creation.
+  A project-level <em>style anchor</em> plus profile characters keep every scene visually consistent.</p>
 
   <div class="filmstrip" id="filmstrip" aria-label="A scene moving through the SceneForge pipeline">
     <div class="frame" data-stage="0">
@@ -156,11 +156,11 @@
 </section>
 
 <section>
-  <p class="eyebrow">Local-first</p>
+  <p class="eyebrow">Simple storage</p>
   <h2>A project is a folder.</h2>
-  <p class="lede">No accounts, no database, no cloud dependency beyond the generation APIs you
-  choose. Profiles and projects are plain directories — <span class="mono">profile.json</span> and
-  <span class="mono">project.json</span> next to your media. The Studio SPA and CLI read the same files.</p>
+  <p class="lede">No complex database — profiles and projects are plain directories with
+  <span class="mono">profile.json</span> and <span class="mono">project.json</span> next to your media.
+  Deploy on Railway, run locally, or self-host anywhere with Docker.</p>
   <div class="term" role="img" aria-label="A SceneForge home directory tree">
 <pre style="margin:0">~/SceneForge/
 └── my-brand/
