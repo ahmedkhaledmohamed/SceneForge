@@ -430,11 +430,19 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
           caption={`opt ${viewing + 1} · ${viewingImage.model}`}
           onClose={() => setViewing(null)}
           actions={
-            <button
-              onClick={() => { select.mutate(viewing); setViewing(null); }}
-            >
-              {scene.selected_image === viewing ? "✓ selected" : "select this"}
-            </button>
+            <>
+              <button onClick={() => { select.mutate(viewing); setViewing(null); }}>
+                {scene.selected_image === viewing ? "✓ selected" : "select this"}
+              </button>
+              {scene.selected_image === viewing && (
+                <button className="ghost" onClick={() => {
+                  api.select(prof, slug, scene.id, null).then(refresh);
+                  setViewing(null);
+                }}>
+                  deselect
+                </button>
+              )}
+            </>
           }
         />
       )}
@@ -465,6 +473,7 @@ export default function ProjectBoard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
+  const [clipCount, setClipCount] = useState(2);
   const { data: models } = useModels();
 
   const generateAll = useMutation({
@@ -530,7 +539,7 @@ export default function ProjectBoard() {
   const takesAll = useMutation({
     mutationFn: () => api.generateTakesAll(prof, slug, {
       model: project?.settings.video_model,
-      count: 2,
+      count: clipCount,
     }),
     onSuccess: () => { toastOk("generating takes for all scenes"); refresh(); },
     onError: (e) => toastError(String(e)),
@@ -635,7 +644,7 @@ export default function ProjectBoard() {
     sum + Math.max(0, proj.settings.image_options - s.images.length), 0);
   const imgCost = imagesNeeded * imgPrice;
   const vidPrice = models?.[proj.settings.video_model]?.price ?? 0;
-  const takesCost = selectedCount * 2 * vidPrice;
+  const takesCost = selectedCount * clipCount * vidPrice;
 
   return (
     <>
@@ -722,15 +731,21 @@ export default function ProjectBoard() {
         </div>
 
         <div className="toolbar-section">
-          <span className="toolbar-label">clips — 2 per selected image → compare → keep best</span>
+          <span className="toolbar-label">clips — animate each selected image → compare → keep best</span>
           <div className="row">
             <ModelPicker
               kind="video"
               value={proj.settings.video_model}
               onChange={(v) => api.patchProject(prof, slug, { video_model: v }).then(refresh)}
             />
+            <input
+              type="number" min={1} max={6} value={clipCount}
+              onChange={(e) => setClipCount(Number(e.target.value))}
+              style={{ width: 50 }}
+              title="clips per scene"
+            />
             <button className="ghost" onClick={() => takesAll.mutate()} disabled={busy || selectedCount === 0}>
-              Generate {selectedCount * 2} clips from {selectedCount} scenes{takesCost > 0 ? ` (~$${takesCost.toFixed(2)})` : ""}
+              Generate {selectedCount * clipCount} clips from {selectedCount} scenes{takesCost > 0 ? ` (~$${takesCost.toFixed(2)})` : ""}
             </button>
           </div>
         </div>
