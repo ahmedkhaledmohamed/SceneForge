@@ -3,14 +3,45 @@
 create_app(home) serves:
   /api/...   — the JSON API over profiles in home (SCENEFORGE_HOME)
   /          — the built React app from sceneforge/web_dist (when present)
+
+Site-wide auth: set SCENEFORGE_PASSWORD env var to require login.
+The SPA posts to /api/site-login and stores the token.
 """
 
+import os
+import secrets
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from .api import make_router
+
+_site_tokens: set[str] = set()
+
+
+class SiteAuthMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, password: str):
+        super().__init__(app)
+        self.password = password
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if path == "/api/site-login" or path == "/api/site-check":
+            return await call_next(request)
+        if path.startswith("/assets/") or path == "/favicon.ico":
+            return await call_next(request)
+        # SPA HTML is always served (the login screen is part of it)
+        if not path.startswith("/api/"):
+            return await call_next(request)
+        token = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        if token and token in _site_tokens:
+            return await call_next(request)
+        return JSONResponse(
+            {"error": {"code": "site_auth", "message": "Site login required"}},
+            status_code=401,
+        )
 
 
 def create_app_from_env() -> FastAPI:
@@ -35,7 +66,27 @@ def create_app(home: Path) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    site_password = os.environ.get("SCENEFORGE_PASSWORD")
+    if site_password:
+        app.add_middleware(SiteAuthMiddleware, password=site_password)
+
     app.include_router(make_router(home.resolve()), prefix="/api")
+
+    @app.post("/api/site-login")
+    def site_login(payload: dict):
+        pw = os.environ.get("SCENEFORGE_PASSWORD")
+        if not pw:
+            return {"token": "no-auth", "required": False}
+        if payload.get("password") != pw:
+            raise HTTPException(401, detail={"code": "unauthorized", "message": "Wrong password"})
+        token = secrets.token_urlsafe(32)
+        _site_tokens.add(token)
+        return {"token": token}
+
+    @app.get("/api/site-check")
+    def site_check():
+        return {"required": bool(os.environ.get("SCENEFORGE_PASSWORD"))}
 
     @app.exception_handler(HTTPException)
     async def error_shape(request, exc: HTTPException):

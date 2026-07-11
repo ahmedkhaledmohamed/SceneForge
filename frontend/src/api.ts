@@ -27,6 +27,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       /* not json */
     }
     if (response.status === 401) {
+      try {
+        const body = await response.clone().json();
+        if (body?.error?.code === "site_auth") {
+          localStorage.removeItem("sf_site_token");
+          window.location.reload();
+          throw new Error("Session expired — reloading");
+        }
+      } catch { /* not json or not site_auth */ }
       setAuthToken(null);
     }
     throw new Error(message);
