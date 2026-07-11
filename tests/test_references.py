@@ -1,4 +1,4 @@
-"""Reference-image flow: characters/outfits schema, ref ordering,
+"""Reference-image flow: characters/scene-refs schema, ref ordering,
 truncation, prompt clauses, CLI commands, links export. All offline."""
 
 import json
@@ -9,17 +9,15 @@ from sceneforge import ops
 from sceneforge.cli import app
 from sceneforge.project import (
     Character,
-    ClothingItem,
-    Outfit,
     Project,
-    Scene,
+    SceneRef,
 )
 from sceneforge.prompts import DEFAULT_SUFFIX, OUTFIT_SUFFIX, compose_prompt
 
 runner = CliRunner()
 
 
-def make_outfit_project(tmp_path):
+def make_refs_project(tmp_path):
     project = Project(name="looks", root=tmp_path)
     project.style.anchor = "soft studio light"
     project.style.suffix = DEFAULT_SUFFIX
@@ -27,21 +25,24 @@ def make_outfit_project(tmp_path):
                           reference_images=["refs/characters/char-1/front.png",
                                             "refs/characters/char-1/face.png"])
     project.characters.append(character)
-    outfit = Outfit(id="outfit-1", name="Spring cafe look", items=[
-        ClothingItem(name="Linen skirt", url="https://shop/skirt",
-                     image="refs/outfits/outfit-1/skirt.jpg"),
-        ClothingItem(name="Knit cardigan", url="https://shop/cardigan",
-                     image="refs/outfits/outfit-1/cardigan.jpg"),
-        ClothingItem(name="Hair clip", url="https://shop/clip"),  # no photo
-    ])
-    project.outfits.append(outfit)
+    scene = project.add_scene("Spring cafe look", character_id="char-1",
+                              pose="standing, facing camera",
+                              refs=[
+                                  SceneRef(file="refs/scenes/scene-01/skirt.jpg",
+                                           role="garment", label="Linen skirt",
+                                           url="https://shop/skirt"),
+                                  SceneRef(file="refs/scenes/scene-01/cardigan.jpg",
+                                           role="garment", label="Knit cardigan",
+                                           url="https://shop/cardigan"),
+                                  SceneRef(file="", role="garment",
+                                           label="Hair clip",
+                                           url="https://shop/clip"),  # no photo
+                              ])
     for rel in [*character.reference_images,
-                *[i.image for i in outfit.items if i.image]]:
+                *[r.file for r in scene.refs if r.file]]:
         path = tmp_path / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"img")
-    scene = project.add_scene("Spring cafe look", character_id="char-1",
-                              outfit_id="outfit-1", pose="standing, facing camera")
     project.save()
     return project, scene
 
@@ -49,15 +50,15 @@ def make_outfit_project(tmp_path):
 # ---------------------------------------------------------------- ordering
 
 
-def test_reference_order_character_then_items(tmp_path):
-    project, scene = make_outfit_project(tmp_path)
+def test_reference_order_character_then_refs(tmp_path):
+    project, scene = make_refs_project(tmp_path)
     refs = ops.scene_reference_images(project, scene)
     names = [r.name for r in refs]
     assert names == ["front.png", "face.png", "skirt.jpg", "cardigan.jpg"]
 
 
 def test_style_reference_comes_last(tmp_path):
-    project, scene = make_outfit_project(tmp_path)
+    project, scene = make_refs_project(tmp_path)
     (tmp_path / "style.png").write_bytes(b"img")
     project.style.reference_image = "style.png"
     refs = ops.scene_reference_images(project, scene)
@@ -65,7 +66,7 @@ def test_style_reference_comes_last(tmp_path):
 
 
 def test_truncation_drops_from_tail_with_warning(tmp_path, monkeypatch):
-    project, scene = make_outfit_project(tmp_path)
+    project, scene = make_refs_project(tmp_path)
     logs = []
     captured = {}
 
@@ -90,7 +91,7 @@ def test_truncation_drops_from_tail_with_warning(tmp_path, monkeypatch):
 
 
 def test_refs_recorded_in_artifact_meta(tmp_path):
-    project, scene = make_outfit_project(tmp_path)
+    project, scene = make_refs_project(tmp_path)
     ops.run_images(project, [(scene, 1)], "fake-image", log=lambda m: None)
     meta = scene.images[0].meta
     assert meta["reference_images"] == ["front.png", "face.png",
@@ -101,25 +102,58 @@ def test_refs_recorded_in_artifact_meta(tmp_path):
 
 
 def test_prompt_has_character_and_garment_clauses(tmp_path):
-    project, scene = make_outfit_project(tmp_path)
+    project, scene = make_refs_project(tmp_path)
     prompt = compose_prompt(project, scene)
     assert "first 2 reference images" in prompt
     assert "'Mila'" in prompt
-    assert "(1) Linen skirt, (2) Knit cardigan" in prompt  # only items with photos
+    assert "(1) Linen skirt, (2) Knit cardigan" in prompt  # only refs with files
     assert "Pose: standing, facing camera" in prompt
 
 
-def test_outfit_scene_suffix_allows_logos(tmp_path):
-    project, scene = make_outfit_project(tmp_path)
+def test_garment_scene_suffix_allows_logos(tmp_path):
+    project, scene = make_refs_project(tmp_path)
     prompt = compose_prompt(project, scene)
     assert "no logos" not in prompt
     assert "no added text" in prompt
-    # non-outfit scenes keep the strict default
+    # non-garment scenes keep the strict default
     plain = project.add_scene("a plain scene")
     assert "no logos" in compose_prompt(project, plain)
 
 
 # ---------------------------------------------------------------- schema
+
+
+def test_v3_project_migrates_outfits_to_scene_refs(tmp_path):
+    """v3 project with outfits should migrate to scene.refs on load."""
+    v3 = {
+        "schema_version": 3,
+        "name": "Old",
+        "concept": "c",
+        "style": {"anchor": "a", "suffix": "s"},
+        "settings": {},
+        "characters": [],
+        "outfits": [{
+            "id": "outfit-1", "name": "Cafe look",
+            "items": [
+                {"name": "Skirt", "url": "https://shop/skirt",
+                 "image": "refs/outfits/outfit-1/skirt.jpg"},
+                {"name": "Top", "url": "https://shop/top", "image": ""},
+            ],
+        }],
+        "scenes": [{"id": "scene-01", "description": "d",
+                    "outfit_id": "outfit-1",
+                    "images": [], "selected_image": None, "clips": [],
+                    "refs": []}],
+    }
+    (tmp_path / "project.json").write_text(json.dumps(v3))
+    project = Project.load(tmp_path)
+    assert len(project.scenes[0].refs) == 2
+    assert project.scenes[0].refs[0].label == "Skirt"
+    assert project.scenes[0].refs[0].url == "https://shop/skirt"
+    assert project.scenes[0].refs[0].role == "garment"
+    project.save()
+    from sceneforge.project import SCHEMA_VERSION
+    assert json.loads((tmp_path / "project.json").read_text())["schema_version"] == SCHEMA_VERSION
 
 
 def test_v1_project_loads_with_defaults(tmp_path):
@@ -134,18 +168,18 @@ def test_v1_project_loads_with_defaults(tmp_path):
     }
     (tmp_path / "project.json").write_text(json.dumps(v1))
     project = Project.load(tmp_path)
-    assert project.characters == [] and project.outfits == []
-    assert project.scenes[0].outfit_id is None
+    assert project.characters == []
+    assert project.scenes[0].refs == []
     project.save()  # silently upgrades
     from sceneforge.project import SCHEMA_VERSION
     assert json.loads((tmp_path / "project.json").read_text())["schema_version"] == SCHEMA_VERSION
 
 
-def test_v2_roundtrip(tmp_path):
-    project, _ = make_outfit_project(tmp_path)
+def test_v4_roundtrip(tmp_path):
+    project, _ = make_refs_project(tmp_path)
     loaded = Project.load(tmp_path)
     assert loaded.find_character("char-1").name == "Mila"
-    assert loaded.find_outfit("outfit-1").items[0].url == "https://shop/skirt"
+    assert loaded.scenes[0].refs[0].url == "https://shop/skirt"
     assert loaded.scenes[0].pose == "standing, facing camera"
 
 
@@ -162,29 +196,34 @@ def make_cli_project(tmp_path):
     return tmp_path / "looks", ["--project", str(tmp_path / "looks")]
 
 
-def test_cli_character_outfit_scenes_links(tmp_path):
+def test_cli_character_scenes_links(tmp_path):
     root, p = make_cli_project(tmp_path)
     (tmp_path / "doll.png").write_bytes(b"img")
-    (tmp_path / "skirt.jpg").write_bytes(b"img")
 
     result = runner.invoke(app, [*p, "add-character", "Mila",
                                  "--ref", str(tmp_path / "doll.png")])
     assert result.exit_code == 0, result.output
     assert (root / "refs" / "characters" / "char-1" / "doll.png").is_file()
 
-    result = runner.invoke(app, [*p, "add-outfit", "Cafe look",
-                                 "--item", f"Linen skirt|https://shop/skirt|{tmp_path / 'skirt.jpg'}",
-                                 "--item", "Hair clip|https://shop/clip|"])
+    # Add a scene, then attach refs directly (no CLI outfit commands)
+    result = runner.invoke(app, [*p, "add-scenes",
+                                 "--scene", "Spring cafe look"])
     assert result.exit_code == 0, result.output
-    assert (root / "refs" / "outfits" / "outfit-1" / "skirt.jpg").is_file()
 
-    result = runner.invoke(app, [*p, "add-outfit-scenes", "outfit-1"])
-    assert result.exit_code == 0, result.output
-    data = json.loads((root / "project.json").read_text())
-    assert len(data["scenes"]) == 2
-    assert all(s["outfit_id"] == "outfit-1" and s["character_id"] == "char-1"
-               for s in data["scenes"])
-    assert data["scenes"][0]["pose"] != data["scenes"][1]["pose"]
+    import shutil
+    project = Project.load(root)
+    scene = project.scenes[0]
+    scene.character_id = "char-1"
+    ref_dir = project.scene_refs_dir(scene)
+    ref_dir.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "skirt.jpg").write_bytes(b"img")
+    shutil.copy2(tmp_path / "skirt.jpg", ref_dir / "skirt.jpg")
+    scene.refs.append(SceneRef(
+        file=f"refs/scenes/{scene.id}/skirt.jpg",
+        role="garment", label="Linen skirt", url="https://shop/skirt"))
+    scene.refs.append(SceneRef(
+        file="", role="garment", label="Hair clip", url="https://shop/clip"))
+    project.save()
 
     result = runner.invoke(app, [*p, "links"])
     assert result.exit_code == 0

@@ -159,35 +159,6 @@ def create_app(base_dir: Path) -> FastAPI:
             )
 
         outfits_html = ""
-        if p.outfits:
-            sections = []
-            for outfit in p.outfits:
-                rows = []
-                link_lines = [outfit.name]
-                for item in outfit.items:
-                    thumb = (
-                        f"<img src='/p/{slug}/media/{item.image}' loading='lazy' "
-                        "style='width:44px;border-radius:4px;vertical-align:middle'> "
-                        if item.image else ""
-                    )
-                    link = (f"<a href='{html.escape(item.url)}' target='_blank'>"
-                            f"{html.escape(item.name)}</a>" if item.url
-                            else html.escape(item.name))
-                    rows.append(f"<li>{thumb}{link}</li>")
-                    link_lines.append(f"{item.name} — {item.url}" if item.url
-                                      else item.name)
-                block = html.escape("\n".join(link_lines))
-                sections.append(
-                    f"<div class='scene'><b>{outfit.id}</b> — "
-                    f"{html.escape(outfit.name)}"
-                    f"<ul style='list-style:none;padding:0'>{''.join(rows)}</ul>"
-                    f"<details><summary class='muted'>shop-links block</summary>"
-                    f"<pre id='links-{outfit.id}'>{block}</pre>"
-                    f"<button class='subtle' "
-                    f"onclick=\"navigator.clipboard.writeText(document.getElementById('links-{outfit.id}').textContent);this.textContent='copied'\">"
-                    "copy</button></details></div>"
-                )
-            outfits_html = f"<h2>Outfits</h2>{''.join(sections)}"
 
         scenes_html = []
         for sc in p.scenes:
@@ -212,8 +183,8 @@ def create_app(base_dir: Path) -> FastAPI:
                 if clip else "<span class='muted'>no clip yet</span>"
             )
             context_bits = []
-            if sc.outfit_id:
-                context_bits.append(sc.outfit_id)
+            if sc.refs:
+                context_bits.append(f"{len(sc.refs)} refs")
             if sc.character_id:
                 context_bits.append(sc.character_id)
             if sc.pose:

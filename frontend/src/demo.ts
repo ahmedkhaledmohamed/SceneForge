@@ -35,8 +35,8 @@ export const DEMO_PROFILE: ProfileDoc = {
 };
 
 export const DEMO_PROJECTS: ProjectSummary[] = [
-  { slug: "spring-cafe-look", name: "Spring Cafe Look", concept: "cozy spring morning cafe outfit", scenes: 2, outfits: 1, clips: 4, kept: 2 },
-  { slug: "summer-park-set", name: "Summer Park Set", concept: "bright outdoor park outfit styling", scenes: 2, outfits: 1, clips: 0, kept: 0 },
+  { slug: "spring-cafe-look", name: "Spring Cafe Look", concept: "cozy spring morning cafe outfit", scenes: 2, refs: 4, clips: 4, kept: 2 },
+  { slug: "summer-park-set", name: "Summer Park Set", concept: "bright outdoor park outfit styling", scenes: 2, refs: 0, clips: 0, kept: 0 },
 ];
 
 export const DEMO_PROJECT: Project = {
@@ -54,20 +54,16 @@ export const DEMO_PROJECT: Project = {
   },
   characters: [],
   refs: [],
-  outfits: [{
-    id: "outfit-1", name: "Linen Cafe Set",
-    items: [
-      { name: "Linen midi skirt", url: "https://shop.example/skirt", image: null },
-      { name: "Knit cardigan", url: "https://shop.example/cardigan", image: null },
-      { name: "Canvas tote", url: "https://shop.example/tote", image: null },
-    ],
-  }],
   scenes: [
     {
       id: "scene-01",
       description: "Mila standing in a sunlit cafe doorway, full outfit visible head to toe",
       pose: "standing, facing the camera, full outfit visible head to toe",
-      character_id: "pchar-1", outfit_id: "outfit-1", style_override: null,
+      character_id: "pchar-1", style_override: null,
+      refs: [
+        { file: "refs/scenes/scene-01/skirt.jpg", role: "garment", label: "Linen midi skirt", url: "https://shop.example/skirt" },
+        { file: "refs/scenes/scene-01/cardigan.jpg", role: "garment", label: "Knit cardigan", url: "https://shop.example/cardigan" },
+      ],
       images: [
         { file: "images/scene-01/opt-1.png", prompt: "(demo)", model: "flux-2-pro", created_at: "2026-07-10T10:00:00Z", meta: { cost_usd: 0.03 } },
         { file: "images/scene-01/opt-2.png", prompt: "(demo)", model: "flux-2-pro", created_at: "2026-07-10T10:01:00Z", meta: { cost_usd: 0.03 } },
@@ -83,7 +79,11 @@ export const DEMO_PROJECT: Project = {
       id: "scene-02",
       description: "Mila three-quarter turn, looking over the shoulder, showcasing the outfit from a different angle",
       pose: "three-quarter turn, looking over the shoulder",
-      character_id: "pchar-1", outfit_id: "outfit-1", style_override: null,
+      character_id: "pchar-1", style_override: null,
+      refs: [
+        { file: "refs/scenes/scene-01/skirt.jpg", role: "garment", label: "Linen midi skirt", url: "https://shop.example/skirt" },
+        { file: "refs/scenes/scene-01/cardigan.jpg", role: "garment", label: "Knit cardigan", url: "https://shop.example/cardigan" },
+      ],
       images: [
         { file: "images/scene-02/opt-1.png", prompt: "(demo)", model: "flux-2-pro", created_at: "2026-07-10T10:02:00Z", meta: { cost_usd: 0.03 } },
         { file: "images/scene-02/opt-2.png", prompt: "(demo)", model: "flux-2-pro", created_at: "2026-07-10T10:03:00Z", meta: { cost_usd: 0.03 } },
@@ -103,14 +103,14 @@ export const DEMO_PROJECT: Project = {
 };
 
 export const DEMO_HISTORY = [
-  { type: "image" as const, scene_id: "scene-01", outfit_id: "outfit-1", file: "images/scene-01/opt-1.png", prompt: "(demo) warm golden hour light, Mila in cafe doorway", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:00:00Z" },
-  { type: "image" as const, scene_id: "scene-01", outfit_id: "outfit-1", file: "images/scene-01/opt-2.png", prompt: "(demo) warm golden hour light, Mila in cafe doorway", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:01:00Z" },
-  { type: "image" as const, scene_id: "scene-02", outfit_id: "outfit-1", file: "images/scene-02/opt-1.png", prompt: "(demo) warm golden hour, Mila three-quarter turn", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:02:00Z" },
-  { type: "image" as const, scene_id: "scene-02", outfit_id: "outfit-1", file: "images/scene-02/opt-2.png", prompt: "(demo) warm golden hour, Mila three-quarter turn", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:03:00Z" },
-  { type: "clip" as const, scene_id: "scene-01", outfit_id: "outfit-1", file: "clips/scene-01/take-01.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 1, kept: true, cost_usd: 0.18, created_at: "2026-07-10T10:05:00Z" },
-  { type: "clip" as const, scene_id: "scene-01", outfit_id: "outfit-1", file: "clips/scene-01/take-02.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 2, kept: false, cost_usd: 0.18, created_at: "2026-07-10T10:06:00Z" },
-  { type: "clip" as const, scene_id: "scene-02", outfit_id: "outfit-1", file: "clips/scene-02/take-01.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 1, kept: true, cost_usd: 0.18, created_at: "2026-07-10T10:07:00Z" },
-  { type: "clip" as const, scene_id: "scene-02", outfit_id: "outfit-1", file: "clips/scene-02/take-02.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 2, kept: false, cost_usd: 0.18, created_at: "2026-07-10T10:08:00Z" },
+  { type: "image" as const, scene_id: "scene-01", file: "images/scene-01/opt-1.png", prompt: "(demo) warm golden hour light, Mila in cafe doorway", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:00:00Z" },
+  { type: "image" as const, scene_id: "scene-01", file: "images/scene-01/opt-2.png", prompt: "(demo) warm golden hour light, Mila in cafe doorway", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:01:00Z" },
+  { type: "image" as const, scene_id: "scene-02", file: "images/scene-02/opt-1.png", prompt: "(demo) warm golden hour, Mila three-quarter turn", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:02:00Z" },
+  { type: "image" as const, scene_id: "scene-02", file: "images/scene-02/opt-2.png", prompt: "(demo) warm golden hour, Mila three-quarter turn", model: "flux-2-pro", cost_usd: 0.03, created_at: "2026-07-10T10:03:00Z" },
+  { type: "clip" as const, scene_id: "scene-01", file: "clips/scene-01/take-01.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 1, kept: true, cost_usd: 0.18, created_at: "2026-07-10T10:05:00Z" },
+  { type: "clip" as const, scene_id: "scene-01", file: "clips/scene-01/take-02.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 2, kept: false, cost_usd: 0.18, created_at: "2026-07-10T10:06:00Z" },
+  { type: "clip" as const, scene_id: "scene-02", file: "clips/scene-02/take-01.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 1, kept: true, cost_usd: 0.18, created_at: "2026-07-10T10:07:00Z" },
+  { type: "clip" as const, scene_id: "scene-02", file: "clips/scene-02/take-02.mp4", prompt: "(demo)", model: "kling-2.1", status: "completed", take: 2, kept: false, cost_usd: 0.18, created_at: "2026-07-10T10:08:00Z" },
 ];
 
 export const DEMO_MODELS = {

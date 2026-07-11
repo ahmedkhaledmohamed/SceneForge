@@ -49,13 +49,12 @@ def _character_clause(project: Project, scene: Scene, profile=None) -> str | Non
 
 
 def _garment_clause(project: Project, scene: Scene) -> str | None:
-    if not scene.outfit_id:
+    garments = [r for r in scene.refs if r.role == "garment" and r.file]
+    if not garments:
         return None
-    outfit = project.find_outfit(scene.outfit_id)
-    with_images = [item for item in outfit.items if item.image]
-    if not with_images:
+    listing = ", ".join(f"({i}) {r.label}" for i, r in enumerate(garments, 1) if r.label)
+    if not listing:
         return None
-    listing = ", ".join(f"({i}) {item.name}" for i, item in enumerate(with_images, 1))
     return (
         "The subject is wearing exactly the clothing items shown in the remaining "
         f"reference images, in order: {listing}. Reproduce every garment "
@@ -71,7 +70,8 @@ def compose_prompt(project: Project, scene: Scene, profile=None) -> str:
     if scene.pose:
         description = f"{description.rstrip('.')}. Pose: {scene.pose}"
     suffix = project.style.suffix
-    if scene.outfit_id and suffix == DEFAULT_SUFFIX:
+    has_garments = any(r.role == "garment" for r in scene.refs)
+    if has_garments and suffix == DEFAULT_SUFFIX:
         suffix = OUTFIT_SUFFIX
     parts = [
         anchor,

@@ -114,20 +114,6 @@ export const api = {
   patchProject: (prof: string, slug: string, body: unknown) =>
     request<Project>(`${p(prof, slug)}`, patch(body)),
 
-  addOutfit: (prof: string, slug: string, name: string) =>
-    request(`${p(prof, slug)}/outfits`, json({ name })),
-  addItem: (prof: string, slug: string, oid: string, form: FormData) =>
-    request(`${p(prof, slug)}/outfits/${oid}/items`, { method: "POST", body: form }),
-  processOutfit: (prof: string, slug: string, oid: string, body: unknown) =>
-    request(`${p(prof, slug)}/outfits/${oid}/process`, json(body)),
-  addItemsBulk: (prof: string, slug: string, oid: string, form: FormData) =>
-    request(`${p(prof, slug)}/outfits/${oid}/items/bulk`, { method: "POST", body: form }),
-  deleteOutfit: (prof: string, slug: string, oid: string) =>
-    request(`${p(prof, slug)}/outfits/${oid}`, { method: "DELETE" }),
-  deleteItem: (prof: string, slug: string, oid: string, index: number) =>
-    request(`${p(prof, slug)}/outfits/${oid}/items/${index}`, { method: "DELETE" }),
-  links: (prof: string, slug: string, oid: string) =>
-    request<string>(`${p(prof, slug)}/outfits/${oid}/links`),
   addProjectRef: (prof: string, slug: string, form: FormData) =>
     request(`${p(prof, slug)}/refs`, { method: "POST", body: form }),
   deleteProjectRef: (prof: string, slug: string, index: number) =>
@@ -139,8 +125,14 @@ export const api = {
     request(`${p(prof, slug)}/scenes/bulk`, json(body)),
   addScene: (prof: string, slug: string, body: unknown) =>
     request(`${p(prof, slug)}/scenes`, json(body)),
-  scenesFromOutfit: (prof: string, slug: string, body: unknown) =>
-    request(`${p(prof, slug)}/scenes/from-outfit`, json(body)),
+  addSceneRef: (prof: string, slug: string, sid: string, form: FormData) =>
+    request(`${p(prof, slug)}/scenes/${sid}/refs`, { method: "POST", body: form }),
+  addSceneRefsBulk: (prof: string, slug: string, sid: string, form: FormData) =>
+    request(`${p(prof, slug)}/scenes/${sid}/refs/bulk`, { method: "POST", body: form }),
+  deleteSceneRef: (prof: string, slug: string, sid: string, index: number) =>
+    request(`${p(prof, slug)}/scenes/${sid}/refs/${index}`, { method: "DELETE" }),
+  sceneLinks: (prof: string, slug: string, sid: string) =>
+    request<string>(`${p(prof, slug)}/scenes/${sid}/links`),
   generateTakesAll: (prof: string, slug: string, body: unknown) =>
     request(`${p(prof, slug)}/generate-takes-all`, json(body)),
   reorderScenes: (prof: string, slug: string, sceneIds: string[]) =>

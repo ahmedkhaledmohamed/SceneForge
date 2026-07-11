@@ -1,14 +1,14 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, media } from "../api";
 import JobBanner from "../components/JobBanner";
 import Lightbox from "../components/Lightbox";
 import { toastError, toastOk } from "../components/toast";
-import { DEMO_MODELS, DEMO_PROJECT } from "../demo";
+import { DEMO_PROJECT } from "../demo";
 import { useIsDemo } from "../DemoContext";
 import { useInvalidateProject, useModels, useProject } from "../hooks";
-import type { Character, Outfit, Project, Scene } from "../types";
+import type { Character, Project, Scene } from "../types";
 
 function ModelPicker({ kind, value, onChange }: {
   kind: "image" | "video"; value: string; onChange: (v: string) => void;
@@ -40,136 +40,6 @@ function CharacterPicker({ characters, value, onChange }: {
         </option>
       ))}
     </select>
-  );
-}
-
-function OutfitCard({ prof, slug, outfit, allChars, busy, refresh }: {
-  prof: string; slug: string; outfit: Outfit; allChars: Character[];
-  busy: boolean; refresh: () => void;
-}) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [copied, setCopied] = useState(false);
-
-  const addItem = useMutation({
-    mutationFn: (form: FormData) => api.addItem(prof, slug, outfit.id, form),
-    onSuccess: refresh,
-    onError: (e) => toastError(String(e)),
-  });
-  const deleteItem = useMutation({
-    mutationFn: (index: number) => api.deleteItem(prof, slug, outfit.id, index),
-    onSuccess: refresh,
-    onError: (e) => toastError(String(e)),
-  });
-  const deleteOutfit = useMutation({
-    mutationFn: () => api.deleteOutfit(prof, slug, outfit.id),
-    onSuccess: () => { toastOk("collection deleted"); refresh(); },
-    onError: (e) => toastError(String(e)),
-  });
-  const bulkItems = useMutation({
-    mutationFn: (files: FileList) => {
-      const form = new FormData();
-      for (const f of files) form.append("files", f);
-      return api.addItemsBulk(prof, slug, outfit.id, form);
-    },
-    onSuccess: () => { toastOk("items added"); refresh(); },
-    onError: (e) => toastError(String(e)),
-  });
-  const processOutfit = useMutation({
-    mutationFn: () => {
-      const charId = allChars.find((c) => c.main)?.id ?? allChars[0]?.id;
-      return api.processOutfit(prof, slug, outfit.id, { character_id: charId });
-    },
-    onSuccess: () => { toastOk("processing collection — scenes + images"); refresh(); },
-    onError: (e) => toastError(String(e)),
-  });
-
-  return (
-    <div className="card">
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <b>{outfit.name}</b>
-        <div className="row">
-          <button
-            className="ghost"
-            onClick={async () => {
-              const text = await api.links(prof, slug, outfit.id);
-              await navigator.clipboard.writeText(text);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            }}
-          >
-            {copied ? "copied" : "copy links"}
-          </button>
-          <button
-            className="ghost"
-            onClick={() => processOutfit.mutate()}
-            disabled={busy || processOutfit.isPending}
-          >
-            {outfit.items.length > 0 ? "process" : "needs items"}
-          </button>
-          <button
-            className="ghost"
-            style={{ color: "var(--red, #c44)" }}
-            onClick={() => { if (confirm(`Delete collection "${outfit.name}"?`)) deleteOutfit.mutate(); }}
-          >
-            delete
-          </button>
-        </div>
-      </div>
-      {outfit.items.map((item, i) => (
-        <div className="item-row" key={i}>
-          {item.image && <img src={media(prof, slug, item.image)} alt="" />}
-          {item.url ? <a href={item.url} target="_blank" rel="noreferrer">{item.name}</a> : <span>{item.name}</span>}
-          <button
-            className="ghost"
-            style={{ marginLeft: "auto", fontSize: "0.8rem", color: "var(--red, #c44)" }}
-            onClick={() => deleteItem.mutate(i)}
-            title="remove item"
-          >
-            ×
-          </button>
-        </div>
-      ))}
-      <form
-        className="row"
-        style={{ marginTop: 10 }}
-        onSubmit={(e) => {
-          e.preventDefault();
-          const form = new FormData(e.currentTarget);
-          const file = fileRef.current?.files?.[0];
-          if (file) form.set("image", file);
-          addItem.mutate(form);
-          e.currentTarget.reset();
-        }}
-      >
-        <input name="name" placeholder="item name" required style={{ width: 140 }} />
-        <input name="url" placeholder="shop URL" style={{ width: 170 }} />
-        <input ref={fileRef} type="file" accept="image/*" className="mono" style={{ width: 180 }} />
-        <button className="ghost" disabled={addItem.isPending}>add item</button>
-      </form>
-      <div
-        className="drop-zone"
-        style={{
-          marginTop: 8, padding: "12px 16px", borderRadius: 8,
-          border: "1px dashed var(--line)", textAlign: "center",
-          fontSize: "0.78rem", color: "var(--taupe)", cursor: "pointer",
-        }}
-        onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = "var(--gold)"; }}
-        onDragLeave={(e) => { e.currentTarget.style.borderColor = "var(--line)"; }}
-        onDrop={(e) => {
-          e.preventDefault();
-          e.currentTarget.style.borderColor = "var(--line)";
-          if (e.dataTransfer.files.length) bulkItems.mutate(e.dataTransfer.files);
-        }}
-        onClick={() => {
-          const input = document.createElement("input");
-          input.type = "file"; input.accept = "image/*"; input.multiple = true;
-          input.onchange = () => { if (input.files?.length) bulkItems.mutate(input.files); };
-          input.click();
-        }}
-      >
-        {bulkItems.isPending ? "uploading…" : "drop product photos here (bulk add items)"}
-      </div>
-    </div>
   );
 }
 
@@ -312,6 +182,8 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
   const [refineOpen, setRefineOpen] = useState(false);
   const [viewing, setViewing] = useState<number | null>(null);
   const [comparing, setComparing] = useState(false);
+  const [copiedLinks, setCopiedLinks] = useState(false);
+  const [refDropHighlight, setRefDropHighlight] = useState(false);
   const imgImportRef = useRef<HTMLInputElement>(null);
 
   const select = useMutation({
@@ -333,6 +205,20 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
     onSuccess: () => { toastOk("scene deleted"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
+  const addRefsBulk = useMutation({
+    mutationFn: (files: FileList) => {
+      const form = new FormData();
+      for (const f of files) form.append("files", f);
+      return api.addSceneRefsBulk(prof, slug, scene.id, form);
+    },
+    onSuccess: () => { toastOk("refs added"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+  const deleteRef = useMutation({
+    mutationFn: (index: number) => api.deleteSceneRef(prof, slug, scene.id, index),
+    onSuccess: refresh,
+    onError: (e) => toastError(String(e)),
+  });
 
   useEffect(() => {
     if (!comparing) return;
@@ -346,6 +232,7 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
 
   const completedTakes = scene.clips.filter((c) => c.status === "completed").length;
   const viewingImage = viewing !== null ? scene.images[viewing] : null;
+  const hasRefUrls = scene.refs.some((r) => r.url);
 
   return (
     <div className="card">
@@ -353,7 +240,7 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
         <div>
           <b>{scene.id}</b> — {scene.description}
           <div className="muted mono">
-            {[scene.outfit_id, scene.character_id, scene.pose].filter(Boolean).join(" · ")}
+            {[scene.character_id, scene.pose].filter(Boolean).join(" · ")}
           </div>
         </div>
         <div className="row">
@@ -393,6 +280,85 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
           >
             ×
           </button>
+        </div>
+      </div>
+
+      {/* Scene refs: pills + drop zone */}
+      <div style={{ marginTop: 6 }}>
+        {scene.refs.length > 0 && (
+          <div className="row" style={{ gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+            {scene.refs.map((ref, i) => (
+              <span
+                key={i}
+                className="pill"
+                style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+              >
+                {ref.file && (
+                  <img
+                    src={media(prof, slug, ref.file)}
+                    alt=""
+                    style={{ width: 18, height: 18, borderRadius: 3, objectFit: "cover" }}
+                  />
+                )}
+                {ref.role}: {ref.label || ref.file.split("/").pop()}
+                {ref.url && (
+                  <a
+                    href={ref.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: "0.65rem" }}
+                    title={ref.url}
+                  >
+                    ↗
+                  </a>
+                )}
+                <button
+                  className="ghost"
+                  style={{ padding: "0 3px", fontSize: "0.65rem", color: "var(--danger, var(--red, #c44))" }}
+                  onClick={() => deleteRef.mutate(i)}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            {hasRefUrls && (
+              <button
+                className="ghost"
+                style={{ fontSize: "0.72rem" }}
+                onClick={async () => {
+                  const text = await api.sceneLinks(prof, slug, scene.id);
+                  await navigator.clipboard.writeText(text);
+                  setCopiedLinks(true);
+                  setTimeout(() => setCopiedLinks(false), 1500);
+                }}
+              >
+                {copiedLinks ? "copied" : "copy links"}
+              </button>
+            )}
+          </div>
+        )}
+        <div
+          style={{
+            padding: "8px 12px", borderRadius: 8,
+            border: `1px dashed ${refDropHighlight ? "var(--gold)" : "var(--line)"}`,
+            textAlign: "center", fontSize: "0.72rem", color: "var(--taupe)",
+            cursor: "pointer",
+          }}
+          onDragOver={(e) => { e.preventDefault(); setRefDropHighlight(true); }}
+          onDragLeave={() => setRefDropHighlight(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setRefDropHighlight(false);
+            if (e.dataTransfer.files.length) addRefsBulk.mutate(e.dataTransfer.files);
+          }}
+          onClick={() => {
+            const input = document.createElement("input");
+            input.type = "file"; input.accept = "image/*"; input.multiple = true;
+            input.onchange = () => { if (input.files?.length) addRefsBulk.mutate(input.files); };
+            input.click();
+          }}
+        >
+          {addRefsBulk.isPending ? "uploading…" : "drop reference images here"}
         </div>
       </div>
 
@@ -496,7 +462,6 @@ export default function ProjectBoard() {
   const [imageModel, setImageModel] = useState<string | null>(null);
   const [exported, setExported] = useState<string | null>(null);
   const [addingScene, setAddingScene] = useState(false);
-  const [addingCollection, setAddingCollection] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
@@ -507,20 +472,6 @@ export default function ProjectBoard() {
       api.generateImages(prof, slug, {
         model: imageModel ?? project?.settings.image_model,
         options: project?.settings.image_options,
-      }),
-    onSuccess: refresh,
-    onError: (e) => toastError(String(e)),
-  });
-  const addOutfit = useMutation({
-    mutationFn: (name: string) => api.addOutfit(prof, slug, name),
-    onSuccess: refresh,
-    onError: (e) => toastError(String(e)),
-  });
-  const outfitScenes = useMutation({
-    mutationFn: ({ outfitId, characterId }: { outfitId: string; characterId?: string }) =>
-      api.scenesFromOutfit(prof, slug, {
-        outfit_id: outfitId,
-        character_id: characterId || undefined,
       }),
     onSuccess: refresh,
     onError: (e) => toastError(String(e)),
@@ -612,24 +563,6 @@ export default function ProjectBoard() {
           </span>
         </div>
 
-        {dp.outfits.length > 0 && <h2>Collections</h2>}
-        {dp.outfits.map((outfit) => (
-          <div key={outfit.id} className="card">
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <b>{outfit.name}</b>
-              <div className="row">
-                <button className="ghost" disabled>copy links</button>
-                <button className="ghost" disabled>process</button>
-              </div>
-            </div>
-            {outfit.items.map((item, i) => (
-              <div className="item-row" key={i}>
-                {item.url ? <a href={item.url} target="_blank" rel="noreferrer">{item.name}</a> : <span>{item.name}</span>}
-              </div>
-            ))}
-          </div>
-        ))}
-
         <h2>Scenes</h2>
         {dp.scenes.map((scene, si) => (
           <div key={scene.id} className="card">
@@ -637,7 +570,7 @@ export default function ProjectBoard() {
               <div>
                 <b>{scene.id}</b> — {scene.description}
                 <div className="muted mono" style={{ fontSize: "0.75rem" }}>
-                  {[scene.outfit_id, scene.character_id, scene.pose].filter(Boolean).join(" · ")}
+                  {[scene.character_id, scene.pose].filter(Boolean).join(" · ")}
                 </div>
               </div>
               <div className="row">
@@ -776,7 +709,6 @@ export default function ProjectBoard() {
             {brainstorm.isPending ? "thinking…" : "brainstorm scenes"}
           </button>
         )}
-        <button className="ghost" onClick={() => setAddingCollection(true)}>+ collection</button>
         <form
           className="row"
           onSubmit={(e) => {
@@ -853,24 +785,6 @@ export default function ProjectBoard() {
         </div>
       )}
 
-      {addingCollection && (
-        <form
-          className="card"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
-            if (name) { addOutfit.mutate(name); setAddingCollection(false); }
-          }}
-        >
-          <label>Collection name</label>
-          <input name="name" required autoFocus placeholder="e.g. Spring Cafe Set" style={{ width: "100%" }} />
-          <div className="row" style={{ marginTop: 10 }}>
-            <button type="submit" disabled={addOutfit.isPending}>create</button>
-            <button type="button" className="ghost" onClick={() => setAddingCollection(false)}>cancel</button>
-          </div>
-        </form>
-      )}
-
       {addingScene && (
         <form
           className="card"
@@ -928,98 +842,39 @@ export default function ProjectBoard() {
         </div>
       )}
 
-      {proj.outfits.length === 0 && proj.scenes.length === 0 && (
+      {proj.scenes.length === 0 && (
         <div className="card" style={{ borderColor: "var(--gold-dim)", marginTop: 14 }}>
           <b>Getting started</b>
           <p className="muted" style={{ margin: "4px 0" }}>
-            1. Click <b>+ collection</b> and name it &nbsp; 2. Drop product photos onto the collection card &nbsp;
-            3. Click <b>process</b> — scenes, images, and selection happen automatically
+            1. Click <b>+ scene</b> and describe a visual moment &nbsp; 2. Drop reference images onto the scene card &nbsp;
+            3. Click <b>Generate</b> — images appear automatically
           </p>
         </div>
       )}
 
-      {proj.outfits.map((outfit) => {
-        const collectionScenes = proj.scenes.filter((s) => s.outfit_id === outfit.id);
-        return (
-          <div key={outfit.id} style={{ marginBottom: 20 }}>
-            <OutfitCard prof={prof} slug={slug} outfit={outfit} allChars={allChars} busy={!!busy} refresh={refresh} />
-            {collectionScenes.length === 0 && outfit.items.length > 0 && (
-              <div className="row" style={{ marginBottom: 10, marginLeft: 18 }}>
-                <button
-                  className="ghost"
-                  onClick={() => outfitScenes.mutate({
-                    outfitId: outfit.id,
-                    characterId: defaultChar || undefined,
-                  })}
-                >
-                  create scenes{defaultChar ? ` (${allChars.find((c) => c.id === defaultChar)?.name})` : ""}
-                </button>
-              </div>
-            )}
-            {collectionScenes.length > 0 && (
-              <div style={{ marginLeft: 18, borderLeft: "2px solid var(--line)", paddingLeft: 14 }}>
-                {collectionScenes.map((scene, idx) => {
-                  const globalIdx = proj.scenes.indexOf(scene);
-                  return (
-                    <SceneCard
-                      key={scene.id}
-                      prof={prof}
-                      slug={slug}
-                      scene={scene}
-                      project={proj}
-                      refresh={refresh}
-                      busy={!!busy}
-                      isFirst={idx === 0}
-                      isLast={idx === collectionScenes.length - 1}
-                      onMove={(dir) => {
-                        const ids = proj.scenes.map((s) => s.id);
-                        const j = globalIdx + dir;
-                        [ids[globalIdx], ids[j]] = [ids[j], ids[globalIdx]];
-                        api.reorderScenes(prof, slug, ids).then(refresh).catch((e) => toastError(String(e)));
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {(() => {
-        const standalone = proj.scenes.filter((s) => !s.outfit_id);
-        if (standalone.length === 0 && proj.outfits.length > 0) return null;
-        return (
-          <>
-            <h2>Scenes</h2>
-            {standalone.length === 0 && proj.outfits.length === 0 && (
-              <p className="muted">No scenes yet — hit "+ scene", or add a collection first.</p>
-            )}
-            {standalone.map((scene, idx) => {
-              const globalIdx = proj.scenes.indexOf(scene);
-              return (
-                <SceneCard
-                  key={scene.id}
-                  prof={prof}
-                  slug={slug}
-                  scene={scene}
-                  project={proj}
-                  refresh={refresh}
-                  busy={!!busy}
-                  isFirst={idx === 0}
-                  isLast={idx === standalone.length - 1}
-                  onMove={(dir) => {
-                    const ids = proj.scenes.map((s) => s.id);
-                    const j = globalIdx + dir;
-                    [ids[globalIdx], ids[j]] = [ids[j], ids[globalIdx]];
-                    api.reorderScenes(prof, slug, ids).then(refresh).catch((e) => toastError(String(e)));
-                  }}
-                />
-              );
-            })}
-          </>
-        );
-      })()}
+      <h2>Scenes</h2>
+      {proj.scenes.length === 0 && (
+        <p className="muted">No scenes yet — hit "+ scene" or "brainstorm scenes" to get started.</p>
+      )}
+      {proj.scenes.map((scene, idx) => (
+        <SceneCard
+          key={scene.id}
+          prof={prof}
+          slug={slug}
+          scene={scene}
+          project={proj}
+          refresh={refresh}
+          busy={!!busy}
+          isFirst={idx === 0}
+          isLast={idx === proj.scenes.length - 1}
+          onMove={(dir) => {
+            const ids = proj.scenes.map((s) => s.id);
+            const j = idx + dir;
+            [ids[idx], ids[j]] = [ids[j], ids[idx]];
+            api.reorderScenes(prof, slug, ids).then(refresh).catch((e) => toastError(String(e)));
+          }}
+        />
+      ))}
     </>
   );
 }

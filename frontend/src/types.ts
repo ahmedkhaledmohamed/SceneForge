@@ -1,3 +1,10 @@
+export interface SceneRef {
+  file: string;
+  role: string;
+  label: string;
+  url: string | null;
+}
+
 export interface ImageArtifact {
   file: string;
   prompt: string;
@@ -27,24 +34,12 @@ export interface Scene {
   description: string;
   pose: string | null;
   character_id: string | null;
-  outfit_id: string | null;
   style_override: string | null;
+  refs: SceneRef[];
   images: ImageArtifact[];
   selected_image: number | null;
   clips: ClipArtifact[];
   prompt_preview?: string | null;
-}
-
-export interface ClothingItem {
-  name: string;
-  url: string | null;
-  image: string | null;
-}
-
-export interface Outfit {
-  id: string;
-  name: string;
-  items: ClothingItem[];
 }
 
 export interface Character {
@@ -75,7 +70,6 @@ export interface Project {
   };
   characters: Character[];
   refs: ReferenceImage[];
-  outfits: Outfit[];
   scenes: Scene[];
   job: Job | null;
   spent_usd: number;
@@ -88,7 +82,7 @@ export interface ProjectSummary {
   name: string;
   concept: string;
   scenes: number;
-  outfits: number;
+  refs: number;
   clips: number;
   kept: number;
 }
@@ -144,7 +138,6 @@ export interface ModelInfo {
 export interface HistoryRow {
   type: "image" | "clip";
   scene_id: string;
-  outfit_id: string | null;
   file: string;
   prompt: string;
   model: string;

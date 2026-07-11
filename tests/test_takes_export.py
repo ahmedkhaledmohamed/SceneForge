@@ -1,13 +1,14 @@
 """Multi-take generation, keep marking, and CapCut export. Offline."""
 
 import json
+import shutil
 
 import pytest
 from typer.testing import CliRunner
 
 from sceneforge import ops
 from sceneforge.cli import app
-from sceneforge.project import ClipArtifact, Project
+from sceneforge.project import ClipArtifact, Project, SceneRef
 
 runner = CliRunner()
 
@@ -21,10 +22,23 @@ def make_project(tmp_path, scenes=1):
     assert result.exit_code == 0, result.output
     root = tmp_path / "takes-test"
     p = ["--project", str(root)]
+
+    # Add a scene with garment refs directly (replaces add-outfit + add-outfit-scenes)
+    result = runner.invoke(app, [*p, "add-scenes", "--scene", "Cafe look front"])
+    assert result.exit_code == 0, result.output
+
+    # Attach a garment ref image to the scene
+    project = Project.load(root)
+    scene = project.scenes[0]
+    ref_dir = project.scene_refs_dir(scene)
+    ref_dir.mkdir(parents=True, exist_ok=True)
     (tmp_path / "skirt.jpg").write_bytes(b"img")
-    runner.invoke(app, [*p, "add-outfit", "Cafe look",
-                        "--item", f"Skirt|https://shop/skirt|{tmp_path / 'skirt.jpg'}"])
-    runner.invoke(app, [*p, "add-outfit-scenes", "outfit-1", "--pose", "front"])
+    shutil.copy2(tmp_path / "skirt.jpg", ref_dir / "skirt.jpg")
+    scene.refs.append(SceneRef(
+        file=f"refs/scenes/{scene.id}/skirt.jpg",
+        role="garment", label="Skirt", url="https://shop/skirt"))
+    project.save()
+
     result = runner.invoke(app, [*p, "generate-images", "--options", "2"])
     assert result.exit_code == 0, result.output
     result = runner.invoke(app, [*p, "select", "scene-01", "1"])
@@ -59,7 +73,7 @@ def test_keep_and_export(tmp_path):
     result = runner.invoke(app, [*p, "export"])
     assert result.exit_code == 0, result.output
     exported = list((root / "export").glob("*.mp4"))
-    assert [f.name for f in exported] == ["cafe-look--scene-01--take02.mp4"]
+    assert [f.name for f in exported] == ["scene-01--take02.mp4"]
     links = (root / "export" / "links.txt").read_text()
     assert "Skirt — https://shop/skirt" in links
 
