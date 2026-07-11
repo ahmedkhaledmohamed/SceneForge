@@ -442,19 +442,33 @@ def make_router(home: Path) -> APIRouter:
             raise _err(400, "invalid", str(exc))
         return project_doc(copy, prof, copy.root.name, profile=profile)
 
-    # ---------------------------------------- project-level characters
+    # --------------------------------------------- project references
 
-    @router.post("/profiles/{prof}/projects/{slug}/characters", status_code=201)
-    async def add_character(prof: str, slug: str, name: str = Form(...),
-                            description: str = Form(""),
-                            files: list[UploadFile] = File(None)):
+    @router.post("/profiles/{prof}/projects/{slug}/refs", status_code=201)
+    async def add_project_ref(prof: str, slug: str,
+                              role: str = Form("style"),
+                              label: str = Form(""),
+                              file: UploadFile = File(...)):
+        from ..project import ReferenceImage
         project = load_project(prof, slug)
-        character = project.add_character(name, description)
-        for file in files or []:
-            dest = await save_upload(file, project.character_refs_dir(character))
-            character.reference_images.append(str(dest.relative_to(project.root)))
+        dest = await save_upload(file, project.root / "refs" / role)
+        ref = ReferenceImage(
+            file=str(dest.relative_to(project.root)),
+            role=role,
+            label=label or dest.stem,
+        )
+        project.refs.append(ref)
         project.save()
-        return asdict(character)
+        return asdict(ref)
+
+    @router.delete("/profiles/{prof}/projects/{slug}/refs/{index}")
+    def delete_project_ref(prof: str, slug: str, index: int):
+        project = load_project(prof, slug)
+        if not 0 <= index < len(project.refs):
+            raise _err(404, "not_found", f"No ref {index}")
+        project.refs.pop(index)
+        project.save()
+        return {"deleted": index}
 
     # ---------------------------------------------------------- outfits
 

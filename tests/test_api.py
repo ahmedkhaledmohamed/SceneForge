@@ -86,12 +86,12 @@ def test_full_workflow_via_api(tmp_path):
     prof = create_profile(client)
     slug = create_project(client, prof)
 
-    # character with uploaded refs
-    response = client.post(f"/api/profiles/{prof}/projects/{slug}/characters",
-                           data={"name": "Mila", "description": "doll"},
+    # profile character with uploaded refs
+    response = client.post(f"/api/profiles/{prof}/characters",
+                           data={"name": "Mila", "description": "doll", "main": "true"},
                            files=[("files", ("doll.png", TINY_PNG, "image/png"))])
     assert response.status_code == 201, response.text
-    assert response.json()["reference_images"] == ["refs/characters/char-1/doll.png"]
+    assert response.json()["reference_images"] == ["refs/characters/pchar-1/doll.png"]
 
     # outfit + item with product photo + link
     response = client.post(f"/api/profiles/{prof}/projects/{slug}/outfits",
@@ -111,7 +111,7 @@ def test_full_workflow_via_api(tmp_path):
     assert response.status_code == 201
     scenes = response.json()
     assert len(scenes) == 2
-    assert all(s["character_id"] == "char-1" for s in scenes)
+    assert all(s["character_id"] == "pchar-1" for s in scenes)
 
     # generate image options (job), select
     response = client.post(
@@ -293,7 +293,7 @@ def test_upload_rejects_non_image(tmp_path):
     prof = create_profile(client)
     slug = create_project(client, prof)
     response = client.post(
-        f"/api/profiles/{prof}/projects/{slug}/characters",
+        f"/api/profiles/{prof}/characters",
         data={"name": "X"},
         files=[("files", ("evil.png", b"not an image", "image/png"))])
     assert response.status_code == 400

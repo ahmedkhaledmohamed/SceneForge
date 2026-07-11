@@ -55,6 +55,12 @@ export interface Character {
   main?: boolean;
 }
 
+export interface ReferenceImage {
+  file: string;
+  role: string;
+  label: string;
+}
+
 export interface Project {
   slug: string;
   profile: string;
@@ -68,6 +74,7 @@ export interface Project {
     aspect: string;
   };
   characters: Character[];
+  refs: ReferenceImage[];
   outfits: Outfit[];
   scenes: Scene[];
   job: Job | null;

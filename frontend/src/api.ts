@@ -123,8 +123,10 @@ export const api = {
     request(`${p(prof, slug)}/outfits/${oid}/items/${index}`, { method: "DELETE" }),
   links: (prof: string, slug: string, oid: string) =>
     request<string>(`${p(prof, slug)}/outfits/${oid}/links`),
-  addCharacter: (prof: string, slug: string, form: FormData) =>
-    request(`${p(prof, slug)}/characters`, { method: "POST", body: form }),
+  addProjectRef: (prof: string, slug: string, form: FormData) =>
+    request(`${p(prof, slug)}/refs`, { method: "POST", body: form }),
+  deleteProjectRef: (prof: string, slug: string, index: number) =>
+    request(`${p(prof, slug)}/refs/${index}`, { method: "DELETE" }),
 
   brainstorm: (prof: string, slug: string, body: unknown) =>
     request<{ descriptions: string[] }>(`${p(prof, slug)}/brainstorm`, json(body)),
