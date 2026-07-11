@@ -489,6 +489,21 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
                   deselect
                 </button>
               )}
+              <a href={media(prof, slug, viewingImage.file)} download className="ghost"
+                 style={{ display: "inline-block", padding: "7px 14px", borderRadius: 7,
+                          border: "1px solid var(--line)", textDecoration: "none" }}>
+                download
+              </a>
+              <button className="ghost" onClick={() => {
+                api.createClip(prof, slug, {
+                  source_images: [viewingImage.file],
+                  prompt: "",
+                  model: project.settings.video_model,
+                }).then(() => { toastOk("clip created"); refresh(); setViewing(null); })
+                  .catch((e) => toastError(String(e)));
+              }}>
+                + clip
+              </button>
             </>
           }
         />
