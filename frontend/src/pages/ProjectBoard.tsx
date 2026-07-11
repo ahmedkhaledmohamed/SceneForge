@@ -510,6 +510,7 @@ export default function ProjectBoard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
+  const { data: models } = useModels();
 
   const generateAll = useMutation({
     mutationFn: () =>
@@ -697,7 +698,6 @@ export default function ProjectBoard() {
   }
 
   const proj = project!;
-  const { data: models } = useModels();
   const busy = proj.job?.status === "running";
   const keptCount = proj.scenes.flatMap((s) => s.clips).filter((c) => c.kept).length;
   const allClipsReady = proj.scenes.length > 0 &&
