@@ -595,6 +595,10 @@ def make_router(home: Path) -> APIRouter:
         project = load_project(prof, slug)
         scene = find_or_404(project.find_scene, sid)
         index = payload.get("image_index")
+        if index is None:
+            scene.selected_image = None
+            project.save()
+            return asdict(scene)
         if not isinstance(index, int) or not 0 <= index < len(scene.images):
             raise _err(400, "invalid",
                        f"{sid} has {len(scene.images)} image option(s)")
