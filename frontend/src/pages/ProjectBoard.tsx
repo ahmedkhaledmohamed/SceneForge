@@ -397,6 +397,19 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
                     <img src={media(prof, slug, img.file)} alt={`option ${globalIdx + 1}`} loading="lazy" />
                     <div className="cap">
                       {scene.selected_image === globalIdx ? "✓ " : ""}opt {globalIdx + 1} · {img.model}
+                      <button
+                        className="ghost"
+                        style={{ padding: "1px 5px", fontSize: "0.55rem", marginLeft: 4 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          api.createClip(prof, slug, {
+                            source_images: [img.file],
+                            prompt: "",
+                            model: project.settings.video_model,
+                          }).then(refresh).catch((err) => toastError(String(err)));
+                          toastOk("clip created");
+                        }}
+                      >+ clip</button>
                     </div>
                   </div>
                 );
@@ -724,28 +737,24 @@ export default function ProjectBoard() {
             </button>
             {unselectedWithImages > 0 && (
               <button className="ghost" onClick={() => selectAll.mutate()}>
-                select all ({unselectedWithImages})
+                auto-pick first ({unselectedWithImages})
               </button>
             )}
           </div>
         </div>
 
         <div className="toolbar-section">
-          <span className="toolbar-label">clips — animate each selected image → compare → keep best</span>
+          <span className="toolbar-label">clips — create from scene images, then generate</span>
           <div className="row">
             <ModelPicker
               kind="video"
               value={proj.settings.video_model}
               onChange={(v) => api.patchProject(prof, slug, { video_model: v }).then(refresh)}
             />
-            <input
-              type="number" min={1} max={6} value={clipCount}
-              onChange={(e) => setClipCount(Number(e.target.value))}
-              style={{ width: 50 }}
-              title="clips per scene"
-            />
-            <button className="ghost" onClick={() => takesAll.mutate()} disabled={busy || selectedCount === 0}>
-              Generate {selectedCount * clipCount} clips from {selectedCount} scenes{takesCost > 0 ? ` (~$${takesCost.toFixed(2)})` : ""}
+            <button className="ghost" onClick={() => {
+              api.generateAllClips(prof, slug).then(refresh).catch((e) => toastError(String(e)));
+            }} disabled={busy || proj.clips.filter((c) => c.status === "pending").length === 0}>
+              Generate {proj.clips.filter((c) => c.status === "pending").length} pending clips
             </button>
           </div>
         </div>
@@ -915,6 +924,56 @@ export default function ProjectBoard() {
           }}
         />
       ))}
+
+      <h2>Clips</h2>
+      <p className="muted" style={{ marginBottom: 10 }}>
+        Click "use in clip" on any scene image above, or create a clip manually.
+      </p>
+      {proj.clips.length === 0 && (
+        <p className="muted">No clips yet — select images in scenes above, then create clips from them.</p>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+        {proj.clips.map((clip) => (
+          <div key={clip.id} className={`card${clip.kept ? "" : ""}`} style={{ padding: 12 }}>
+            {clip.status === "completed" && clip.file ? (
+              <video controls preload="metadata" src={media(prof, slug, clip.file)}
+                     style={{ width: "100%", borderRadius: 6, border: clip.kept ? "2px solid var(--gold)" : "1px solid var(--line)" }} />
+            ) : clip.status === "failed" ? (
+              <div className="muted" style={{ padding: 8, color: "var(--danger)" }}>{clip.error || "failed"}</div>
+            ) : (
+              <div className="muted mono" style={{ padding: 12 }}>{clip.status}...</div>
+            )}
+            <div className="mono muted" style={{ fontSize: "0.68rem", marginTop: 4 }}>
+              {clip.id} · {clip.model}
+              {clip.source_images.length > 0 && ` · ${clip.source_images.length} source${clip.source_images.length > 1 ? "s" : ""}`}
+              {typeof clip.meta?.cost_usd === "number" && ` · $${(clip.meta.cost_usd as number).toFixed(2)}`}
+            </div>
+            {clip.prompt && <div className="mono muted" style={{ fontSize: "0.65rem" }}>{clip.prompt}</div>}
+            <div className="row" style={{ marginTop: 6 }}>
+              {clip.status === "completed" && (
+                <button
+                  className={clip.kept ? "btn" : "ghost"}
+                  style={{ padding: "3px 10px", fontSize: "0.7rem" }}
+                  onClick={() => api.keepClip(prof, slug, clip.id, !clip.kept).then(refresh).catch((e) => toastError(String(e)))}
+                >
+                  {clip.kept ? "✓ kept" : "keep"}
+                </button>
+              )}
+              {clip.status === "pending" && (
+                <button className="ghost" style={{ padding: "3px 10px", fontSize: "0.7rem" }}
+                  onClick={() => api.generateClip(prof, slug, clip.id).then(refresh).catch((e) => toastError(String(e)))}
+                  disabled={busy}>
+                  generate
+                </button>
+              )}
+              <button className="ghost" style={{ padding: "3px 10px", fontSize: "0.7rem", color: "var(--danger)" }}
+                onClick={() => { if (confirm(`Delete ${clip.id}?`)) api.deleteClip(prof, slug, clip.id).then(refresh); }}>
+                ×
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </>
   );
 }
