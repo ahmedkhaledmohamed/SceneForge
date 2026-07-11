@@ -40,3 +40,6 @@ sceneforge = "sceneforge.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+sceneforge = ["web_dist/**/*"]
