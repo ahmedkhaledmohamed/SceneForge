@@ -97,6 +97,7 @@ export const DEMO_PROJECT: Project = {
   ],
   job: null,
   spent_usd: 0.84,
+  notes: "",
   profile_characters: [DEMO_CHAR],
 };
 

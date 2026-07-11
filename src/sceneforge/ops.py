@@ -90,6 +90,7 @@ def scene_reference_images(project: Project, scene: Scene,
 
 def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
                log: Log = print, profile=None) -> int:
+    gen_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     backend = get_image_backend(model_key, log)
     count = 0
     for sc, needed in todo:
@@ -121,6 +122,7 @@ def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
                 prompt=prompt,
                 model=model_key,
                 meta=meta,
+                generation_id=gen_id,
             ))
             project.save()
             count += 1
