@@ -76,6 +76,11 @@ export const api = {
     request(`/profiles/${prof}/logout`, { method: "POST" }),
   setPassword: (prof: string, password: string) =>
     request<{ token: string }>(`/profiles/${prof}/set-password`, json({ password })),
+  getBalance: (prof: string) =>
+    request<{
+      together: { status: string; dashboard?: string };
+      runpod: { status: string; credit_balance?: number; spend_per_hr?: number };
+    }>(`/profiles/${prof}/balance`),
   getSettings: (prof: string) =>
     request<{ keys: { together: string; runpod_api: string; runpod_endpoint: string }; has_together: boolean; has_runpod: boolean }>(`/profiles/${prof}/settings`),
   patchSettings: (prof: string, keys: Record<string, string>) =>

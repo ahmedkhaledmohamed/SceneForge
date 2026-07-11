@@ -216,6 +216,55 @@ def make_router(home: Path) -> APIRouter:
             "has_runpod": bool(profile.keys.runpod_api),
         }
 
+    @router.get("/profiles/{prof}/balance")
+    def get_balance(prof: str, request: Request):
+        require_auth(request, prof)
+        profile = load_profile(prof)
+        result: dict = {}
+
+        # Together: no public balance API — check if key works
+        together_key = profile.keys.together or os.environ.get("TOGETHER_API_KEY")
+        if together_key:
+            try:
+                import urllib.request
+                req = urllib.request.Request(
+                    "https://api.together.ai/v1/models",
+                    headers={"Authorization": f"Bearer {together_key}",
+                             "User-Agent": "SceneForge/1.0"},
+                )
+                urllib.request.urlopen(req, timeout=5)
+                result["together"] = {"status": "active", "dashboard": "https://api.together.ai/settings/billing"}
+            except Exception:
+                result["together"] = {"status": "invalid_key"}
+        else:
+            result["together"] = {"status": "not_configured"}
+
+        # RunPod: GraphQL balance query
+        runpod_key = profile.keys.runpod_api or os.environ.get("RUNPOD_API_KEY")
+        if runpod_key:
+            try:
+                import json as _json
+                import urllib.request
+                req = urllib.request.Request(
+                    "https://api.runpod.io/graphql",
+                    data=_json.dumps({"query": "{ myself { id creditBalance currentSpendPerHr } }"}).encode(),
+                    headers={"Authorization": f"Bearer {runpod_key}",
+                             "Content-Type": "application/json"},
+                )
+                resp = _json.loads(urllib.request.urlopen(req, timeout=5).read())
+                me = resp.get("data", {}).get("myself", {})
+                result["runpod"] = {
+                    "status": "active",
+                    "credit_balance": me.get("creditBalance"),
+                    "spend_per_hr": me.get("currentSpendPerHr"),
+                }
+            except Exception:
+                result["runpod"] = {"status": "error"}
+        else:
+            result["runpod"] = {"status": "not_configured"}
+
+        return result
+
     @router.patch("/profiles/{prof}/settings")
     def patch_settings(prof: str, request: Request, payload: dict):
         require_auth(request, prof)
