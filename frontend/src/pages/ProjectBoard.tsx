@@ -810,29 +810,47 @@ export default function ProjectBoard() {
       {addingScene && (
         <form
           className="card"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
             const data = new FormData(e.currentTarget);
             const description = String(data.get("description") ?? "").trim();
             if (!description) return;
-            addScene.mutate({
-              description,
-              pose: String(data.get("pose") ?? "") || undefined,
-              character_id: sceneCharacter || undefined,
-            });
+            const files = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files;
+            try {
+              const scene = await api.addScene(prof, slug, {
+                description,
+                pose: String(data.get("pose") ?? "") || undefined,
+                character_id: sceneCharacter || undefined,
+              });
+              if (files?.length) {
+                const refForm = new FormData();
+                for (const f of files) refForm.append("files", f);
+                await api.addSceneRefsBulk(prof, slug, (scene as { id: string }).id, refForm);
+              }
+              setAddingScene(false);
+              refresh();
+            } catch (err) {
+              toastError(String(err));
+            }
           }}
         >
           <label>Scene description</label>
           <input name="description" required style={{ width: "100%" }}
-                 placeholder="a single visual moment, describable in one image" />
+                 placeholder="what is this scene? e.g. standing in a sunlit cafe, full outfit visible" />
           <label>Pose / framing (optional)</label>
-          <input name="pose" style={{ width: "100%" }} />
+          <input name="pose" style={{ width: "100%" }}
+                 placeholder="e.g. standing, facing camera, head to toe" />
           {allChars.length > 0 && (
             <>
               <label>Character</label>
               <CharacterPicker characters={allChars} value={sceneCharacter} onChange={setSceneCharacter} />
             </>
           )}
+          <label>Reference images (garment photos, style refs — optional)</label>
+          <input type="file" accept="image/*" multiple className="mono" style={{ width: "100%" }} />
+          <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.72rem" }}>
+            Drop product photos, style references, or background images. You can add more after creation.
+          </p>
           <div className="row" style={{ marginTop: 10 }}>
             <button type="submit" disabled={addScene.isPending}>add scene</button>
             <button type="button" className="ghost" onClick={() => setAddingScene(false)}>cancel</button>
