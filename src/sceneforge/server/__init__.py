@@ -13,12 +13,27 @@ from fastapi.responses import FileResponse, JSONResponse
 from .api import make_router
 
 
+def create_app_from_env() -> FastAPI:
+    from ..profile import home_dir
+    home = home_dir()
+    home.mkdir(parents=True, exist_ok=True)
+    return create_app(home)
+
+
 def create_app(home: Path) -> FastAPI:
+    from fastapi.middleware.cors import CORSMiddleware
+
     app = FastAPI(
         title="SceneForge Studio API",
         description="Profile-scoped AI video production — 53 endpoints for generation, "
                     "outfits, scenes, clips, export, and settings.",
         version="1.0.0",
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     app.include_router(make_router(home.resolve()), prefix="/api")
 

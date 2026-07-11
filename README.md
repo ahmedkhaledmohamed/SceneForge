@@ -109,21 +109,38 @@ sceneforge generate-clips                # I2V animation
 sceneforge stitch                        # final cut
 ```
 
+## Deploy (remote)
+
+The full stack (API + SPA + ffmpeg) runs from a single Docker image. Deploy to Railway, Render, or any Docker host with a persistent volume:
+
+```bash
+# Railway (recommended — auto-deploy from GitHub, ~$5/month)
+# 1. Connect your repo at railway.app
+# 2. Add a volume mounted at /data
+# 3. Set env: TOGETHER_API_KEY=your-key
+# 4. Deploy — the Dockerfile handles everything
+
+# Or run the Docker image directly:
+docker build -t sceneforge .
+docker run -p 8000:8000 -v sceneforge-data:/data \
+  -e TOGETHER_API_KEY=your-key sceneforge
+```
+
+API keys can also be set per-profile in Settings instead of env vars.
+
+## Deploy (local)
+
+```bash
+pip install -e .
+sceneforge studio    # auto-opens browser at http://127.0.0.1:8000
+```
+
 ## Development
 
 ```bash
 pip install -e ".[dev]"
-pytest                   # 76 tests, $0 (fake backends)
+pytest                   # 77 tests, $0 (fake backends)
 cd frontend && npm i && npm run dev     # SPA dev server at :5173
 ```
 
 CI runs the full suite on every PR (no API secrets needed).
-
-## Deploy
-
-```bash
-cd frontend && vercel --prod     # sceneforge-studio project
-cd site && vercel --prod         # sceneforge landing page
-```
-
-RunPod worker images are built via GitHub Actions — see `runpod-worker/README.md`.

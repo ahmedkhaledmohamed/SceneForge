@@ -1,0 +1,14 @@
+.git
+.venv
+.env
+__pycache__
+*.pyc
+*.egg-info
+.pytest_cache
+frontend/node_modules
+frontend/dist
+src/sceneforge/web_dist
+runpod-worker
+site
+.vercel
+.DS_Store
