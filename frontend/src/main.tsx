@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { DemoProvider } from "./DemoContext";
+import SiteAuth from "./SiteAuth";
 import "./styles.css";
 
 const queryClient = new QueryClient({
@@ -46,11 +47,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <DemoProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </DemoProvider>
+        <SiteAuth>
+          <DemoProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </DemoProvider>
+        </SiteAuth>
       </QueryClientProvider>
     </ErrorBoundary>
   </React.StrictMode>,
