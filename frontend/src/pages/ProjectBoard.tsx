@@ -496,6 +496,7 @@ export default function ProjectBoard() {
   const [imageModel, setImageModel] = useState<string | null>(null);
   const [exported, setExported] = useState<string | null>(null);
   const [addingScene, setAddingScene] = useState(false);
+  const [addingCollection, setAddingCollection] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
@@ -775,15 +776,7 @@ export default function ProjectBoard() {
             {brainstorm.isPending ? "thinking…" : "brainstorm scenes"}
           </button>
         )}
-        <button
-          className="ghost"
-          onClick={() => {
-            const name = prompt("Collection name?");
-            if (name) addOutfit.mutate(name);
-          }}
-        >
-          + collection
-        </button>
+        <button className="ghost" onClick={() => setAddingCollection(true)}>+ collection</button>
         <form
           className="row"
           onSubmit={(e) => {
@@ -860,6 +853,24 @@ export default function ProjectBoard() {
         </div>
       )}
 
+      {addingCollection && (
+        <form
+          className="card"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
+            if (name) { addOutfit.mutate(name); setAddingCollection(false); }
+          }}
+        >
+          <label>Collection name</label>
+          <input name="name" required autoFocus placeholder="e.g. Spring Cafe Set" style={{ width: "100%" }} />
+          <div className="row" style={{ marginTop: 10 }}>
+            <button type="submit" disabled={addOutfit.isPending}>create</button>
+            <button type="button" className="ghost" onClick={() => setAddingCollection(false)}>cancel</button>
+          </div>
+        </form>
+      )}
+
       {addingScene && (
         <form
           className="card"
@@ -931,7 +942,7 @@ export default function ProjectBoard() {
       {proj.outfits.map((outfit) => (
         <div key={outfit.id}>
           <OutfitCard prof={prof} slug={slug} outfit={outfit} allChars={allChars} busy={!!busy} refresh={refresh} />
-          {!proj.scenes.some((s) => s.outfit_id === outfit.id) && (
+          {!proj.scenes.some((s) => s.outfit_id === outfit.id) && outfit.items.length > 0 && (
             <div className="row" style={{ marginBottom: 14 }}>
               {allChars.length > 1 ? (
                 <>
