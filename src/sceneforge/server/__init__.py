@@ -32,6 +32,8 @@ class SiteAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         if path.startswith("/assets/") or path == "/favicon.ico":
             return await call_next(request)
+        if "/media/" in path:
+            return await call_next(request)
         # SPA HTML is always served (the login screen is part of it)
         if not path.startswith("/api/"):
             return await call_next(request)
