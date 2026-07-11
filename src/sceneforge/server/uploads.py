@@ -21,10 +21,14 @@ def _sniff(head: bytes) -> str | None:
     for magic, suffix in _IMAGE_MAGIC.items():
         if head.startswith(magic):
             return suffix
+    if head[:2] == b"\xff\xd8":
+        return ".jpg"
     if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
         return ".webp"
     if head[4:8] == b"ftyp":
         return ".mp4"
+    if head[4:12] == b"ftypheic" or head[4:12] == b"ftypmif1":
+        return ".jpg"
     return None
 
 

@@ -56,6 +56,20 @@ export interface ReferenceImage {
   label: string;
 }
 
+export interface ProjectClip {
+  id: string;
+  source_images: string[];
+  prompt: string;
+  model: string;
+  file: string;
+  status: "pending" | "completed" | "failed";
+  error: string | null;
+  duration_s: number | null;
+  created_at: string;
+  meta: Record<string, unknown>;
+  kept: boolean;
+}
+
 export interface Project {
   slug: string;
   profile: string;
@@ -71,6 +85,7 @@ export interface Project {
   characters: Character[];
   refs: ReferenceImage[];
   scenes: Scene[];
+  clips: ProjectClip[];
   job: Job | null;
   spent_usd: number;
   notes: string;

@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 4  # v4: self-contained scenes with refs (no more outfits)
+SCHEMA_VERSION = 5  # v5: clips as project-level entities
 
 PROJECT_FILE = "project.json"
 
@@ -106,6 +106,23 @@ class ClipArtifact:
 
 
 @dataclass
+class Clip:
+    """A video clip — project-level, can reference images from any scene."""
+    id: str
+    source_images: list[str] = field(default_factory=list)
+    prompt: str = ""
+    model: str = ""
+    file: str = ""
+    status: str = "pending"
+    error: str | None = None
+    duration_s: float | None = None
+    job_id: str | None = None
+    created_at: str = field(default_factory=now_iso)
+    meta: dict = field(default_factory=dict)
+    kept: bool = False
+
+
+@dataclass
 class Scene:
     id: str
     description: str
@@ -140,6 +157,7 @@ class Project:
     characters: list[Character] = field(default_factory=list)
     refs: list[ReferenceImage] = field(default_factory=list)
     scenes: list[Scene] = field(default_factory=list)
+    clips: list[Clip] = field(default_factory=list)
     notes: str = ""
     schema_version: int = SCHEMA_VERSION
     root: Path = field(default=Path("."), compare=False)
@@ -199,6 +217,20 @@ class Project:
         valid = ", ".join(c.id for c in self.characters) or "(none)"
         raise KeyError(f"No character '{character_id}'. Characters: {valid}")
 
+    def add_clip(self, source_images: list[str], prompt: str = "",
+                 model: str = "") -> Clip:
+        clip = Clip(id=f"clip-{len(self.clips) + 1:02d}",
+                    source_images=source_images, prompt=prompt, model=model)
+        self.clips.append(clip)
+        return clip
+
+    def find_clip(self, clip_id: str) -> Clip:
+        for clip in self.clips:
+            if clip.id == clip_id:
+                return clip
+        valid = ", ".join(c.id for c in self.clips) or "(none)"
+        raise KeyError(f"No clip '{clip_id}'. Clips: {valid}")
+
     # --- persistence ---
 
     def save(self) -> None:
@@ -252,6 +284,28 @@ class Project:
             ))
 
         characters = [Character(**c) for c in data.get("characters", [])]
+
+        # v5: clips as project-level entities
+        project_clips = [Clip(**c) for c in data.get("clips", [])]
+        if version < 5:
+            # migrate scene-level clips to project clips
+            for sc in scenes:
+                for ca in sc.clips:
+                    if ca.status == "completed":
+                        project_clips.append(Clip(
+                            id=f"clip-{len(project_clips) + 1:02d}",
+                            source_images=[ca.source_image] if ca.source_image else [],
+                            prompt=ca.prompt,
+                            model=ca.model,
+                            file=ca.file,
+                            status=ca.status,
+                            duration_s=ca.duration_s,
+                            job_id=ca.job_id,
+                            created_at=ca.created_at,
+                            meta=ca.meta,
+                            kept=ca.kept,
+                        ))
+
         return cls(
             name=data["name"],
             concept=data.get("concept", ""),
@@ -260,6 +314,7 @@ class Project:
             characters=characters,
             refs=[ReferenceImage(**r) for r in data.get("refs", [])],
             scenes=scenes,
+            clips=project_clips,
             notes=data.get("notes", ""),
             schema_version=SCHEMA_VERSION,
             root=root,

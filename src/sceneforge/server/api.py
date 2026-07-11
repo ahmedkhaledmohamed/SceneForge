@@ -844,6 +844,133 @@ def make_router(home: Path) -> APIRouter:
         job = jobs.get(job_key(prof, slug))
         return job.as_dict() if job else {"name": None, "status": "idle", "log": []}
 
+    # ----------------------------------------------------------- clips
+
+    @router.get("/profiles/{prof}/projects/{slug}/clips")
+    def list_clips(prof: str, slug: str):
+        project = load_project(prof, slug)
+        return [asdict(c) for c in project.clips]
+
+    @router.post("/profiles/{prof}/projects/{slug}/clips", status_code=201)
+    def create_clip(prof: str, slug: str, payload: dict):
+        from ..project import Clip
+        project = load_project(prof, slug)
+        sources = payload.get("source_images", [])
+        if not sources:
+            raise _err(400, "invalid", "At least one source image is required")
+        clip = project.add_clip(
+            source_images=sources,
+            prompt=payload.get("prompt", ""),
+            model=payload.get("model") or project.settings.video_model,
+        )
+        project.save()
+        return asdict(clip)
+
+    @router.post("/profiles/{prof}/projects/{slug}/clips/{cid}/generate",
+                 status_code=202)
+    def generate_clip(prof: str, slug: str, cid: str):
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        clip = find_or_404(project.find_clip, cid)
+        if clip.status == "completed":
+            raise _err(400, "invalid", "Clip already generated")
+        model_key = clip.model or project.settings.video_model
+        try:
+            config.resolve_model(model_key, "video")
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+
+        def job(log):
+            from ..backends import get_video_backend
+            resolved = config.resolve_model(model_key, "video")
+            backend = get_video_backend(model_key, log)
+            image = (project.root / clip.source_images[0]) if clip.source_images else None
+            out = project.clips_dir / f"{clip.id}.mp4"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            prompt = clip.prompt or "gentle motion"
+            log(f"{clip.id}: generating...")
+            try:
+                result = backend.generate_clip(
+                    prompt, out, image=image,
+                    width=project.settings.width,
+                    height=project.settings.height,
+                    timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
+                )
+                clip.file = str(out.relative_to(project.root))
+                clip.status = "completed"
+                clip.duration_s = result.duration_s
+                clip.job_id = result.job_id
+                clip.meta = result.meta
+                if "cost_usd" not in clip.meta:
+                    clip.meta["cost_usd"] = config.MODELS.get(model_key, {}).get("price", 0)
+                log(f"{clip.id}: done ({result.duration_s:.1f}s)")
+            except Exception as exc:
+                clip.status = "failed"
+                clip.error = str(exc)
+                log(f"{clip.id}: FAILED — {exc}")
+            project.save()
+
+        return start_job_or_409(prof, slug, f"generate {clip.id} ({model_key})", job)
+
+    @router.post("/profiles/{prof}/projects/{slug}/clips/generate-all",
+                 status_code=202)
+    def generate_all_clips(prof: str, slug: str):
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        pending = [c for c in project.clips if c.status == "pending"]
+        if not pending:
+            return {"started": None, "note": "no pending clips"}
+        model_key = project.settings.video_model
+
+        def job(log):
+            from ..backends import get_video_backend
+            resolved = config.resolve_model(model_key, "video")
+            backend = get_video_backend(model_key, log)
+            for clip in pending:
+                image = (project.root / clip.source_images[0]) if clip.source_images else None
+                out = project.clips_dir / f"{clip.id}.mp4"
+                out.parent.mkdir(parents=True, exist_ok=True)
+                prompt = clip.prompt or "gentle motion"
+                log(f"{clip.id}: generating...")
+                try:
+                    result = backend.generate_clip(
+                        prompt, out, image=image,
+                        width=project.settings.width,
+                        height=project.settings.height,
+                        timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
+                    )
+                    clip.file = str(out.relative_to(project.root))
+                    clip.status = "completed"
+                    clip.duration_s = result.duration_s
+                    clip.meta = result.meta
+                    if "cost_usd" not in clip.meta:
+                        clip.meta["cost_usd"] = config.MODELS.get(model_key, {}).get("price", 0)
+                    log(f"{clip.id}: done ({result.duration_s:.1f}s)")
+                except Exception as exc:
+                    clip.status = "failed"
+                    clip.error = str(exc)
+                    log(f"{clip.id}: FAILED — {exc}")
+                project.save()
+
+        return start_job_or_409(prof, slug,
+                                f"generate {len(pending)} clips ({model_key})", job)
+
+    @router.delete("/profiles/{prof}/projects/{slug}/clips/{cid}")
+    def delete_clip(prof: str, slug: str, cid: str):
+        project = load_project(prof, slug)
+        clip = find_or_404(project.find_clip, cid)
+        project.clips.remove(clip)
+        project.save()
+        return {"deleted": cid}
+
+    @router.post("/profiles/{prof}/projects/{slug}/clips/{cid}/keep")
+    def keep_clip_v2(prof: str, slug: str, cid: str, payload: dict):
+        project = load_project(prof, slug)
+        clip = find_or_404(project.find_clip, cid)
+        clip.kept = bool(payload.get("kept", True))
+        project.save()
+        return asdict(clip)
+
     # --------------------------------------------------- export / stitch
 
     @router.post("/profiles/{prof}/projects/{slug}/export")

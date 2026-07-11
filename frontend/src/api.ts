@@ -164,6 +164,16 @@ export const api = {
   keep: (prof: string, slug: string, sid: string, index: number, kept: boolean) =>
     request(`${p(prof, slug)}/scenes/${sid}/clips/${index}/keep`, json({ kept })),
 
+  createClip: (prof: string, slug: string, body: unknown) =>
+    request(`${p(prof, slug)}/clips`, json(body)),
+  generateClip: (prof: string, slug: string, cid: string) =>
+    request(`${p(prof, slug)}/clips/${cid}/generate`, { method: "POST" }),
+  generateAllClips: (prof: string, slug: string) =>
+    request(`${p(prof, slug)}/clips/generate-all`, { method: "POST" }),
+  deleteClip: (prof: string, slug: string, cid: string) =>
+    request(`${p(prof, slug)}/clips/${cid}`, { method: "DELETE" }),
+  keepClip: (prof: string, slug: string, cid: string, kept: boolean) =>
+    request(`${p(prof, slug)}/clips/${cid}/keep`, json({ kept })),
   stitch: (prof: string, slug: string) =>
     request(`${p(prof, slug)}/stitch`, { method: "POST" }),
   export: (prof: string, slug: string) =>
