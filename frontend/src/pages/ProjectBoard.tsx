@@ -541,6 +541,7 @@ export default function ProjectBoard() {
   const [clipEndImage, setClipEndImage] = useState("");
   const [clipPrompt, setClipPrompt] = useState("");
   const [clipModel, setClipModel] = useState("");
+  const [clipSeconds, setClipSeconds] = useState(5);
   const { data: models } = useModels();
 
   const generateAll = useMutation({
@@ -1021,8 +1022,15 @@ export default function ProjectBoard() {
                     </option>
                   ))}
               </select>
+              <label style={{ margin: 0 }}>Length</label>
+              <select value={clipSeconds} onChange={(e) => setClipSeconds(Number(e.target.value))}>
+                <option value={3}>3s</option>
+                <option value={5}>5s</option>
+                <option value={7}>7s</option>
+                <option value={10}>10s</option>
+              </select>
               <span className="mono muted" style={{ fontSize: "0.72rem" }}>
-                ~5s clip · ${(models?.[clipModel || proj.settings.video_model]?.price ?? 0).toFixed(2)}
+                ~${((models?.[clipModel || proj.settings.video_model]?.price ?? 0) * (clipSeconds / 5)).toFixed(2)}
               </span>
             </div>
             <div className="row" style={{ marginTop: 10 }}>
@@ -1033,12 +1041,14 @@ export default function ProjectBoard() {
                   source_images: sources,
                   prompt: clipPrompt,
                   model: clipModel || proj.settings.video_model,
+                  seconds: clipSeconds,
                 }).then(() => {
                   setCreatingClip(false);
                   setClipStartImage("");
                   setClipEndImage("");
                   setClipPrompt("");
                   setClipModel("");
+                  setClipSeconds(5);
                   refresh();
                 }).catch((e) => toastError(String(e)));
               }}>create clip</button>
@@ -1063,7 +1073,7 @@ export default function ProjectBoard() {
               <div className="muted mono" style={{ padding: 12 }}>{clip.status}...</div>
             )}
             <div className="mono muted" style={{ fontSize: "0.68rem", marginTop: 4 }}>
-              {clip.id} · {clip.model}
+              {clip.id} · {clip.model} · {clip.seconds}s
               {clip.source_images.length > 1 && " · start+end"}
               {typeof clip.meta?.cost_usd === "number" && ` · $${(clip.meta.cost_usd as number).toFixed(2)}`}
             </div>

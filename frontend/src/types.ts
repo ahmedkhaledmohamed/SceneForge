@@ -61,6 +61,7 @@ export interface ProjectClip {
   source_images: string[];
   prompt: string;
   model: string;
+  seconds: number;
   file: string;
   status: "pending" | "completed" | "failed";
   error: string | null;
