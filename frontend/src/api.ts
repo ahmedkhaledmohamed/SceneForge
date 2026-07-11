@@ -172,6 +172,8 @@ export const api = {
     request(`${p(prof, slug)}/clips/generate-all`, { method: "POST" }),
   patchClip: (prof: string, slug: string, cid: string, body: unknown) =>
     request(`${p(prof, slug)}/clips/${cid}`, patch(body)),
+  resetClip: (prof: string, slug: string, cid: string) =>
+    request(`${p(prof, slug)}/clips/${cid}/reset`, { method: "POST" }),
   deleteClip: (prof: string, slug: string, cid: string) =>
     request(`${p(prof, slug)}/clips/${cid}`, { method: "DELETE" }),
   keepClip: (prof: string, slug: string, cid: string, kept: boolean) =>
