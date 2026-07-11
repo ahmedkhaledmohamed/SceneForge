@@ -25,6 +25,9 @@ function TopBar() {
             </NavLink>
           </>
         )}
+        <a href="/docs" target="_blank" rel="noreferrer" style={{ opacity: 0.5 }}>
+          API
+        </a>
         {prof && slug && (
           <>
             <NavLink to={`/${prof}/p/${slug}`} end>
