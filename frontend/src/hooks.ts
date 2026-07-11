@@ -11,6 +11,7 @@ export function useProject(prof: string, slug: string) {
     enabled: !isDemo,
     refetchInterval: (query) =>
       query.state.data?.job?.status === "running" ? 2000 : false,
+    staleTime: 0,
   });
 }
 

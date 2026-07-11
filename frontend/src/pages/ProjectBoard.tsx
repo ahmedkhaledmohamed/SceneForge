@@ -62,7 +62,7 @@ function OutfitCard({ prof, slug, outfit, allChars, busy, refresh }: {
   });
   const deleteOutfit = useMutation({
     mutationFn: () => api.deleteOutfit(prof, slug, outfit.id),
-    onSuccess: () => { toastOk("outfit deleted"); refresh(); },
+    onSuccess: () => { toastOk("collection deleted"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
   const bulkItems = useMutation({
@@ -79,7 +79,7 @@ function OutfitCard({ prof, slug, outfit, allChars, busy, refresh }: {
       const charId = allChars.find((c) => c.main)?.id ?? allChars[0]?.id;
       return api.processOutfit(prof, slug, outfit.id, { character_id: charId });
     },
-    onSuccess: () => { toastOk("processing outfit — scenes + images"); refresh(); },
+    onSuccess: () => { toastOk("processing collection — scenes + images"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
 
@@ -109,7 +109,7 @@ function OutfitCard({ prof, slug, outfit, allChars, busy, refresh }: {
           <button
             className="ghost"
             style={{ color: "var(--red, #c44)" }}
-            onClick={() => { if (confirm(`Delete outfit "${outfit.name}"?`)) deleteOutfit.mutate(); }}
+            onClick={() => { if (confirm(`Delete collection "${outfit.name}"?`)) deleteOutfit.mutate(); }}
           >
             delete
           </button>
@@ -611,7 +611,7 @@ export default function ProjectBoard() {
           </span>
         </div>
 
-        {dp.outfits.length > 0 && <h2>Outfits</h2>}
+        {dp.outfits.length > 0 && <h2>Collections</h2>}
         {dp.outfits.map((outfit) => (
           <div key={outfit.id} className="card">
             <div className="row" style={{ justifyContent: "space-between" }}>
@@ -778,11 +778,11 @@ export default function ProjectBoard() {
         <button
           className="ghost"
           onClick={() => {
-            const name = prompt("Outfit name?");
+            const name = prompt("Collection name?");
             if (name) addOutfit.mutate(name);
           }}
         >
-          + outfit
+          + collection
         </button>
         <form
           className="row"
@@ -921,13 +921,13 @@ export default function ProjectBoard() {
         <div className="card" style={{ borderColor: "var(--gold-dim)", marginTop: 14 }}>
           <b>Getting started</b>
           <p className="muted" style={{ margin: "4px 0" }}>
-            1. Click <b>+ outfit</b> and name it &nbsp; 2. Drop product photos onto the outfit card &nbsp;
+            1. Click <b>+ collection</b> and name it &nbsp; 2. Drop product photos onto the collection card &nbsp;
             3. Click <b>process</b> — scenes, images, and selection happen automatically
           </p>
         </div>
       )}
 
-      {proj.outfits.length > 0 && <h2>Outfits</h2>}
+      {proj.outfits.length > 0 && <h2>Collections</h2>}
       {proj.outfits.map((outfit) => (
         <div key={outfit.id}>
           <OutfitCard prof={prof} slug={slug} outfit={outfit} allChars={allChars} busy={!!busy} refresh={refresh} />
@@ -957,7 +957,7 @@ export default function ProjectBoard() {
                     characterId: defaultChar || undefined,
                   })}
                 >
-                  create pose scenes for {outfit.name}
+                  create scenes for {outfit.name}
                   {defaultChar && ` (${allChars.find((c) => c.id === defaultChar)?.name})`}
                 </button>
               )}
@@ -968,7 +968,7 @@ export default function ProjectBoard() {
 
       <h2>Scenes</h2>
       {proj.scenes.length === 0 && (
-        <p className="muted">No scenes yet — hit "+ scene", or add an outfit and create its pose scenes.</p>
+        <p className="muted">No scenes yet — hit "+ scene", or add a collection and create its scenes and create its pose scenes.</p>
       )}
       {proj.scenes.map((scene, idx) => (
         <SceneCard
