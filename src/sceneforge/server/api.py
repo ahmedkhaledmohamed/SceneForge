@@ -976,6 +976,18 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return asdict(clip)
 
+    @router.post("/profiles/{prof}/projects/{slug}/clips/{cid}/reset")
+    def reset_clip(prof: str, slug: str, cid: str):
+        project = load_project(prof, slug)
+        clip = find_or_404(project.find_clip, cid)
+        clip.status = "pending"
+        clip.file = ""
+        clip.error = None
+        clip.duration_s = None
+        clip.job_id = None
+        project.save()
+        return asdict(clip)
+
     @router.post("/profiles/{prof}/projects/{slug}/clips/{cid}/keep")
     def keep_clip_v2(prof: str, slug: str, cid: str, payload: dict):
         project = load_project(prof, slug)

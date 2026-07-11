@@ -540,6 +540,7 @@ export default function ProjectBoard() {
   const [clipStartImage, setClipStartImage] = useState("");
   const [clipEndImage, setClipEndImage] = useState("");
   const [clipPrompt, setClipPrompt] = useState("");
+  const [clipModel, setClipModel] = useState("");
   const { data: models } = useModels();
 
   const generateAll = useMutation({
@@ -1008,6 +1009,22 @@ export default function ProjectBoard() {
             <input value={clipPrompt} onChange={(e) => setClipPrompt(e.target.value)}
                    placeholder="e.g. gentle sway, slow turn, walk forward"
                    style={{ width: "100%" }} />
+            <label>Video model</label>
+            <div className="row">
+              <select value={clipModel || proj.settings.video_model}
+                      onChange={(e) => setClipModel(e.target.value)}>
+                {Object.entries(models ?? {})
+                  .filter(([, m]) => m.kind === "video")
+                  .map(([key, m]) => (
+                    <option key={key} value={key}>
+                      {key} — ${m.price}/clip{m.supports_i2v ? " · I2V" : ""}
+                    </option>
+                  ))}
+              </select>
+              <span className="mono muted" style={{ fontSize: "0.72rem" }}>
+                ~5s clip · ${(models?.[clipModel || proj.settings.video_model]?.price ?? 0).toFixed(2)}
+              </span>
+            </div>
             <div className="row" style={{ marginTop: 10 }}>
               <button disabled={!clipStartImage} onClick={() => {
                 const sources = [clipStartImage];
@@ -1015,12 +1032,13 @@ export default function ProjectBoard() {
                 api.createClip(prof, slug, {
                   source_images: sources,
                   prompt: clipPrompt,
-                  model: proj.settings.video_model,
+                  model: clipModel || proj.settings.video_model,
                 }).then(() => {
                   setCreatingClip(false);
                   setClipStartImage("");
                   setClipEndImage("");
                   setClipPrompt("");
+                  setClipModel("");
                   refresh();
                 }).catch((e) => toastError(String(e)));
               }}>create clip</button>
@@ -1064,20 +1082,28 @@ export default function ProjectBoard() {
               <div className="mono muted" style={{ fontSize: "0.65rem" }}>{clip.prompt}</div>
             ) : null}
             <div className="row" style={{ marginTop: 6 }}>
-              {clip.status === "completed" && (
+              {(clip.status === "completed" || clip.status === "failed") && (
                 <>
-                  <button
-                    className={clip.kept ? "btn" : "ghost"}
-                    style={{ padding: "3px 10px", fontSize: "0.7rem" }}
-                    onClick={() => api.keepClip(prof, slug, clip.id, !clip.kept).then(refresh).catch((e) => toastError(String(e)))}
-                  >
-                    {clip.kept ? "✓ kept" : "keep"}
+                  {clip.status === "completed" && (
+                    <>
+                      <button
+                        className={clip.kept ? "btn" : "ghost"}
+                        style={{ padding: "3px 10px", fontSize: "0.7rem" }}
+                        onClick={() => api.keepClip(prof, slug, clip.id, !clip.kept).then(refresh).catch((e) => toastError(String(e)))}
+                      >
+                        {clip.kept ? "✓ kept" : "keep"}
+                      </button>
+                      <a href={media(prof, slug, clip.file)} download className="ghost"
+                         style={{ padding: "3px 10px", fontSize: "0.7rem", borderRadius: 7,
+                                  border: "1px solid var(--line)", textDecoration: "none" }}>
+                        download
+                      </a>
+                    </>
+                  )}
+                  <button className="ghost" style={{ padding: "3px 10px", fontSize: "0.7rem" }}
+                    onClick={() => api.resetClip(prof, slug, clip.id).then(refresh).catch((e) => toastError(String(e)))}>
+                    regenerate
                   </button>
-                  <a href={media(prof, slug, clip.file)} download className="ghost"
-                     style={{ padding: "3px 10px", fontSize: "0.7rem", borderRadius: 7,
-                              border: "1px solid var(--line)", textDecoration: "none" }}>
-                    download
-                  </a>
                 </>
               )}
               {clip.status === "pending" && (
