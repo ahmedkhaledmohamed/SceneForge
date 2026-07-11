@@ -84,7 +84,8 @@ class ImageArtifact:
     prompt: str
     model: str
     created_at: str = field(default_factory=now_iso)
-    meta: dict = field(default_factory=dict)  # backend extras, e.g. cost_usd
+    meta: dict = field(default_factory=dict)
+    generation_id: str = ""
 
 
 @dataclass
@@ -141,6 +142,7 @@ class Project:
     characters: list[Character] = field(default_factory=list)
     outfits: list[Outfit] = field(default_factory=list)
     scenes: list[Scene] = field(default_factory=list)
+    notes: str = ""
     schema_version: int = SCHEMA_VERSION
     root: Path = field(default=Path("."), compare=False)
 

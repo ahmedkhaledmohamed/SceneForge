@@ -257,7 +257,7 @@ function RefineDialog({ prof, slug, scene, project, onClose, refresh }: {
   });
 
   return (
-    <dialog open>
+    <dialog open className="side-panel">
       <h2 style={{ marginTop: 0 }}>Refine {scene.id}</h2>
       <label>Scene description</label>
       <textarea
@@ -400,56 +400,45 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
         <p className="muted" style={{ margin: "10px 0" }}>
           no images yet — use "refine…" or the generate button above
         </p>
-      ) : comparing ? (
-        <div className="compare-grid" style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${Math.min(scene.images.length, 3)}, 1fr)`,
-          gap: 10, margin: "10px 0",
-        }}>
-          {scene.images.map((img, i) => (
-            <div key={i} style={{ textAlign: "center" }}>
-              <img
-                src={media(prof, slug, img.file)}
-                alt={`option ${i + 1}`}
-                style={{
-                  width: "100%", borderRadius: 8,
-                  border: scene.selected_image === i ? "3px solid var(--gold)" : "1px solid var(--line)",
-                  cursor: "pointer",
-                }}
-                onClick={() => { select.mutate(i); }}
-              />
-              <div className="mono muted" style={{ fontSize: "0.7rem", marginTop: 4 }}>
-                {scene.selected_image === i ? "✓ " : ""}opt {i + 1} · {img.model}
+      ) : (() => {
+        const lanes = new Map<string, { images: typeof scene.images; indices: number[] }>();
+        scene.images.forEach((img, i) => {
+          const gid = img.generation_id || "initial";
+          if (!lanes.has(gid)) lanes.set(gid, { images: [], indices: [] });
+          lanes.get(gid)!.images.push(img);
+          lanes.get(gid)!.indices.push(i);
+        });
+        const laneEntries = [...lanes.entries()].reverse();
+        return laneEntries.map(([gid, lane]) => (
+          <div key={gid} style={{ marginBottom: 8 }}>
+            {laneEntries.length > 1 && (
+              <div className="mono muted" style={{ fontSize: "0.65rem", marginBottom: 4 }}>
+                {gid === "initial" ? "initial generation" : gid} · {lane.images[0].model}
               </div>
-              <button
-                className={scene.selected_image === i ? "btn" : "ghost"}
-                style={{ marginTop: 4, padding: "4px 12px", fontSize: "0.72rem" }}
-                onClick={() => select.mutate(i)}
-              >
-                {scene.selected_image === i ? "selected" : "select"}
-              </button>
+            )}
+            <div className="gallery">
+              {lane.images.map((img, j) => {
+                const globalIdx = lane.indices[j];
+                return (
+                  <div
+                    key={j}
+                    className={`thumb${scene.selected_image === globalIdx ? " selected" : ""}${busy ? " busy" : ""}`}
+                    onClick={() => setViewing(globalIdx)}
+                    role="button"
+                    tabIndex={0}
+                    title="click to view, then select"
+                  >
+                    <img src={media(prof, slug, img.file)} alt={`option ${globalIdx + 1}`} loading="lazy" />
+                    <div className="cap">
+                      {scene.selected_image === globalIdx ? "✓ " : ""}opt {globalIdx + 1} · {img.model}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="gallery">
-          {scene.images.map((img, i) => (
-            <div
-              key={i}
-              className={`thumb${scene.selected_image === i ? " selected" : ""}${busy ? " busy" : ""}`}
-              onClick={() => setViewing(i)}
-              role="button"
-              tabIndex={0}
-              title="view full size"
-            >
-              <img src={media(prof, slug, img.file)} alt={`option ${i + 1}`} loading="lazy" />
-              <div className="cap">
-                {scene.selected_image === i ? "✓ " : ""}opt {i + 1} · {img.model}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ));
+      })()}
 
       {scene.clips.length > 0 && (() => {
         const completed = scene.clips.filter((c) => c.status === "completed");
@@ -738,6 +727,23 @@ export default function ProjectBoard() {
         {proj.spent_usd > 0 && <> · <span className="mono">${proj.spent_usd.toFixed(2)} GPU spend</span></>}
       </p>
       <JobBanner job={proj.job} onRetry={() => generateAll.mutate()} />
+
+      {(proj.notes || null) && (
+        <div className="mono muted" style={{ fontSize: "0.75rem", margin: "6px 0", whiteSpace: "pre-wrap" }}>
+          {proj.notes}
+        </div>
+      )}
+      <textarea
+        className="mono"
+        placeholder="project notes — context, decisions, ideas..."
+        defaultValue={proj.notes}
+        rows={2}
+        style={{ width: "100%", fontSize: "0.75rem", resize: "vertical", marginBottom: 8 }}
+        onBlur={(e) => {
+          const v = e.target.value;
+          if (v !== proj.notes) api.patchProject(prof, slug, { notes: v }).then(refresh);
+        }}
+      />
 
       {settingsOpen && (
         <SettingsDialog

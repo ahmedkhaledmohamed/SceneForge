@@ -4,6 +4,7 @@ export interface ImageArtifact {
   model: string;
   created_at: string;
   meta: Record<string, unknown>;
+  generation_id?: string;
 }
 
 export interface ClipArtifact {
@@ -71,6 +72,7 @@ export interface Project {
   scenes: Scene[];
   job: Job | null;
   spent_usd: number;
+  notes: string;
   profile_characters: Character[];
 }
 

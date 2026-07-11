@@ -391,6 +391,8 @@ def make_router(home: Path) -> APIRouter:
         project = load_project(prof, slug)
         if "concept" in payload:
             project.concept = payload["concept"]
+        if "notes" in payload:
+            project.notes = payload["notes"]
         for field_name in ("anchor", "suffix", "mood", "palette", "lighting"):
             if field_name in payload:
                 setattr(project.style, field_name, payload[field_name])
