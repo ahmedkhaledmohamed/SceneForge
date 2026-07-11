@@ -27,3 +27,4 @@ src/sceneforge/web_dist/
 .vercel/
 frontend/.vercel/
 site/.vercel/
+.claude/worktrees/

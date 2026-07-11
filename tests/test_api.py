@@ -93,25 +93,27 @@ def test_full_workflow_via_api(tmp_path):
     assert response.status_code == 201, response.text
     assert response.json()["reference_images"] == ["refs/characters/pchar-1/doll.png"]
 
-    # outfit + item with product photo + link
-    response = client.post(f"/api/profiles/{prof}/projects/{slug}/outfits",
-                           json={"name": "Cafe look"})
-    assert response.status_code == 201
+    # add a scene, then add scene refs (garment photo + link)
     response = client.post(
-        f"/api/profiles/{prof}/projects/{slug}/outfits/outfit-1/items",
-        data={"name": "Linen skirt", "url": "https://shop/skirt"},
-        files={"image": ("skirt.jpg", TINY_JPG, "image/jpeg")})
-    assert response.status_code == 201, response.text
-    assert response.json()["items"][0]["image"] == "refs/outfits/outfit-1/skirt.jpg"
+        f"/api/profiles/{prof}/projects/{slug}/scenes",
+        json={"description": "Cafe look", "character_id": "pchar-1",
+              "pose": "standing, facing camera"})
+    assert response.status_code == 201
 
-    # two pose scenes, character defaulted
     response = client.post(
-        f"/api/profiles/{prof}/projects/{slug}/scenes/from-outfit",
-        json={"outfit_id": "outfit-1"})
+        f"/api/profiles/{prof}/projects/{slug}/scenes/scene-01/refs",
+        data={"role": "garment", "label": "Linen skirt",
+              "url": "https://shop/skirt"},
+        files={"file": ("skirt.jpg", TINY_JPG, "image/jpeg")})
+    assert response.status_code == 201, response.text
+    assert response.json()["file"].startswith("refs/scenes/scene-01/")
+
+    # add a second scene for the same look
+    response = client.post(
+        f"/api/profiles/{prof}/projects/{slug}/scenes",
+        json={"description": "Cafe look angle 2", "character_id": "pchar-1",
+              "pose": "three-quarter turn"})
     assert response.status_code == 201
-    scenes = response.json()
-    assert len(scenes) == 2
-    assert all(s["character_id"] == "pchar-1" for s in scenes)
 
     # generate image options (job), select
     response = client.post(
@@ -146,7 +148,7 @@ def test_full_workflow_via_api(tmp_path):
     assert response.status_code == 200
     response = client.post(f"/api/profiles/{prof}/projects/{slug}/export")
     assert response.status_code == 200
-    assert response.json()["files"] == ["cafe-look--scene-01--take02.mp4"]
+    assert response.json()["files"] == ["scene-01--take02.mp4"]
 
     # zip download
     response = client.get(f"/api/profiles/{prof}/projects/{slug}/export.zip")
@@ -158,7 +160,7 @@ def test_full_workflow_via_api(tmp_path):
         f"/api/profiles/{prof}/projects/{slug}/history?type=clip").json()
     assert len(rows) == 2 and all(r["type"] == "clip" for r in rows)
     links = client.get(
-        f"/api/profiles/{prof}/projects/{slug}/outfits/outfit-1/links").text
+        f"/api/profiles/{prof}/projects/{slug}/scenes/scene-01/links").text
     assert "Linen skirt — https://shop/skirt" in links
     assert "spent_usd" in doc
     assert doc["scenes"][0]["prompt_preview"] is not None
@@ -230,7 +232,7 @@ def test_import_image_and_clip(tmp_path):
     assert clips[0]["take"] == 1
 
 
-def test_delete_scene_outfit_project(tmp_path):
+def test_delete_scene_and_project(tmp_path):
     client = make_client(tmp_path)
     prof = create_profile(client)
     slug = create_project(client, prof)
@@ -245,12 +247,6 @@ def test_delete_scene_outfit_project(tmp_path):
     assert response.status_code == 200
     doc = client.get(f"/api/profiles/{prof}/projects/{slug}").json()
     assert len(doc["scenes"]) == 0
-
-    # add outfit, then delete it
-    client.post(f"/api/profiles/{prof}/projects/{slug}/outfits",
-                json={"name": "Doomed outfit"})
-    response = client.delete(f"/api/profiles/{prof}/projects/{slug}/outfits/outfit-1")
-    assert response.status_code == 200
 
     # delete the whole project
     response = client.delete(f"/api/profiles/{prof}/projects/{slug}")
@@ -371,40 +367,45 @@ def test_duplicate_project(tmp_path):
     client = make_client(tmp_path)
     prof = create_profile(client)
     slug = create_project(client, prof)
-    client.post(f"/api/profiles/{prof}/projects/{slug}/outfits",
-                json={"name": "Test outfit"})
+
+    # add a scene with refs
     client.post(f"/api/profiles/{prof}/projects/{slug}/scenes",
                 json={"description": "a scene"})
+    client.post(
+        f"/api/profiles/{prof}/projects/{slug}/scenes/scene-01/refs",
+        data={"role": "garment", "label": "Skirt", "url": "https://shop/skirt"},
+        files={"file": ("skirt.jpg", TINY_JPG, "image/jpeg")})
 
     response = client.post(f"/api/profiles/{prof}/projects/{slug}/duplicate",
                            json={"name": "Copy"})
     assert response.status_code == 201
     copy = response.json()
     assert copy["name"] == "Copy"
-    assert len(copy["outfits"]) == 1
     assert len(copy["scenes"]) == 1
+    assert len(copy["scenes"][0]["refs"]) == 1
+    assert copy["scenes"][0]["refs"][0]["label"] == "Skirt"
     assert copy["slug"] != slug
 
 
-def test_bulk_item_import(tmp_path):
+def test_bulk_scene_ref_import(tmp_path):
     client = make_client(tmp_path)
     prof = create_profile(client)
     slug = create_project(client, prof)
-    client.post(f"/api/profiles/{prof}/projects/{slug}/outfits",
-                json={"name": "Bulk outfit"})
+    client.post(f"/api/profiles/{prof}/projects/{slug}/scenes",
+                json={"description": "Bulk ref scene"})
 
     response = client.post(
-        f"/api/profiles/{prof}/projects/{slug}/outfits/outfit-1/items/bulk",
+        f"/api/profiles/{prof}/projects/{slug}/scenes/scene-01/refs/bulk",
         files=[
             ("files", ("linen_skirt.png", TINY_PNG, "image/png")),
             ("files", ("knit-cardigan.jpg", TINY_JPG, "image/jpeg")),
         ])
     assert response.status_code == 201
-    items = response.json()["items"]
-    assert len(items) == 2
-    assert items[0]["name"] == "Linen Skirt"
-    assert items[1]["name"] == "Knit Cardigan"
-    assert all(i["image"] is not None for i in items)
+    refs = response.json()
+    assert len(refs) == 2
+    assert refs[0]["label"] == "Linen Skirt"
+    assert refs[1]["label"] == "Knit Cardigan"
+    assert all(r["file"] != "" for r in refs)
 
 
 def test_scenes_bulk(tmp_path):
@@ -436,25 +437,6 @@ def test_delete_profile_character(tmp_path):
 
     doc = client.get(f"/api/profiles/{prof}").json()
     assert len(doc["characters"]) == 0
-
-
-def test_process_outfit(tmp_path):
-    client = make_client(tmp_path)
-    prof = create_profile(client)
-    slug = create_project(client, prof)
-    client.post(f"/api/profiles/{prof}/projects/{slug}/outfits",
-                json={"name": "Process me"})
-
-    response = client.post(
-        f"/api/profiles/{prof}/projects/{slug}/outfits/outfit-1/process",
-        json={})
-    assert response.status_code == 202
-    assert wait_job(client, prof, slug)["status"] == "done"
-
-    doc = client.get(f"/api/profiles/{prof}/projects/{slug}").json()
-    assert len(doc["scenes"]) == 2  # two default poses
-    assert all(len(s["images"]) > 0 for s in doc["scenes"])
-    assert all(s["selected_image"] == 0 for s in doc["scenes"])
 
 
 def test_profile_stats(tmp_path):

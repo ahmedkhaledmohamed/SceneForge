@@ -229,109 +229,27 @@ def add_character(
                 "reference image(s)", fg=typer.colors.GREEN)
 
 
-@app.command("add-outfit")
-def add_outfit(
-    ctx: typer.Context,
-    name: str,
-    item: list[str] = typer.Option(
-        None, "--item",
-        help="Clothing item as 'NAME|SHOP_URL|IMAGE_PATH' (URL/IMAGE optional, repeatable)",
-    ),
-):
-    """Add an outfit: shoppable clothing items with links and product photos."""
-    from .project import ClothingItem
-
-    project = _load(ctx)
-    outfit = project.add_outfit(name)
-
-    specs = list(item or [])
-    if not specs:
-        typer.echo("Enter items as NAME|SHOP_URL|IMAGE_PATH (empty line to finish):")
-        while True:
-            line = typer.prompt(f"Item {len(outfit.items) + 1}", default="",
-                                show_default=False)
-            if not line.strip():
-                break
-            specs.append(line)
-    if not specs:
-        _fail("An outfit needs at least one item")
-
-    for spec in specs:
-        parts = [p.strip() for p in spec.split("|")]
-        clothing = ClothingItem(name=parts[0])
-        if len(parts) > 1 and parts[1]:
-            clothing.url = parts[1]
-        if len(parts) > 2 and parts[2]:
-            dest = _import_ref(Path(parts[2]), project.outfit_refs_dir(outfit))
-            clothing.image = str(dest.relative_to(project.root))
-        outfit.items.append(clothing)
-
-    project.save()
-    with_images = sum(1 for i in outfit.items if i.image)
-    typer.secho(f"{outfit.id}: '{name}' — {len(outfit.items)} item(s), "
-                f"{with_images} with reference photos", fg=typer.colors.GREEN)
-
-
 DEFAULT_POSES = [
     "standing, facing the camera, full outfit visible head to toe",
     "three-quarter turn, looking over the shoulder, showcasing the outfit from a different angle",
 ]
 
 
-@app.command("add-outfit-scenes")
-def add_outfit_scenes(
-    ctx: typer.Context,
-    outfit_id: str,
-    character: str = typer.Option(None, help="Character id (default: the only one)"),
-    pose: list[str] = typer.Option(None, "--pose", help="Pose (repeatable; default: two standard poses)"),
-    setting: str = typer.Option("", help="Scene setting, e.g. 'sunlit cafe'"),
-):
-    """Create the pose scenes for an outfit (two standard poses by default)."""
-    from .profile import resolve_character
-
-    project, profile = _load_with_profile(ctx)
-    outfit = project.find_outfit(outfit_id)
-
-    if character is None:
-        if len(project.characters) == 1:
-            character = project.characters[0].id
-        elif project.characters:
-            _fail("Multiple characters — pick one with --character "
-                  f"({', '.join(c.id for c in project.characters)})")
-        elif profile and profile.main_character:
-            character = profile.main_character.id
-    if character:
-        try:
-            resolve_character(project, profile, character)
-        except KeyError as exc:
-            _fail(str(exc).strip("'\""))
-
-    poses = list(pose or DEFAULT_POSES)
-    base = f"{outfit.name}" + (f" in {setting}" if setting else "")
-    created = []
-    for p in poses:
-        scene = project.add_scene(base, character_id=character,
-                                  outfit_id=outfit.id, pose=p)
-        created.append(scene.id)
-    project.save()
-    typer.secho(f"Created {', '.join(created)} for {outfit.id}"
-                + (f" with {character}" if character else ""),
-                fg=typer.colors.GREEN)
-
-
 @app.command()
-def links(ctx: typer.Context, outfit_id: str = typer.Argument(None)):
-    """Print a paste-ready shop-links block (pipe to pbcopy)."""
+def links(ctx: typer.Context, scene_id: str = typer.Argument(None)):
+    """Print shop links from scene refs (pipe to pbcopy)."""
     project = _load(ctx)
-    outfits = [project.find_outfit(outfit_id)] if outfit_id else project.outfits
-    if not outfits:
-        _fail("No outfits yet — add one with 'sceneforge add-outfit'")
+    scenes = [project.find_scene(scene_id)] if scene_id else project.scenes
     blocks = []
-    for outfit in outfits:
-        lines = [outfit.name]
-        for item in outfit.items:
-            lines.append(f"{item.name} — {item.url}" if item.url else item.name)
-        blocks.append("\n".join(lines))
+    for sc in scenes:
+        urls = [r for r in sc.refs if r.url]
+        if urls:
+            lines = [sc.description[:60]]
+            for r in urls:
+                lines.append(f"{r.label} — {r.url}" if r.label else str(r.url))
+            blocks.append("\n".join(lines))
+    if not blocks:
+        _fail("No scene refs with shop links found")
     typer.echo("\n\n".join(blocks))
 
 

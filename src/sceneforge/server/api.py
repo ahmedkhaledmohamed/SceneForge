@@ -20,7 +20,7 @@ import secrets
 
 from .. import config, ops
 from ..profile import PROFILE_FILE, Profile, create_profile
-from ..project import PROJECT_FILE, ClothingItem, Project
+from ..project import PROJECT_FILE, Project, SceneRef
 from .jobs import JobManager
 from .uploads import save_upload
 
@@ -364,7 +364,7 @@ def make_router(home: Path) -> APIRouter:
                 "name": p.name,
                 "concept": p.concept,
                 "scenes": len(p.scenes),
-                "outfits": len(p.outfits),
+                "refs": sum(len(sc.refs) for sc in p.scenes),
                 "clips": sum(1 for sc in p.scenes for c in sc.clips
                              if c.status == "completed"),
                 "kept": sum(1 for sc in p.scenes for c in sc.clips if c.kept),
@@ -475,17 +475,14 @@ def make_router(home: Path) -> APIRouter:
                 video_model=source.settings.video_model,
             )
             copy.settings.image_options = source.settings.image_options
-            for outfit in source.outfits:
-                o = copy.add_outfit(outfit.name)
-                o.items = [ClothingItem(name=i.name, url=i.url, image=i.image)
-                           for i in outfit.items]
             for scene in source.scenes:
-                copy.add_scene(
+                s = copy.add_scene(
                     scene.description,
                     character_id=scene.character_id,
-                    outfit_id=scene.outfit_id,
                     pose=scene.pose,
                 )
+                s.refs = [SceneRef(file=r.file, role=r.role, label=r.label, url=r.url)
+                          for r in scene.refs]
             copy.save()
         except (ValueError, FileExistsError) as exc:
             raise _err(400, "invalid", str(exc))
@@ -518,77 +515,6 @@ def make_router(home: Path) -> APIRouter:
         project.refs.pop(index)
         project.save()
         return {"deleted": index}
-
-    # ---------------------------------------------------------- outfits
-
-    @router.post("/profiles/{prof}/projects/{slug}/outfits", status_code=201)
-    def add_outfit(prof: str, slug: str, payload: dict):
-        project = load_project(prof, slug)
-        name = (payload.get("name") or "").strip()
-        if not name:
-            raise _err(400, "invalid", "Outfit name is required")
-        outfit = project.add_outfit(name)
-        project.save()
-        return asdict(outfit)
-
-    @router.post("/profiles/{prof}/projects/{slug}/outfits/{oid}/items",
-                 status_code=201)
-    async def add_item(prof: str, slug: str, oid: str, name: str = Form(...),
-                       url: str = Form(""),
-                       image: UploadFile | None = File(None)):
-        project = load_project(prof, slug)
-        outfit = find_or_404(project.find_outfit, oid)
-        item = ClothingItem(name=name, url=url or None)
-        if image is not None and image.filename:
-            dest = await save_upload(image, project.outfit_refs_dir(outfit))
-            item.image = str(dest.relative_to(project.root))
-        outfit.items.append(item)
-        project.save()
-        return asdict(outfit)
-
-    @router.post("/profiles/{prof}/projects/{slug}/outfits/{oid}/items/bulk",
-                 status_code=201)
-    async def add_items_bulk(prof: str, slug: str, oid: str,
-                             files: list[UploadFile] = File(...)):
-        from pathlib import Path as P
-        project = load_project(prof, slug)
-        outfit = find_or_404(project.find_outfit, oid)
-        for file in files:
-            dest = await save_upload(file, project.outfit_refs_dir(outfit))
-            name = P(file.filename or "item").stem.replace("-", " ").replace("_", " ").title()
-            item = ClothingItem(name=name, image=str(dest.relative_to(project.root)))
-            outfit.items.append(item)
-        project.save()
-        return asdict(outfit)
-
-    @router.delete("/profiles/{prof}/projects/{slug}/outfits/{oid}")
-    def delete_outfit(prof: str, slug: str, oid: str):
-        project = load_project(prof, slug)
-        outfit = find_or_404(project.find_outfit, oid)
-        project.outfits.remove(outfit)
-        project.save()
-        return {"deleted": oid}
-
-    @router.delete("/profiles/{prof}/projects/{slug}/outfits/{oid}/items/{index}")
-    def delete_item(prof: str, slug: str, oid: str, index: int):
-        project = load_project(prof, slug)
-        outfit = find_or_404(project.find_outfit, oid)
-        if not 0 <= index < len(outfit.items):
-            raise _err(404, "not_found", f"No item {index} on {oid}")
-        outfit.items.pop(index)
-        project.save()
-        return asdict(outfit)
-
-    @router.get("/profiles/{prof}/projects/{slug}/outfits/{oid}/links",
-                response_class=PlainTextResponse)
-    def outfit_links(prof: str, slug: str, oid: str):
-        project = load_project(prof, slug)
-        outfit = find_or_404(project.find_outfit, oid)
-        lines = [outfit.name] + [
-            f"{item.name} — {item.url}" if item.url else item.name
-            for item in outfit.items
-        ]
-        return "\n".join(lines)
 
     # ----------------------------------------------------------- scenes
 
@@ -629,88 +555,9 @@ def make_router(home: Path) -> APIRouter:
             description,
             pose=payload.get("pose"),
             character_id=payload.get("character_id"),
-            outfit_id=payload.get("outfit_id"),
         )
         project.save()
         return asdict(scene)
-
-    @router.post("/profiles/{prof}/projects/{slug}/scenes/from-outfit",
-                 status_code=201)
-    def scenes_from_outfit(prof: str, slug: str, payload: dict):
-        from ..cli import DEFAULT_POSES
-        from ..profile import resolve_character
-
-        profile = load_profile(prof)
-        project = load_project(prof, slug)
-        outfit = find_or_404(project.find_outfit, payload.get("outfit_id", ""))
-        character_id = payload.get("character_id")
-        if character_id is None:
-            if len(project.characters) == 1:
-                character_id = project.characters[0].id
-            elif profile.main_character:
-                character_id = profile.main_character.id
-        if character_id:
-            find_or_404(resolve_character, project, profile, character_id)
-        setting = payload.get("setting") or ""
-        base_desc = outfit.name + (f" in {setting}" if setting else "")
-        created = []
-        for pose in payload.get("poses") or DEFAULT_POSES:
-            scene = project.add_scene(base_desc, character_id=character_id,
-                                      outfit_id=outfit.id, pose=pose)
-            created.append(asdict(scene))
-        project.save()
-        return created
-
-    @router.post("/profiles/{prof}/projects/{slug}/outfits/{oid}/process",
-                 status_code=202)
-    def process_outfit(prof: str, slug: str, oid: str, payload: dict):
-        """One-click: create pose scenes + generate images for an outfit."""
-        from ..cli import DEFAULT_POSES
-        from ..profile import resolve_character
-
-        profile = load_profile(prof)
-        project = load_project(prof, slug)
-        outfit = find_or_404(project.find_outfit, oid)
-        model_key = payload.get("model") or project.settings.image_model
-        try:
-            config.resolve_model(model_key, "image")
-        except ValueError as exc:
-            raise _err(400, "invalid", str(exc))
-
-        character_id = payload.get("character_id")
-        if character_id is None:
-            if len(project.characters) == 1:
-                character_id = project.characters[0].id
-            elif profile.main_character:
-                character_id = profile.main_character.id
-        if character_id:
-            find_or_404(resolve_character, project, profile, character_id)
-
-        existing = [s for s in project.scenes if s.outfit_id == outfit.id]
-        if not existing:
-            setting = payload.get("setting") or ""
-            base_desc = outfit.name + (f" in {setting}" if setting else "")
-            for pose in payload.get("poses") or DEFAULT_POSES:
-                project.add_scene(base_desc, character_id=character_id,
-                                  outfit_id=outfit.id, pose=pose)
-            project.save()
-
-        scenes = [s for s in project.scenes if s.outfit_id == outfit.id]
-        options = payload.get("options") or project.settings.image_options
-        todo = ops.plan_images(scenes, options, force=False)
-        if not todo:
-            return {"started": None, "note": "scenes already have images"}
-
-        def job(log):
-            ops.run_images(project, todo, model_key, log=log, profile=profile)
-            for sc in scenes:
-                if sc.selected_image is None and sc.images:
-                    sc.selected_image = 0
-                    log(f"{sc.id}: auto-selected opt-1")
-            project.save()
-
-        return start_job_or_409(
-            prof, slug, f"process {outfit.name} ({model_key})", job)
 
     @router.delete("/profiles/{prof}/projects/{slug}/scenes/{sid}")
     def delete_scene(prof: str, slug: str, sid: str):
@@ -736,7 +583,7 @@ def make_router(home: Path) -> APIRouter:
         project = load_project(prof, slug)
         scene = find_or_404(project.find_scene, sid)
         for field_name in ("description", "pose", "style_override",
-                           "character_id", "outfit_id"):
+                           "character_id"):
             if field_name in payload:
                 setattr(scene, field_name, payload[field_name])
         project.save()
@@ -765,6 +612,72 @@ def make_router(home: Path) -> APIRouter:
                 count += 1
         project.save()
         return {"selected": count}
+
+    # -------------------------------------------------------- scene refs
+
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/refs",
+                 status_code=201)
+    async def add_scene_ref(prof: str, slug: str, sid: str,
+                            role: str = Form("garment"),
+                            label: str = Form(""),
+                            url: str = Form(""),
+                            file: UploadFile = File(...)):
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        dest = await save_upload(file, project.scene_refs_dir(scene))
+        ref = SceneRef(
+            file=str(dest.relative_to(project.root)),
+            role=role,
+            label=label or dest.stem,
+            url=url or None,
+        )
+        scene.refs.append(ref)
+        project.save()
+        return asdict(ref)
+
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/refs/bulk",
+                 status_code=201)
+    async def add_scene_refs_bulk(prof: str, slug: str, sid: str,
+                                  files: list[UploadFile] = File(...)):
+        from pathlib import Path as P
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        added = []
+        for f in files:
+            dest = await save_upload(f, project.scene_refs_dir(scene))
+            label = P(f.filename or "ref").stem.replace("-", " ").replace("_", " ").title()
+            ref = SceneRef(
+                file=str(dest.relative_to(project.root)),
+                role="garment",
+                label=label,
+            )
+            scene.refs.append(ref)
+            added.append(asdict(ref))
+        project.save()
+        return added
+
+    @router.delete("/profiles/{prof}/projects/{slug}/scenes/{sid}/refs/{index}")
+    def delete_scene_ref(prof: str, slug: str, sid: str, index: int):
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        if not 0 <= index < len(scene.refs):
+            raise _err(404, "not_found", f"No ref {index} on {sid}")
+        scene.refs.pop(index)
+        project.save()
+        return {"deleted": index}
+
+    @router.get("/profiles/{prof}/projects/{slug}/scenes/{sid}/links",
+                response_class=PlainTextResponse)
+    def scene_links(prof: str, slug: str, sid: str):
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        urls = [r for r in scene.refs if r.url]
+        if not urls:
+            return ""
+        lines = [scene.description[:60]]
+        for r in urls:
+            lines.append(f"{r.label} — {r.url}" if r.label else str(r.url))
+        return "\n".join(lines)
 
     # ---------------------------------------------------------- import
 
@@ -972,20 +885,20 @@ def make_router(home: Path) -> APIRouter:
 
     @router.get("/profiles/{prof}/projects/{slug}/history")
     def history(prof: str, slug: str, type: str | None = None,
-                outfit: str | None = None, model: str | None = None):
+                model: str | None = None):
         project = load_project(prof, slug)
         rows = []
         for sc in project.scenes:
             for img in sc.images:
                 rows.append({"type": "image", "scene_id": sc.id,
-                             "outfit_id": sc.outfit_id, "file": img.file,
+                             "file": img.file,
                              "prompt": img.prompt, "model": img.model,
                              "cost_usd": img.meta.get("cost_usd"),
                              "references": img.meta.get("reference_images", []),
                              "created_at": img.created_at})
             for clip in sc.clips:
                 rows.append({"type": "clip", "scene_id": sc.id,
-                             "outfit_id": sc.outfit_id, "file": clip.file,
+                             "file": clip.file,
                              "prompt": clip.prompt, "model": clip.model,
                              "status": clip.status, "take": clip.take,
                              "kept": clip.kept,
@@ -993,8 +906,6 @@ def make_router(home: Path) -> APIRouter:
                              "created_at": clip.created_at})
         if type:
             rows = [r for r in rows if r["type"] == type]
-        if outfit:
-            rows = [r for r in rows if r["outfit_id"] == outfit]
         if model:
             rows = [r for r in rows if r["model"] == model]
         rows.sort(key=lambda r: r["created_at"], reverse=True)

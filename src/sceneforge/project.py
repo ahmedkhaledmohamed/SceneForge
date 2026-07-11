@@ -5,13 +5,13 @@ A project is a directory containing project.json plus generated media:
     my-video/
     ├── project.json
     ├── images/scene-01/opt-1.png ...
-    ├── clips/scene-01.mp4
+    ├── refs/scenes/scene-01/      (reference images per scene)
+    ├── clips/scene-01/take-01.mp4
     ├── work/        (normalized intermediates, regenerable)
     └── output/final.mp4
 
-Scene order is array order. Generation history is the append-only
-images/clips arrays on each scene — every artifact records the full
-composed prompt and model used.
+Scene order is array order. Each scene owns its reference images
+(garment photos, style refs, etc.) and optional shop links.
 """
 
 import json
@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 3  # v2: characters/outfits/scene refs · v3: clip takes + kept
+SCHEMA_VERSION = 4  # v4: self-contained scenes with refs (no more outfits)
 
 PROJECT_FILE = "project.json"
 
@@ -53,8 +53,6 @@ class Settings:
 
 @dataclass
 class Character:
-    """A recurring subject (e.g. a brand's character doll) whose reference
-    images condition every generation it appears in."""
     id: str
     name: str
     description: str = ""
@@ -63,25 +61,20 @@ class Character:
 
 
 @dataclass
-class ClothingItem:
-    name: str
-    url: str | None = None    # shop link, posted with the content
-    image: str | None = None  # product photo, used as a generation reference
-
-
-@dataclass
-class Outfit:
-    """Her unit of work: a set of shoppable items that yields pose scenes,
-    clips, and one shop-links block."""
-    id: str
-    name: str
-    items: list[ClothingItem] = field(default_factory=list)
+class SceneRef:
+    """A reference image attached to a scene — garment photo, style ref,
+    background, or prop. Optional url is a shop link for export."""
+    file: str
+    role: str = "garment"  # garment | style | background | prop | other
+    label: str = ""
+    url: str | None = None
 
 
 @dataclass
 class ReferenceImage:
+    """Project-level reference image (style/background shared across scenes)."""
     file: str
-    role: str = "style"  # style | background | prop | other
+    role: str = "style"
     label: str = ""
 
 
@@ -103,15 +96,13 @@ class ClipArtifact:
     model: str
     job_id: str | None = None
     duration_s: float | None = None
-    status: str = "pending"  # pending | completed | failed
+    status: str = "pending"
     error: str | None = None
     created_at: str = field(default_factory=now_iso)
-    meta: dict = field(default_factory=dict)  # backend extras, e.g. cost_usd
-    # Takes: several short clips per scene image, compared and hand-picked
-    # for external editing. None = legacy single-clip flow.
-    take: int | None = None                # 1-based per scene
-    source_image_index: int | None = None  # which sc.images entry it animates
-    kept: bool = False                     # marked for export
+    meta: dict = field(default_factory=dict)
+    take: int | None = None
+    source_image_index: int | None = None
+    kept: bool = False
 
 
 @dataclass
@@ -119,9 +110,9 @@ class Scene:
     id: str
     description: str
     style_override: str | None = None
-    character_id: str | None = None  # references Project.characters
-    outfit_id: str | None = None     # references Project.outfits
-    pose: str | None = None          # e.g. "standing, facing camera"
+    character_id: str | None = None
+    pose: str | None = None
+    refs: list[SceneRef] = field(default_factory=list)
     images: list[ImageArtifact] = field(default_factory=list)
     selected_image: int | None = None
     clips: list[ClipArtifact] = field(default_factory=list)
@@ -148,7 +139,6 @@ class Project:
     settings: Settings = field(default_factory=Settings)
     characters: list[Character] = field(default_factory=list)
     refs: list[ReferenceImage] = field(default_factory=list)
-    outfits: list[Outfit] = field(default_factory=list)
     scenes: list[Scene] = field(default_factory=list)
     notes: str = ""
     schema_version: int = SCHEMA_VERSION
@@ -163,11 +153,11 @@ class Project:
     def images_dir(self, scene: Scene) -> Path:
         return self.root / "images" / scene.id
 
+    def scene_refs_dir(self, scene: Scene) -> Path:
+        return self.root / "refs" / "scenes" / scene.id
+
     def character_refs_dir(self, character: Character) -> Path:
         return self.root / "refs" / "characters" / character.id
-
-    def outfit_refs_dir(self, outfit: Outfit) -> Path:
-        return self.root / "refs" / "outfits" / outfit.id
 
     @property
     def clips_dir(self) -> Path:
@@ -181,7 +171,7 @@ class Project:
     def output_dir(self) -> Path:
         return self.root / "output"
 
-    # --- scenes / characters / outfits ---
+    # --- scenes / characters ---
 
     def add_scene(self, description: str, **fields) -> Scene:
         scene = Scene(id=f"scene-{len(self.scenes) + 1:02d}",
@@ -209,18 +199,6 @@ class Project:
         valid = ", ".join(c.id for c in self.characters) or "(none)"
         raise KeyError(f"No character '{character_id}'. Characters: {valid}")
 
-    def add_outfit(self, name: str) -> Outfit:
-        outfit = Outfit(id=f"outfit-{len(self.outfits) + 1}", name=name)
-        self.outfits.append(outfit)
-        return outfit
-
-    def find_outfit(self, outfit_id: str) -> Outfit:
-        for outfit in self.outfits:
-            if outfit.id == outfit_id:
-                return outfit
-        valid = ", ".join(o.id for o in self.outfits) or "(none)"
-        raise KeyError(f"No outfit '{outfit_id}'. Outfits: {valid}")
-
     # --- persistence ---
 
     def save(self) -> None:
@@ -238,26 +216,42 @@ class Project:
             raise ValueError(
                 f"project.json schema v{version} is newer than this tool (v{SCHEMA_VERSION})"
             )
-        scenes = [
-            Scene(
+
+        # --- v3 migration: outfits → scene refs ---
+        outfits_by_id = {}
+        if version < 4:
+            for o in data.get("outfits", []):
+                outfits_by_id[o["id"]] = o
+
+        scenes = []
+        for s in data.get("scenes", []):
+            scene_refs = [SceneRef(**r) for r in s.get("refs", [])]
+
+            # migrate outfit items into scene refs
+            outfit_id = s.get("outfit_id")
+            if version < 4 and outfit_id and outfit_id in outfits_by_id:
+                outfit = outfits_by_id[outfit_id]
+                for item in outfit.get("items", []):
+                    scene_refs.append(SceneRef(
+                        file=item.get("image") or "",
+                        role="garment",
+                        label=item.get("name", ""),
+                        url=item.get("url"),
+                    ))
+
+            scenes.append(Scene(
                 id=s["id"],
                 description=s["description"],
                 style_override=s.get("style_override"),
                 character_id=s.get("character_id"),
-                outfit_id=s.get("outfit_id"),
                 pose=s.get("pose"),
+                refs=scene_refs,
                 images=[ImageArtifact(**img) for img in s.get("images", [])],
                 selected_image=s.get("selected_image"),
                 clips=[ClipArtifact(**c) for c in s.get("clips", [])],
-            )
-            for s in data.get("scenes", [])
-        ]
+            ))
+
         characters = [Character(**c) for c in data.get("characters", [])]
-        outfits = [
-            Outfit(id=o["id"], name=o["name"],
-                   items=[ClothingItem(**i) for i in o.get("items", [])])
-            for o in data.get("outfits", [])
-        ]
         return cls(
             name=data["name"],
             concept=data.get("concept", ""),
@@ -265,7 +259,6 @@ class Project:
             settings=Settings(**data.get("settings", {})),
             characters=characters,
             refs=[ReferenceImage(**r) for r in data.get("refs", [])],
-            outfits=outfits,
             scenes=scenes,
             notes=data.get("notes", ""),
             schema_version=SCHEMA_VERSION,

@@ -11,7 +11,7 @@ from typing import Callable
 
 from . import config
 from .backends import get_image_backend, get_video_backend
-from .project import ClipArtifact, ImageArtifact, Project, Scene
+from .project import ClipArtifact, ImageArtifact, Project, Scene, SceneRef
 from .prompts import compose_prompt
 from .stitch import stitch as stitch_clips
 
@@ -80,9 +80,7 @@ def scene_reference_images(project: Project, scene: Scene,
         from .profile import resolve_character
         character, base = resolve_character(project, profile, scene.character_id)
         refs += [base / r for r in character.reference_images]
-    if scene.outfit_id:
-        outfit = project.find_outfit(scene.outfit_id)
-        refs += [project.root / item.image for item in outfit.items if item.image]
+    refs += [project.root / r.file for r in scene.refs if r.file]
     for ref in project.refs:
         refs.append(project.root / ref.file)
     if project.style.reference_image:
@@ -308,28 +306,25 @@ def run_export(project: Project, out_dir: Path | None = None) -> list[Path]:
     export_dir.mkdir(parents=True)
 
     manifest = []
-    outfit_ids: list[str] = []
     for sc, clip in kept:
-        stem = "clip"
-        if sc.outfit_id:
-            outfit = project.find_outfit(sc.outfit_id)
-            stem = slugify(outfit.name)
-            if outfit.id not in outfit_ids:
-                outfit_ids.append(outfit.id)
-        name = f"{stem}--{sc.id}--take{clip.take or 0:02d}.mp4"
+        name = f"{sc.id}--take{clip.take or 0:02d}.mp4"
         dest = export_dir / name
         shutil.copy2(project.root / clip.file, dest)
         manifest.append(dest)
 
-    if outfit_ids:
-        blocks = []
-        for oid in outfit_ids:
-            outfit = project.find_outfit(oid)
-            lines = [outfit.name] + [
-                f"{item.name} — {item.url}" if item.url else item.name
-                for item in outfit.items
-            ]
+    blocks = []
+    seen_scenes: set[str] = set()
+    for sc, clip in kept:
+        if sc.id in seen_scenes:
+            continue
+        seen_scenes.add(sc.id)
+        urls = [r for r in sc.refs if r.url]
+        if urls:
+            lines = [sc.description[:60]]
+            for r in urls:
+                lines.append(f"{r.label} — {r.url}" if r.label else str(r.url))
             blocks.append("\n".join(lines))
+    if blocks:
         (export_dir / "links.txt").write_text("\n\n".join(blocks) + "\n")
 
     return manifest
