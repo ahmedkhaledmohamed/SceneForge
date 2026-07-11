@@ -689,61 +689,63 @@ export default function ProjectBoard() {
         />
       )}
 
-      <div className="row">
-        <ModelPicker
-          kind="image"
-          value={imageModel ?? proj.settings.image_model}
-          onChange={setImageModel}
-        />
-        <button onClick={() => generateAll.mutate()} disabled={busy || imagesNeeded === 0}>
-          Generate {imagesNeeded} images{imgCost > 0 ? ` (~$${imgCost.toFixed(2)})` : ""}
-        </button>
-        {unselectedWithImages > 0 && (
-          <button className="ghost" onClick={() => selectAll.mutate()}>
-            select all ({unselectedWithImages})
-          </button>
-        )}
-        <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
-        {proj.concept && (
-          <button className="ghost" onClick={() => brainstorm.mutate()} disabled={busy || brainstorm.isPending}>
-            {brainstorm.isPending ? "thinking…" : "brainstorm scenes"}
-          </button>
-        )}
-        <form
-          className="row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const form = new FormData(e.currentTarget);
-            addRef.mutate(form);
-            e.currentTarget.reset();
-          }}
-        >
-          <select name="role" style={{ width: 90 }}>
-            <option value="style">style</option>
-            <option value="background">background</option>
-            <option value="prop">prop</option>
-            <option value="other">other</option>
-          </select>
-          <input name="file" type="file" accept="image/*" className="mono" style={{ width: 170 }} />
-          <button className="ghost" disabled={addRef.isPending}>+ ref</button>
-        </form>
-      </div>
+      <div className="toolbar-sections">
+        <div className="toolbar-section">
+          <span className="toolbar-label">scenes</span>
+          <div className="row">
+            <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
+            {proj.concept && (
+              <button className="ghost" onClick={() => brainstorm.mutate()} disabled={busy || brainstorm.isPending}>
+                {brainstorm.isPending ? "thinking…" : "brainstorm"}
+              </button>
+            )}
+          </div>
+        </div>
 
-      <div className="row" style={{ marginTop: 8 }}>
-        <button className="ghost" onClick={() => takesAll.mutate()} disabled={busy || selectedCount === 0}>
-          generate takes ({selectedCount} scenes{takesCost > 0 ? `, ~$${takesCost.toFixed(2)}` : ""})
-        </button>
-        <button className="ghost" onClick={() => runStitch.mutate()} disabled={busy || !allClipsReady}>
-          stitch final video
-        </button>
-        <button className="ghost" onClick={() => runExport.mutate()} disabled={keptCount === 0}>
-          export {keptCount > 0 ? `${keptCount} kept` : ""}
-        </button>
-        {exported && (
-          <span className="mono muted">
-            → {exported} · <a href={`${(import.meta.env.VITE_API_BASE ?? "/api")}/profiles/${prof}/projects/${slug}/export.zip`}>download zip</a>
-          </span>
-        )}
+        <div className="toolbar-section">
+          <span className="toolbar-label">images</span>
+          <div className="row">
+            <ModelPicker
+              kind="image"
+              value={imageModel ?? proj.settings.image_model}
+              onChange={setImageModel}
+            />
+            <button onClick={() => generateAll.mutate()} disabled={busy || imagesNeeded === 0}>
+              Generate {imagesNeeded} images{imgCost > 0 ? ` (~$${imgCost.toFixed(2)})` : ""}
+            </button>
+            {unselectedWithImages > 0 && (
+              <button className="ghost" onClick={() => selectAll.mutate()}>
+                select all ({unselectedWithImages})
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="toolbar-section">
+          <span className="toolbar-label">clips</span>
+          <div className="row">
+            <button className="ghost" onClick={() => takesAll.mutate()} disabled={busy || selectedCount === 0}>
+              Generate clips ({selectedCount} scenes{takesCost > 0 ? `, ~$${takesCost.toFixed(2)}` : ""})
+            </button>
+          </div>
+        </div>
+
+        <div className="toolbar-section">
+          <span className="toolbar-label">export</span>
+          <div className="row">
+            <button className="ghost" onClick={() => runStitch.mutate()} disabled={busy || !allClipsReady}>
+              stitch final video
+            </button>
+            <button className="ghost" onClick={() => runExport.mutate()} disabled={keptCount === 0}>
+              export {keptCount > 0 ? `${keptCount} kept` : ""}
+            </button>
+            {exported && (
+              <span className="mono muted">
+                <a href={`${(import.meta.env.VITE_API_BASE ?? "/api")}/profiles/${prof}/projects/${slug}/export.zip`}>download zip</a>
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       {brainstormResults && (
