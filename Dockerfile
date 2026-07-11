@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy everything needed
 COPY pyproject.toml .
 COPY src/ src/
 COPY frontend/ frontend/
@@ -19,12 +18,17 @@ COPY frontend/ frontend/
 # Build frontend → src/sceneforge/web_dist/
 RUN cd frontend && npm ci --no-audit --no-fund && npm run build
 
-# Install Python package (includes built web_dist)
-RUN pip install --no-cache-dir .
+# Editable install so web_dist (static files) is found at runtime
+RUN pip install --no-cache-dir -e .
+
+# Ensure data dir exists even without a volume mount
+RUN mkdir -p /data
 
 ENV SCENEFORGE_HOME=/data
-# Volume mounted via platform (Railway/Render dashboard), not Dockerfile
+ENV PORT=8000
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "sceneforge.server:create_app_from_env", \
-     "--host", "0.0.0.0", "--port", "8000", "--factory"]
+CMD python -c "\
+from sceneforge.server import create_app_from_env; \
+import uvicorn; \
+uvicorn.run(create_app_from_env(), host='0.0.0.0', port=int(__import__('os').environ.get('PORT', 8000)))"
