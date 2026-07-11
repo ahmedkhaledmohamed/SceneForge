@@ -23,7 +23,7 @@ RUN cd frontend && npm ci --no-audit --no-fund && npm run build
 RUN pip install --no-cache-dir .
 
 ENV SCENEFORGE_HOME=/data
-VOLUME /data
+# Volume mounted via platform (Railway/Render dashboard), not Dockerfile
 EXPOSE 8000
 
 CMD ["python", "-m", "uvicorn", "sceneforge.server:create_app_from_env", \
