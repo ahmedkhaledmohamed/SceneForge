@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, profileMedia } from "../api";
 import { DEMO_PROFILE, DEMO_PROJECTS } from "../demo";
 import { useIsDemo } from "../DemoContext";
+import { setLastProfile } from "./ProfileList";
 import { toastError, toastOk } from "../components/toast";
 import type { ProfileDoc } from "../types";
 
@@ -122,6 +123,8 @@ function ProfileHeader({ prof, profile }: { prof: string; profile: ProfileDoc })
 export default function ProjectList() {
   const { prof = "" } = useParams();
   const isDemo = useIsDemo();
+
+  useEffect(() => { if (prof && !isDemo) setLastProfile(prof); }, [prof, isDemo]);
   const { data: profile } = useQuery({
     queryKey: ["profile", prof],
     queryFn: () => api.profile(prof),

@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { DEMO_PROFILES } from "../demo";
 import { useIsDemo } from "../DemoContext";
+
+export function setLastProfile(slug: string) {
+  localStorage.setItem("sf_last_profile", slug);
+}
 
 export default function ProfileList() {
   const isDemo = useIsDemo();
@@ -13,6 +17,14 @@ export default function ProfileList() {
   });
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isDemo || isLoading || !profiles) return;
+    const last = localStorage.getItem("sf_last_profile");
+    if (last && profiles.some((p) => p.slug === last)) {
+      navigate(`/${last}`, { replace: true });
+    }
+  }, [profiles, isDemo, isLoading]);
   const client = useQueryClient();
 
   const create = useMutation({

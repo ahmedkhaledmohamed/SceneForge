@@ -614,6 +614,7 @@ def studio(
     ),
     host: str = typer.Option("127.0.0.1"),
     port: int = typer.Option(8000),
+    open_browser: bool = typer.Option(True, "--open/--no-open", help="Auto-open browser"),
 ):
     """Launch SceneForge Studio (JSON API + web app)."""
     import uvicorn
@@ -623,8 +624,14 @@ def studio(
 
     home = (directory or home_dir()).resolve()
     home.mkdir(parents=True, exist_ok=True)
-    typer.secho(f"SceneForge Studio on http://{host}:{port} (home: {home})",
-                fg=typer.colors.GREEN)
+    url = f"http://{host}:{port}"
+    typer.secho(f"\n  SceneForge Studio  →  {url}\n", fg=typer.colors.GREEN, bold=True)
+    typer.echo(f"  home: {home}")
+    typer.echo(f"  profiles: {len(list(home.glob('*/profile.json')))} found")
+    typer.echo("")
+    if open_browser:
+        import webbrowser
+        webbrowser.open(url)
     uvicorn.run(create_app(home), host=host, port=port, log_level="warning")
 
 
