@@ -21,14 +21,16 @@ RUN cd frontend && npm ci --no-audit --no-fund && npm run build
 # Editable install so web_dist (static files) is found at runtime
 RUN pip install --no-cache-dir -e .
 
-# Ensure data dir exists even without a volume mount
 RUN mkdir -p /data
 
 ENV SCENEFORGE_HOME=/data
 ENV PORT=8000
 EXPOSE 8000
 
-CMD python -c "\
-from sceneforge.server import create_app_from_env; \
-import uvicorn; \
-uvicorn.run(create_app_from_env(), host='0.0.0.0', port=int(__import__('os').environ.get('PORT', 8000)))"
+COPY <<'ENTRYPOINT' /app/start.py
+from sceneforge.server import create_app_from_env
+import os, uvicorn
+uvicorn.run(create_app_from_env(), host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+ENTRYPOINT
+
+CMD ["python", "/app/start.py"]
