@@ -948,7 +948,20 @@ export default function ProjectBoard() {
               {clip.source_images.length > 0 && ` · ${clip.source_images.length} source${clip.source_images.length > 1 ? "s" : ""}`}
               {typeof clip.meta?.cost_usd === "number" && ` · $${(clip.meta.cost_usd as number).toFixed(2)}`}
             </div>
-            {clip.prompt && <div className="mono muted" style={{ fontSize: "0.65rem" }}>{clip.prompt}</div>}
+            {clip.status === "pending" ? (
+              <input
+                className="mono"
+                defaultValue={clip.prompt}
+                placeholder="motion prompt (e.g. gentle sway, slow turn)"
+                style={{ width: "100%", fontSize: "0.7rem", marginTop: 4 }}
+                onBlur={(e) => {
+                  if (e.target.value !== clip.prompt)
+                    api.patchClip(prof, slug, clip.id, { prompt: e.target.value }).then(refresh);
+                }}
+              />
+            ) : clip.prompt ? (
+              <div className="mono muted" style={{ fontSize: "0.65rem" }}>{clip.prompt}</div>
+            ) : null}
             <div className="row" style={{ marginTop: 6 }}>
               {clip.status === "completed" && (
                 <button

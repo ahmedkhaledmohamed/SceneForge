@@ -170,6 +170,8 @@ export const api = {
     request(`${p(prof, slug)}/clips/${cid}/generate`, { method: "POST" }),
   generateAllClips: (prof: string, slug: string) =>
     request(`${p(prof, slug)}/clips/generate-all`, { method: "POST" }),
+  patchClip: (prof: string, slug: string, cid: string, body: unknown) =>
+    request(`${p(prof, slug)}/clips/${cid}`, patch(body)),
   deleteClip: (prof: string, slug: string, cid: string) =>
     request(`${p(prof, slug)}/clips/${cid}`, { method: "DELETE" }),
   keepClip: (prof: string, slug: string, cid: string, kept: boolean) =>
