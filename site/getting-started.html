@@ -51,23 +51,37 @@ brand, set a style, add your character doll, then create projects under it.</p>
 <div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge studio
 <span class="out">SceneForge Studio on http://127.0.0.1:8000 (home: ~/SceneForge)</span></pre></div>
 
-<h2 id="profile"><span class="n">4</span>Create a profile + character</h2>
-<p>A profile is your brand — style defaults and a character doll with reference images.
-Click "New profile", name it, then add a character with photos. The character is global:
-update the refs once, every project resolves them.</p>
+<h2 id="concepts"><span class="n">4</span>How reference images work</h2>
+<p>Reference images flow <b>downward</b> — you add them at the right level and scenes inherit them:</p>
+<div class="term" role="img"><pre style="margin:0"><b>Profile character</b> (your doll)        → sent to EVERY scene using that character
+       ↓
+<b>Collection refs</b> (product photos)      → sent to every scene IN that collection
+       ↓
+<b>Project refs</b> (style, background)      → sent to ALL scenes in the project
+       ↓
+<b>Scene</b> = just a text description       → "standing, facing camera, full outfit"
+       ↓
+<b>AI generation</b> = all refs above + scene text → composed image</pre></div>
+<p>Scenes <b>don't have their own</b> reference images. They describe a moment; the references
+come from the collection and profile above them.</p>
 
-<h2 id="outfit"><span class="n">5</span>New project + outfit</h2>
-<p>One project per post. Click "New project" — it inherits your profile style. Add an outfit
-with clothing item photos and shop links. Each item's product photo becomes a generation reference.</p>
+<h2 id="profile"><span class="n">5</span>Create a profile + character</h2>
+<p>A profile is your brand — style defaults and a character with reference photos.
+The character is global: update the refs once, every project sees them.</p>
 
-<h2 id="process"><span class="n">6</span>Process outfit (one click)</h2>
-<p>Click "process" on the outfit card. SceneForge creates pose scenes, generates multi-reference
-images (character refs + item photos → dressed character), and auto-selects the first option.
-Cost shown before you commit.</p>
+<h2 id="collection"><span class="n">6</span>New project + collection</h2>
+<p>One project per post. A <b>collection</b> groups the items being featured — drop
+product photos onto the collection card. Each photo becomes a generation reference.
+Add shop links for the export.</p>
 
-<h2 id="refine"><span class="n">7</span>Refine + generate takes</h2>
-<p>View images full-size, refine with prompt editing or model swapping. Then "generate takes" —
-batch video clips for all selected scenes. Compare takes, mark keepers.</p>
+<h2 id="process"><span class="n">7</span>Process (one click)</h2>
+<p>Click "process" on the collection. SceneForge creates pose scenes, generates
+images (character refs + collection refs → composed image), and auto-selects.
+Scenes appear nested under the collection.</p>
+
+<h2 id="refine"><span class="n">8</span>Refine + generate clips</h2>
+<p>View images full-size, refine with prompt editing or model swapping. Then
+"generate clips" — batch video clips for all selected scenes. Compare, mark keepers.</p>
 
 <h2 id="export"><span class="n">8</span>Export for CapCut</h2>
 <p>Click "export" — kept takes + <span class="mono">links.txt</span> in a folder, or download as
