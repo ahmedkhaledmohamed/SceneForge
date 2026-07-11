@@ -17,19 +17,19 @@ _IMAGE_MAGIC = {
 }
 
 
-def _sniff(head: bytes) -> str | None:
+def _sniff(head: bytes) -> tuple[str, bool] | tuple[None, bool]:
     for magic, suffix in _IMAGE_MAGIC.items():
         if head.startswith(magic):
-            return suffix
+            return suffix, False
     if head[:2] == b"\xff\xd8":
-        return ".jpg"
+        return ".jpg", False
     if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
-        return ".webp"
+        return ".webp", False
     if head[4:12] in (b"ftypheic", b"ftypmif1", b"ftypavif"):
-        return ".jpg"
+        return ".jpg", True  # needs conversion
     if head[4:8] == b"ftyp":
-        return ".mp4"
-    return None
+        return ".mp4", False
+    return None, False
 
 
 _EXT_MAP = {".png": ".png", ".jpg": ".jpg", ".jpeg": ".jpg",
@@ -39,7 +39,7 @@ _EXT_MAP = {".png": ".png", ".jpg": ".jpg", ".jpeg": ".jpg",
 async def save_upload(file: UploadFile, dest_dir: Path,
                       kinds: tuple[str, ...] = ("image",)) -> Path:
     data = await file.read()
-    suffix = _sniff(data[:16])
+    suffix, needs_convert = _sniff(data[:16])
     if suffix is None and file.filename and len(data) > 100:
         ext = Path(file.filename).suffix.lower()
         suffix = _EXT_MAP.get(ext)
@@ -65,4 +65,16 @@ async def save_upload(file: UploadFile, dest_dir: Path,
         dest = dest_dir / f"{stem}-{n}{suffix}"
         n += 1
     dest.write_bytes(data)
+    if needs_convert:
+        import subprocess
+        src = dest.with_suffix(".avif")
+        dest.rename(src)
+        result = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), str(dest)],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            src.unlink()
+        else:
+            src.rename(dest)
     return dest

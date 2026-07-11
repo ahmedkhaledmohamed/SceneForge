@@ -963,6 +963,19 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return {"deleted": cid}
 
+    @router.patch("/profiles/{prof}/projects/{slug}/clips/{cid}")
+    def patch_clip(prof: str, slug: str, cid: str, payload: dict):
+        project = load_project(prof, slug)
+        clip = find_or_404(project.find_clip, cid)
+        if "prompt" in payload:
+            clip.prompt = payload["prompt"]
+        if "model" in payload:
+            clip.model = payload["model"]
+        if "source_images" in payload:
+            clip.source_images = payload["source_images"]
+        project.save()
+        return asdict(clip)
+
     @router.post("/profiles/{prof}/projects/{slug}/clips/{cid}/keep")
     def keep_clip_v2(prof: str, slug: str, cid: str, payload: dict):
         project = load_project(prof, slug)
