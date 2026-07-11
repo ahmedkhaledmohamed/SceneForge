@@ -27,15 +27,22 @@ def _sniff(head: bytes) -> str | None:
         return ".webp"
     if head[4:8] == b"ftyp":
         return ".mp4"
-    if head[4:12] == b"ftypheic" or head[4:12] == b"ftypmif1":
+    if head[4:12] in (b"ftypheic", b"ftypmif1", b"ftypavif"):
         return ".jpg"
     return None
+
+
+_EXT_MAP = {".png": ".png", ".jpg": ".jpg", ".jpeg": ".jpg",
+            ".webp": ".webp", ".mp4": ".mp4", ".heic": ".jpg"}
 
 
 async def save_upload(file: UploadFile, dest_dir: Path,
                       kinds: tuple[str, ...] = ("image",)) -> Path:
     data = await file.read()
     suffix = _sniff(data[:16])
+    if suffix is None and file.filename and len(data) > 100:
+        ext = Path(file.filename).suffix.lower()
+        suffix = _EXT_MAP.get(ext)
     kind = "video" if suffix == ".mp4" else "image" if suffix else None
     if kind is None or kind not in kinds:
         raise HTTPException(400, detail={
