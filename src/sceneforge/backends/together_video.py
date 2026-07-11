@@ -15,7 +15,7 @@ from .base import ClipResult, VideoBackend
 
 
 class TogetherVideoBackend(VideoBackend):
-    def generate_clip(self, prompt, out_path, *, image, width, height,
+    def generate_clip(self, prompt, out_path, *, image, width, height, seconds=None,
                       timeout_s=600):
         from together import Together
 
@@ -27,6 +27,8 @@ class TogetherVideoBackend(VideoBackend):
             "width": width,
             "height": height,
         }
+        if seconds:
+            kwargs["seconds"] = str(seconds)
         if image is not None:
             kwargs["frame_images"] = [
                 {"input_image": image_data_uri(image), "frame": "first"}

@@ -863,6 +863,7 @@ def make_router(home: Path) -> APIRouter:
             prompt=payload.get("prompt", ""),
             model=payload.get("model") or project.settings.video_model,
         )
+        clip.seconds = int(payload.get("seconds", 5))
         project.save()
         return asdict(clip)
 
@@ -894,6 +895,7 @@ def make_router(home: Path) -> APIRouter:
                     prompt, out, image=image,
                     width=project.settings.width,
                     height=project.settings.height,
+                    seconds=clip.seconds or None,
                     timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
                 )
                 clip.file = str(out.relative_to(project.root))
@@ -935,6 +937,7 @@ def make_router(home: Path) -> APIRouter:
                 try:
                     result = backend.generate_clip(
                         prompt, out, image=image,
+                        seconds=clip.seconds or None,
                         width=project.settings.width,
                         height=project.settings.height,
                         timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
@@ -973,6 +976,8 @@ def make_router(home: Path) -> APIRouter:
             clip.model = payload["model"]
         if "source_images" in payload:
             clip.source_images = payload["source_images"]
+        if "seconds" in payload:
+            clip.seconds = int(payload["seconds"])
         project.save()
         return asdict(clip)
 

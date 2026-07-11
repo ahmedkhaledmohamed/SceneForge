@@ -112,6 +112,7 @@ class Clip:
     source_images: list[str] = field(default_factory=list)
     prompt: str = ""
     model: str = ""
+    seconds: int = 5
     file: str = ""
     status: str = "pending"
     error: str | None = None
