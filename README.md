@@ -5,10 +5,10 @@
 **Local-first AI video production.** Concept to finished short-form video in one tool:
 
 ```
-profile → project → outfit + items → scenes → image options → select → video takes → export
+profile → project → scenes + reference images → generate → select → clips → export
 ```
 
-Built for a real content creator's workflow: shoppable outfit posts where a consistent character doll wears photographed clothing items, multiple clips are compared, and the best takes are exported to CapCut with shop links.
+Built for a real content creator's workflow: a consistent character doll, reference images for each scene, multi-reference AI composition, and CapCut-ready exports with shop links.
 
 ## Studio
 
@@ -25,16 +25,16 @@ Everything is **profile-scoped**: a profile is a brand/workspace with global cha
 
 1. **Create a profile** — name your brand, set a style anchor, add your character doll with reference images
 2. **New project** — one project per post/video, inherits profile defaults
-3. **Add outfit + items** — clothing pieces with product photos and shop URLs
-4. **Process outfit** — one click: creates pose scenes, generates multi-reference images (character + garment refs), auto-selects the first option
-5. **Refine** — swap models, edit descriptions, regenerate individual scenes with prompt preview
-6. **Generate takes** — batch video clips for all scenes, compare, mark keepers
-7. **Export** — kept takes + links.txt in a CapCut-ready folder, or download as zip
-8. **Stitch** — optional: speed-adjusted crossfade final cut
+3. **Add scenes** — describe each visual moment, drop reference images (garment photos, style refs) directly onto the scene
+4. **Generate images** — multi-reference composition (character + scene refs → composed image), multiple options per scene
+5. **Refine + select** — compare side by side, swap models, edit prompts, keyboard shortcuts
+6. **Generate clips** — batch video clips for all scenes, compare, mark keepers
+7. **Export** — kept clips + links.txt in a CapCut-ready folder, or download as zip
 
 ### Key features
 
-- **Multi-reference image composition** — character identity refs + outfit item photos → dressed character (FLUX.2-pro $0.03 drafts, Nano Banana Pro $0.134 premium)
+- **Self-contained scenes** — each scene owns its reference images and shop links, no separate collections to manage
+- **Multi-reference image composition** — character identity refs + scene refs → dressed character (FLUX.2-pro $0.03 drafts, Nano Banana Pro $0.134 premium)
 - **LLM brainstorm** — describe the concept, the AI suggests scene descriptions
 - **Cost tracking** — every artifact records its GPU cost; buttons show estimated totals before you commit
 - **Profile characters** — `pchar-*` IDs resolve across all projects; identity refs update globally
