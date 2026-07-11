@@ -826,56 +826,87 @@ export default function ProjectBoard() {
         </div>
       )}
 
-      {addingScene && (
-        <form
-          className="card"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const data = new FormData(e.currentTarget);
-            const description = String(data.get("description") ?? "").trim();
-            if (!description) return;
-            const files = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files;
-            try {
-              const scene = await api.addScene(prof, slug, {
-                description,
-                pose: String(data.get("pose") ?? "") || undefined,
-                character_id: sceneCharacter || undefined,
-              });
-              if (files?.length) {
-                const refForm = new FormData();
-                for (const f of files) refForm.append("files", f);
-                await api.addSceneRefsBulk(prof, slug, (scene as { id: string }).id, refForm);
+      {addingScene && (() => {
+        const allImages = proj.scenes.flatMap((s) =>
+          s.images.map((img) => ({ file: img.file, scene: s.id, model: img.model }))
+        );
+        return (
+          <form
+            className="card"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const data = new FormData(e.currentTarget);
+              const description = String(data.get("description") ?? "").trim();
+              if (!description) return;
+              const files = (e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement)?.files;
+              const checked = e.currentTarget.querySelectorAll<HTMLInputElement>('input[name="existing_ref"]:checked');
+              try {
+                const scene = await api.addScene(prof, slug, {
+                  description,
+                  pose: String(data.get("pose") ?? "") || undefined,
+                  character_id: sceneCharacter || undefined,
+                }) as { id: string };
+                if (files?.length) {
+                  const refForm = new FormData();
+                  for (const f of files) refForm.append("files", f);
+                  await api.addSceneRefsBulk(prof, slug, scene.id, refForm);
+                }
+                for (const cb of checked) {
+                  const refForm = new FormData();
+                  refForm.set("role", "style");
+                  refForm.set("label", "from " + cb.dataset.scene);
+                  const resp = await fetch(media(prof, slug, cb.value));
+                  const blob = await resp.blob();
+                  refForm.set("file", blob, cb.value.split("/").pop() || "ref.png");
+                  await api.addSceneRef(prof, slug, scene.id, refForm);
+                }
+                setAddingScene(false);
+                refresh();
+              } catch (err) {
+                toastError(String(err));
               }
-              setAddingScene(false);
-              refresh();
-            } catch (err) {
-              toastError(String(err));
-            }
-          }}
-        >
-          <label>Scene description</label>
-          <input name="description" required style={{ width: "100%" }}
-                 placeholder="what is this scene? e.g. standing in a sunlit cafe, full outfit visible" />
-          <label>Pose / framing (optional)</label>
-          <input name="pose" style={{ width: "100%" }}
-                 placeholder="e.g. standing, facing camera, head to toe" />
-          {allChars.length > 0 && (
-            <>
-              <label>Character</label>
-              <CharacterPicker characters={allChars} value={sceneCharacter} onChange={setSceneCharacter} />
-            </>
-          )}
-          <label>Reference images (garment photos, style refs — optional)</label>
-          <input type="file" accept="image/*" multiple className="mono" style={{ width: "100%" }} />
-          <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.72rem" }}>
-            Drop product photos, style references, or background images. You can add more after creation.
-          </p>
-          <div className="row" style={{ marginTop: 10 }}>
-            <button type="submit" disabled={addScene.isPending}>add scene</button>
-            <button type="button" className="ghost" onClick={() => setAddingScene(false)}>cancel</button>
-          </div>
-        </form>
-      )}
+            }}
+          >
+            <label>Scene description</label>
+            <input name="description" required style={{ width: "100%" }}
+                   placeholder="what is this scene? e.g. standing in a sunlit cafe, full outfit visible" />
+            <label>Pose / framing (optional)</label>
+            <input name="pose" style={{ width: "100%" }}
+                   placeholder="e.g. standing, facing camera, head to toe" />
+            {allChars.length > 0 && (
+              <>
+                <label>Character</label>
+                <CharacterPicker characters={allChars} value={sceneCharacter} onChange={setSceneCharacter} />
+              </>
+            )}
+            <label>Upload new reference images</label>
+            <input type="file" accept="image/*" multiple className="mono" style={{ width: "100%" }} />
+
+            {allImages.length > 0 && (
+              <>
+                <label>Or use generated images from this project</label>
+                <div className="gallery" style={{ maxHeight: 200, overflowY: "auto" }}>
+                  {allImages.map((img, i) => (
+                    <label key={i} style={{ cursor: "pointer", position: "relative" }}>
+                      <input type="checkbox" name="existing_ref" value={img.file}
+                             data-scene={img.scene}
+                             style={{ position: "absolute", top: 4, left: 4, zIndex: 1 }} />
+                      <img src={media(prof, slug, img.file)}
+                           alt={`${img.scene} ${img.model}`}
+                           style={{ width: 80, borderRadius: 6, border: "1px solid var(--line)" }}
+                           loading="lazy" />
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+            <div className="row" style={{ marginTop: 10 }}>
+              <button type="submit" disabled={addScene.isPending}>add scene</button>
+              <button type="button" className="ghost" onClick={() => setAddingScene(false)}>cancel</button>
+            </div>
+          </form>
+        );
+      })()}
 
       {allChars.length > 0 && (
         <p className="muted mono" style={{ marginTop: 10 }}>
