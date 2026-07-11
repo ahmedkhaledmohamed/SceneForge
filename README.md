@@ -26,14 +26,15 @@ Everything is **profile-scoped**: a profile is a brand/workspace with global cha
 1. **Create a profile** — name your brand, set a style anchor, add your character doll with reference images
 2. **New project** — one project per post/video, inherits profile defaults
 3. **Add scenes** — describe each visual moment, drop reference images (garment photos, style refs) directly onto the scene
-4. **Generate images** — multi-reference composition (character + scene refs → composed image), multiple options per scene
-5. **Refine + select** — compare side by side, swap models, edit prompts, keyboard shortcuts
-6. **Generate clips** — batch video clips for all scenes, compare, mark keepers
-7. **Export** — kept clips + links.txt in a CapCut-ready folder, or download as zip
+4. **Generate images** — per-scene: multi-reference composition (character + scene refs → composed image), multiple options
+5. **Refine + select** — compare side by side, swap models, edit prompts, generation lanes show full history
+6. **Create clips** — pick start image (and optional end image) from any scene, set model + duration + prompt, generate
+7. **Download** — download clips directly for CapCut, shop links exportable from scene refs
 
 ### Key features
 
-- **Self-contained scenes** — each scene owns its reference images and shop links, no separate collections to manage
+- **Self-contained scenes** — each scene owns its reference images and shop links
+- **Clips as separate entities** — pick source images from any scene, set duration (3-10s), model, and motion prompt
 - **Multi-reference image composition** — character identity refs + scene refs → dressed character (FLUX.2-pro $0.03 drafts, Nano Banana Pro $0.134 premium)
 - **LLM brainstorm** — describe the concept, the AI suggests scene descriptions
 - **Cost tracking** — every artifact records its GPU cost; buttons show estimated totals before you commit

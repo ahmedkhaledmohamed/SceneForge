@@ -229,11 +229,11 @@ const NODES = {
   "n-project": {
     title: "State on disk",
     file: "src/sceneforge/project.py",
-    role: "Dataclasses over project.json: scenes in order, image options, selections, clips — with full prompt + model + cost history per artifact.",
+    role: "Dataclasses over project.json: self-contained scenes with refs, project-level clips, generation lanes — with full prompt + model + cost history per artifact.",
     notes: [
-      "Atomic writes (temp file + os.replace) after every artifact; a crash mid-batch loses nothing.",
-      "History is the append-only artifact arrays — there is no separate log to drift out of sync.",
-      "Old project files load forever: new fields default, unknown versions refuse loudly.",
+      "Scenes own their reference images (SceneRef: garment, style, background) and shop links directly.",
+      "Clips are project-level entities: pick source images from any scene, set model + duration + prompt.",
+      "Schema v5 with migration from v3 (outfits) and v4 (scene-level clips) on load. Atomic writes.",
     ],
   },
   "n-stitch": {
