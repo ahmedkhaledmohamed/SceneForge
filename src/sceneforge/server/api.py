@@ -208,10 +208,12 @@ def make_router(home: Path) -> APIRouter:
         return {
             "keys": {
                 "together": mask(profile.keys.together),
+                "openrouter": mask(profile.keys.openrouter),
                 "runpod_api": mask(profile.keys.runpod_api),
                 "runpod_endpoint": profile.keys.runpod_endpoint,
             },
             "has_together": bool(profile.keys.together),
+            "has_openrouter": bool(profile.keys.openrouter),
             "has_runpod": bool(profile.keys.runpod_api),
         }
 
@@ -272,6 +274,8 @@ def make_router(home: Path) -> APIRouter:
         keys = payload.get("keys", {})
         if "together" in keys:
             profile.keys.together = keys["together"]
+        if "openrouter" in keys:
+            profile.keys.openrouter = keys["openrouter"]
         if "runpod_api" in keys:
             profile.keys.runpod_api = keys["runpod_api"]
         if "runpod_endpoint" in keys:

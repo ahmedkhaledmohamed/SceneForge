@@ -68,6 +68,7 @@ class ProfileDefaults:
 @dataclass
 class ProfileKeys:
     together: str = ""
+    openrouter: str = ""
     runpod_api: str = ""
     runpod_endpoint: str = ""
 
