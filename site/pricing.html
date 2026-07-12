@@ -73,41 +73,65 @@
 </section>
 
 <section>
-  <h2>Monthly cost comparison</h2>
-  <p class="lede">Estimated for a content creator producing 30–45 posts per month.
-  Each post: ~6 draft images, 2 premium images, 4 refinement rounds, 3 video clips.</p>
+  <h2>Higgsfield MAX vs SceneForge</h2>
+  <p class="lede">Compared against the Higgsfield MAX plan ($139 USD/month, 3,600 credits).
+  Based on real usage: ~30 posts/month, 200 premium images, 100 drafts, 100 video clips.</p>
 
   <table>
-    <thead><tr><th></th><th>Traditional platform</th><th>SceneForge + Together AI</th><th>SceneForge + RunPod</th></tr></thead>
+    <thead><tr><th>Higgsfield MAX</th><th>Credits</th><th></th><th>SceneForge equivalent</th></tr></thead>
     <tbody>
-      <tr><td><b>Draft images</b></td><td>included</td><td>180 × $0.03 = $5.40</td><td>180 × $0.005 = $0.90</td></tr>
-      <tr><td><b>Premium images</b></td><td>included</td><td>60 × $0.134 = $8.04</td><td>60 × $0.134 = $8.04*</td></tr>
-      <tr><td><b>Refinements</b></td><td>included</td><td>120 × $0.05 = $6.00</td><td>120 × $0.005 = $0.60</td></tr>
-      <tr><td><b>Video clips</b></td><td>included</td><td>90 × $0.18 = $16.20</td><td>90 × $0.10 = $9.00</td></tr>
-      <tr><td><b>Infrastructure</b></td><td>—</td><td>—</td><td>$14/mo volume</td></tr>
-      <tr><td><b>Railway hosting</b></td><td>—</td><td>$5/mo</td><td>$5/mo</td></tr>
+      <tr><td>Nano Banana Pro image</td><td>2 credits</td><td></td><td>$0.134 (Together AI)</td></tr>
+      <tr><td>Seedance 2.0 5s clip</td><td>6 credits</td><td></td><td>$0.80 (Together) or $0.18 (Kling) or $0.10 (RunPod)</td></tr>
+      <tr><td>Flux Kontext image</td><td>1.5 credits</td><td></td><td>$0.03 (flux-2-pro)</td></tr>
+      <tr><td>Free-tier models</td><td>0 credits</td><td></td><td>$0.003 (flux-schnell)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Monthly cost at real usage (~30 posts)</h3>
+  <table>
+    <thead><tr><th></th><th>Higgsfield MAX</th><th>SceneForge<br>(Seedance)</th><th>SceneForge<br>(Kling)</th><th>SceneForge<br>(RunPod)</th></tr></thead>
+    <tbody>
+      <tr><td><b>200 premium images</b></td><td>400 credits</td><td>$26.80</td><td>$26.80</td><td>$26.80</td></tr>
+      <tr><td><b>100 draft images</b></td><td>0 (free tier)</td><td>$3.00</td><td>$3.00</td><td>$0.50</td></tr>
+      <tr><td><b>100 video clips</b></td><td>600 credits</td><td>$80.00</td><td>$18.00</td><td>$10.00</td></tr>
+      <tr><td><b>Infrastructure</b></td><td>—</td><td>$5</td><td>$5</td><td>$19</td></tr>
       <tr style="border-top: 2px solid var(--line)">
         <td><b>Total (USD)</b></td>
-        <td><b>$130</b></td>
-        <td><b>$41</b></td>
-        <td><b>$38</b></td>
+        <td><b>$139</b></td>
+        <td><b>$115</b></td>
+        <td><b>$53</b></td>
+        <td><b>$56</b></td>
       </tr>
       <tr>
         <td><b>Total (CAD)</b></td>
-        <td><b>~$180</b></td>
-        <td><b>~$55</b></td>
-        <td><b>~$51</b></td>
+        <td><b>~$188</b></td>
+        <td><b>~$155</b></td>
+        <td><b>~$72</b></td>
+        <td><b>~$76</b></td>
       </tr>
       <tr>
         <td><b>Savings</b></td>
         <td>—</td>
-        <td class="mono" style="color: var(--gold)">69%</td>
-        <td class="mono" style="color: var(--gold)">72%</td>
+        <td class="mono">17%</td>
+        <td class="mono" style="color: var(--gold)">62%</td>
+        <td class="mono" style="color: var(--gold)">60%</td>
+      </tr>
+      <tr>
+        <td><b>Clip quality</b></td>
+        <td>Seedance 2.0</td>
+        <td>Seedance 2.0</td>
+        <td>Kling 2.1</td>
+        <td>Wan2.2 (720p)</td>
       </tr>
     </tbody>
   </table>
-  <p class="muted" style="margin-top: 8px">* Premium images (nano-banana-pro) use Together AI even in the RunPod setup —
-  the model isn't open-source. RunPod handles drafts and video clips.</p>
+
+  <div class="callout" style="margin-top: 14px">
+    <b>Key insight:</b> Seedance on Together AI ($0.80/clip) is expensive at volume.
+    Using Kling 2.1 ($0.18) instead saves 62% vs Higgsfield with good quality.
+    Self-hosted Wan2.2 on RunPod saves 60% but requires GPU management.
+    The biggest savings come from switching the video model, not the image model.
+  </div>
 </section>
 
 <section>
