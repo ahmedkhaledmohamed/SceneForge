@@ -8,7 +8,7 @@
 profile → project → scenes + reference images → generate → select → clips → export
 ```
 
-Built for a real content creator's workflow: a consistent character doll, reference images for each scene, multi-reference AI composition, and CapCut-ready exports with shop links.
+Multi-reference AI image composition, per-scene generation with reference images, configurable video clips, and direct download. Built for content creators who need consistent visuals across scenes.
 
 ## Studio
 
@@ -25,19 +25,19 @@ Everything is **profile-scoped**: a profile is a brand/workspace with global cha
 
 ### The workflow
 
-1. **Create a profile** — name your brand, set a style anchor, add your character doll with reference images
+1. **Create a profile** — name your brand, set a style anchor, add recurring characters with reference images
 2. **New project** — one project per post/video, inherits profile defaults
-3. **Add scenes** — describe each visual moment, drop reference images (garment photos, style refs) directly onto the scene
+3. **Add scenes** — describe each visual moment, drop reference images directly onto the scene
 4. **Generate images** — per-scene: multi-reference composition (character + scene refs → composed image), multiple options
 5. **Refine + select** — compare side by side, swap models, edit prompts, generation lanes show full history
 6. **Create clips** — pick start image (and optional end image) from any scene, set model + duration + prompt, generate
-7. **Download** — download clips directly for CapCut, shop links exportable from scene refs
+7. **Download** — download clips directly, import into your video editor
 
 ### Key features
 
-- **Self-contained scenes** — each scene owns its reference images and shop links
+- **Self-contained scenes** — each scene owns its reference images
 - **Clips as separate entities** — pick source images from any scene, set duration (3-10s), model, and motion prompt
-- **Multi-reference image composition** — character identity refs + scene refs → dressed character (FLUX.2-pro $0.03 drafts, Nano Banana Pro $0.134 premium)
+- **Multi-reference image composition** — character refs + scene refs → composed image (FLUX.2-pro $0.03 drafts, Nano Banana Pro $0.134 premium)
 - **LLM brainstorm** — describe the concept, the AI suggests scene descriptions
 - **Cost tracking** — every artifact records its GPU cost; buttons show estimated totals before you commit
 - **Profile characters** — `pchar-*` IDs resolve across all projects; identity refs update globally
@@ -54,7 +54,7 @@ Pick per operation with model dropdowns, see prices live:
 | `flux-schnell` | image | $0.003 | – | fast drafts (default) |
 | `flux-dev` | image | $0.025 | – | higher quality |
 | `flux-2-pro` | image | $0.03 | 8 | multi-reference drafts |
-| `nano-banana-pro` | image | $0.134 | 14 | best garment fidelity + character consistency |
+| `nano-banana-pro` | image | $0.134 | 14 | best multi-ref fidelity + character consistency |
 | `seedance-2.0` | video | $0.80/clip | – | most realistic I2V (default) |
 | `veo-3.0-fast` | video | $0.40/clip | – | mid-price |
 | `kling-2.1` | video | $0.18/clip | – | cheapest hosted I2V |

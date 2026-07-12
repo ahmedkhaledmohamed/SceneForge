@@ -27,10 +27,10 @@
 <section class="hero no-rule">
   <p class="eyebrow">AI video production studio</p>
   <h1>Concept to final cut,<br>one consistent look.</h1>
-  <p class="lede">SceneForge turns a video concept into a finished 9:16 short — character dolls wearing
-  real clothing items, multi-reference image composition, video clips, and CapCut-ready exports — from
-  a web-based Studio with multi-reference image composition, per-scene generation, and clip creation.
-  A project-level <em>style anchor</em> plus profile characters keep every scene visually consistent.</p>
+  <p class="lede">SceneForge turns a concept into a finished short-form video. Add reference images to a
+  scene, generate AI-composed images, create video clips with configurable duration and motion —
+  all from a web-based Studio. A project-level <em>style anchor</em> keeps every scene visually
+  consistent without manual prompt engineering.</p>
 
   <div class="filmstrip" id="filmstrip" aria-label="A scene moving through the SceneForge pipeline">
     <div class="frame" data-stage="0">
@@ -98,19 +98,19 @@
     <div class="step">
       <span class="tc">once</span>
       <div><h3>Create a profile + character</h3>
-      <p>A profile is your brand — style defaults and a character doll with reference images.
-      Characters are global: update the refs once, every project resolves them.</p></div>
+      <p>A profile is your brand — style defaults and recurring characters with reference images.
+      Characters are global: update the refs once, every project uses them.</p></div>
     </div>
     <div class="step">
       <span class="tc">00:00</span>
       <div><h3>New project + scenes</h3>
       <p>One project per post. Add scenes — each one is a visual moment with its own
-      reference images and optional shop links. Drop photos directly onto scene cards.</p></div>
+      reference images. Drop photos directly onto scene cards.</p></div>
     </div>
     <div class="step">
       <span class="tc">00:01</span>
       <div><h3>Generate images</h3>
-      <p>Multi-reference image composition: character refs + scene refs → dressed character.
+      <p>Multi-reference image composition: character refs + scene refs → composed image.
       Multiple options per scene. Brainstorm scenes with an LLM, or describe them manually.</p></div>
     </div>
     <div class="step">
@@ -123,13 +123,13 @@
       <span class="tc">00:06</span>
       <div><h3>Create clips</h3>
       <p>Clips are separate from scenes — pick a start image (and optionally an end image)
-      from any scene, set model + duration + motion prompt, generate. Download directly for CapCut.</p></div>
+      from any scene, set model + duration + motion prompt, generate. Download directly.</p></div>
     </div>
     <div class="step">
       <span class="tc">00:10</span>
       <div><h3>Download + edit</h3>
-      <p>Download clips directly to your device. Import into CapCut, add music, publish.
-      Shop links exportable from scene refs.</p></div>
+      <p>Download clips directly to your device. Import into your video editor,
+      add music, publish.</p></div>
     </div>
   </div>
 </section>
@@ -165,7 +165,7 @@
 <pre style="margin:0">~/SceneForge/
 └── my-brand/
     ├── profile.json              <span class="out">← style defaults, character refs</span>
-    ├── refs/characters/pchar-1/  <span class="out">← shared character doll photos</span>
+    ├── refs/characters/pchar-1/  <span class="out">← shared character reference photos</span>
     └── projects/spring-look/
         ├── project.json          <span class="out">← scenes, clips, refs, prompt history</span>
         ├── refs/scenes/scene-01/ <span class="out">← reference images per scene</span>

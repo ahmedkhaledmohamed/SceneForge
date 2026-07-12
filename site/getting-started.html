@@ -46,21 +46,21 @@ TOGETHER_API_KEY=your-key-here</pre></div>
 
 <h2 id="studio"><span class="n">3</span>Launch Studio</h2>
 <p>The daily-driver interface — a React SPA over a FastAPI JSON API. Profile-scoped: create a
-brand, set a style, add your character doll, then create projects under it.</p>
+brand, set a style, add recurring characters, then create projects under it.</p>
 <div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="ps1">$</span> sceneforge studio
 <span class="out">SceneForge Studio on http://127.0.0.1:8000 (home: ~/SceneForge)</span></pre></div>
 
 <h2 id="concepts"><span class="n">4</span>How reference images work</h2>
 <p>Each scene owns its reference images. Profile characters are shared across all scenes.</p>
-<div class="term" role="img"><pre style="margin:0"><b>Profile character</b> (your doll)        → sent to every scene using that character
+<div class="term" role="img"><pre style="margin:0"><b>Profile character</b> (recurring subject) → sent to every scene using that character
        ↓
-<b>Scene refs</b> (garment photos, style)    → owned by the scene, dropped onto the card
+<b>Scene refs</b> (product photos, style)    → owned by the scene, dropped onto the card
        ↓
 <b>Project refs</b> (shared background)      → sent to ALL scenes (optional)
        ↓
 <b>AI generation</b> = character + scene refs + project refs + scene text → image</pre></div>
-<p>Drop reference images directly onto a scene card — garment photos, style examples,
-background references. Add shop links on each ref for export.</p>
+<p>Drop reference images directly onto a scene card — product photos, style examples,
+background references. Any image the AI should use when composing the scene.</p>
 
 <h2 id="profile"><span class="n">5</span>Create a profile + character</h2>
 <p>A profile is your brand — style defaults and a character with reference photos.
@@ -68,8 +68,7 @@ The character is global: update the refs once, every project sees them.</p>
 
 <h2 id="scenes"><span class="n">6</span>New project + scenes</h2>
 <p>One project per post. Add scenes — each one describes a visual moment.
-Drop reference images (garment photos, style refs) directly onto the scene card.
-Add shop links on any ref for export.</p>
+Drop reference images directly onto the scene card.</p>
 
 <h2 id="generate"><span class="n">7</span>Generate images</h2>
 <p>Click "Generate images" — multi-reference composition uses character refs +
@@ -82,7 +81,7 @@ or model swapping. Each regeneration creates a new lane — you see the full his
 <h2 id="clips"><span class="n">9</span>Create clips</h2>
 <p>Clips are separate from scenes. Click "+ clip" → pick a start image from any scene,
 optionally an end image, set duration (3-10s), model, and motion prompt → generate.
-Download completed clips directly for CapCut.</p>
+Download completed clips directly to your device.</p>
 
 <h2 id="cli"><span class="n">9</span>Or use the CLI</h2>
 <p>Everything the Studio does is also a CLI command. Good for scripting and batch work.</p>
