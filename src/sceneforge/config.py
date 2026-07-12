@@ -77,6 +77,25 @@ MODELS = {
         "supports_i2v": True,
         "notes": "cheapest I2V",
     },
+    # --- OpenRouter (cheaper Seedance) ---
+    "seedance-1.5-pro": {
+        "kind": "video",
+        "backend": "openrouter",
+        "id": "bytedance/seedance-1-5-pro",
+        "price": 0.12,  # ~$0.023/s × 5s
+        "supports_i2v": True,
+        "timeout_s": 600,
+        "notes": "Seedance 1.5 Pro via OpenRouter — best value",
+    },
+    "seedance-2.0-or": {
+        "kind": "video",
+        "backend": "openrouter",
+        "id": "bytedance/seedance-2.0",
+        "price": 0.34,  # ~$0.067/s × 5s
+        "supports_i2v": True,
+        "timeout_s": 600,
+        "notes": "Seedance 2.0 via OpenRouter (cheaper than Together)",
+    },
     # --- self-hosted on RunPod serverless (see runpod-worker/) ---
     "runpod-flux": {
         "kind": "image",
@@ -153,6 +172,18 @@ def together_api_key(profile=None) -> str:
     if not key:
         raise RuntimeError(
             "No Together API key. Add it in profile settings or .env."
+        )
+    return key
+
+
+def openrouter_api_key(profile=None) -> str:
+    profile = profile or get_active_profile()
+    if profile and getattr(profile, 'keys', None) and getattr(profile.keys, 'openrouter', ''):
+        return profile.keys.openrouter
+    key = os.environ.get("OPENROUTER_API_KEY")
+    if not key:
+        raise RuntimeError(
+            "No OpenRouter API key. Add it in profile settings or .env."
         )
     return key
 

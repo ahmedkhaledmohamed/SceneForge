@@ -26,6 +26,9 @@ def _video_backend(model: dict) -> VideoBackend:
     if model["backend"] == "runpod":
         from .runpod_backend import RunPodVideoBackend
         return RunPodVideoBackend(model)
+    if model["backend"] == "openrouter":
+        from .openrouter_video import OpenRouterVideoBackend
+        return OpenRouterVideoBackend(model)
     if model["backend"] == "fake":
         from .fake import FakeVideoBackend
         return FakeVideoBackend(model)

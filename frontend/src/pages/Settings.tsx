@@ -28,6 +28,7 @@ export default function Settings() {
   const [password, setPassword] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const [togetherKey, setTogetherKey] = useState("");
+  const [openrouterKey, setOpenrouterKey] = useState("");
   const [runpodApi, setRunpodApi] = useState("");
   const [runpodEndpoint, setRunpodEndpoint] = useState("");
 
@@ -79,6 +80,7 @@ export default function Settings() {
     mutationFn: () => {
       const keys: Record<string, string> = {};
       if (togetherKey) keys.together = togetherKey;
+      if (openrouterKey) keys.openrouter = openrouterKey;
       if (runpodApi) keys.runpod_api = runpodApi;
       if (runpodEndpoint) keys.runpod_endpoint = runpodEndpoint;
       return api.patchSettings(prof, keys);
@@ -204,6 +206,14 @@ export default function Settings() {
                    style={{ flex: 1 }} />
           </div>
 
+          <label>OpenRouter (for Seedance 1.5 Pro — cheapest video clips)</label>
+          <div className="row">
+            <input value={openrouterKey}
+                   onChange={(e) => setOpenrouterKey(e.target.value)}
+                   placeholder="paste OpenRouter API key"
+                   style={{ flex: 1 }} />
+          </div>
+
           <label>RunPod API Key</label>
           <div className="row">
             {settings.has_runpod && (
@@ -228,7 +238,7 @@ export default function Settings() {
 
           <div className="row" style={{ marginTop: 14 }}>
             <button onClick={() => saveKeys.mutate()}
-                    disabled={saveKeys.isPending || (!togetherKey && !runpodApi && !runpodEndpoint)}>
+                    disabled={saveKeys.isPending || (!togetherKey && !openrouterKey && !runpodApi && !runpodEndpoint)}>
               save keys
             </button>
           </div>
