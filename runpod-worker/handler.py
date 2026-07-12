@@ -102,9 +102,26 @@ def _warmup(inp: dict) -> dict:
     return {"downloaded": paths, "time_s": round(time.time() - t0, 1)}
 
 
+def _cleanup(inp: dict) -> dict:
+    import os
+    import shutil
+
+    cache_dir = os.environ.get("HF_HOME", "/runpod-volume/huggingface-cache")
+    models_dir = os.path.join(cache_dir, "hub")
+    patterns = inp.get("patterns", ["Wan2.1"])
+    removed = []
+    if os.path.isdir(models_dir):
+        for name in os.listdir(models_dir):
+            if any(p in name for p in patterns):
+                path = os.path.join(models_dir, name)
+                shutil.rmtree(path, ignore_errors=True)
+                removed.append(name)
+    return {"removed": removed}
+
+
 def handler(job: dict) -> dict:
     inp = job["input"]
-    dispatch = {"image": _image, "video": _video, "warmup": _warmup}
+    dispatch = {"image": _image, "video": _video, "warmup": _warmup, "cleanup": _cleanup}
     task = inp.get("task")
     if task not in dispatch:
         return {"error": f"unknown task {task!r}; expected one of {sorted(dispatch)}"}
