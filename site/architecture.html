@@ -198,9 +198,9 @@ const NODES = {
     ],
   },
   "n-together": {
-    title: "Hosted backends (Together AI)",
-    file: "src/sceneforge/backends/together_image.py · together_video.py",
-    role: "FLUX images via REST; Seedance/Kling/Veo video via submit → poll → download.",
+    title: "Hosted backends (Together AI + OpenRouter)",
+    file: "src/sceneforge/backends/together_*.py · openrouter_video.py",
+    role: "Together AI for images (FLUX, Nano Banana Pro) and Kling video. OpenRouter for Seedance 1.5 Pro ($0.12/clip) and Seedance 2.0 ($0.34/clip).",
     notes: [
       "Media downloads use curl with a User-Agent — Together's CDN (and API) 403 Python's default agent. Learned the hard way.",
       "Image-to-video sends the selected still as a base64 frame_images entry with frame='first'.",
@@ -232,7 +232,7 @@ const NODES = {
     file: "src/sceneforge/project.py",
     role: "Dataclasses over project.json: self-contained scenes with refs, project-level clips, generation lanes — with full prompt + model + cost history per artifact.",
     notes: [
-      "Scenes own their reference images (SceneRef: garment, style, background) and shop links directly.",
+      "Scenes own their reference images (SceneRef: role, label, optional URL) directly.",
       "Clips are project-level entities: pick source images from any scene, set model + duration + prompt.",
       "Schema v5 with migration from v3 (outfits) and v4 (scene-level clips) on load. Atomic writes.",
     ],

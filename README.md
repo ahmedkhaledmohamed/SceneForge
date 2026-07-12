@@ -55,7 +55,9 @@ Pick per operation with model dropdowns, see prices live:
 | `flux-dev` | image | $0.025 | – | higher quality |
 | `flux-2-pro` | image | $0.03 | 8 | multi-reference drafts |
 | `nano-banana-pro` | image | $0.134 | 14 | best multi-ref fidelity + character consistency |
-| `seedance-2.0` | video | $0.80/clip | – | most realistic I2V (default) |
+| `seedance-1.5-pro` | video | $0.12/clip | – | Seedance via OpenRouter — best value |
+| `seedance-2.0-or` | video | $0.34/clip | – | Seedance 2.0 via OpenRouter |
+| `seedance-2.0` | video | $0.80/clip | – | Seedance 2.0 via Together (expensive) |
 | `veo-3.0-fast` | video | $0.40/clip | – | mid-price |
 | `kling-2.1` | video | $0.18/clip | – | cheapest hosted I2V |
 | `runpod-flux` / `runpod-wan-i2v` | both | ~$0.03/~$0.10 | – | self-hosted GPU, 720p Wan2.2-TI2V-5B (see runpod-worker/) |

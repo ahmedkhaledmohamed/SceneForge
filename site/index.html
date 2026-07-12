@@ -138,20 +138,21 @@
 <section>
   <p class="eyebrow">Models</p>
   <h2>Pick the model per run,<br>see the price before you spend.</h2>
-  <p class="lede">Model choice is a workflow decision, not a config constant. Hosted APIs for
-  speed, a self-hosted GPU worker for cost, fake backends for free tests — swap with a
-  <span class="mono">--model</span> flag, fall back automatically when a backend is down.</p>
+  <p class="lede">Model choice is a workflow decision, not a config constant. Three providers —
+  Together AI for images, OpenRouter for cheap Seedance clips, RunPod for self-hosted —
+  swap per generation, fall back automatically when a provider is down.</p>
   <table>
-    <thead><tr><th>Model</th><th>Kind</th><th>Where it runs</th><th>Price</th></tr></thead>
+    <thead><tr><th>Model</th><th>Kind</th><th>Provider</th><th>Price</th></tr></thead>
     <tbody>
-      <tr><td class="mono">flux-schnell</td><td>image</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.003</td></tr>
-      <tr><td class="mono">flux-2-pro</td><td>image (8 refs)</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.03</td></tr>
-      <tr><td class="mono">nano-banana-pro</td><td>image (14 refs)</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.134</td></tr>
-      <tr><td class="mono">runpod-flux</td><td>image</td><td><span class="tag selfhosted">self-hosted · RunPod 4090</span></td><td>~$0.005</td></tr>
-      <tr><td class="mono">seedance-2.0</td><td>video</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.80 / clip</td></tr>
-      <tr><td class="mono">kling-2.1</td><td>video</td><td><span class="tag hosted">hosted · Together</span></td><td>$0.18 / clip</td></tr>
-      <tr><td class="mono">runpod-wan-i2v</td><td>video (720p)</td><td><span class="tag selfhosted">self-hosted · Wan2.2-TI2V-5B</span></td><td>~$0.10 / clip</td></tr>
-      <tr><td class="mono">fake-image / fake-video</td><td>both</td><td><span class="tag test">local · ffmpeg</span></td><td>$0</td></tr>
+      <tr><td class="mono">flux-schnell</td><td>image</td><td><span class="tag hosted">Together AI</span></td><td>$0.003</td></tr>
+      <tr><td class="mono">flux-2-pro</td><td>image (8 refs)</td><td><span class="tag hosted">Together AI</span></td><td>$0.03</td></tr>
+      <tr><td class="mono">nano-banana-pro</td><td>image (14 refs)</td><td><span class="tag hosted">Together AI</span></td><td>$0.134</td></tr>
+      <tr><td class="mono">seedance-1.5-pro</td><td>video</td><td><span class="tag hosted" style="background:#2a4">OpenRouter</span></td><td>$0.12 / clip</td></tr>
+      <tr><td class="mono">seedance-2.0</td><td>video</td><td><span class="tag hosted" style="background:#2a4">OpenRouter</span></td><td>$0.34 / clip</td></tr>
+      <tr><td class="mono">kling-2.1</td><td>video</td><td><span class="tag hosted">Together AI</span></td><td>$0.18 / clip</td></tr>
+      <tr><td class="mono">runpod-flux</td><td>image</td><td><span class="tag selfhosted">RunPod (self-hosted)</span></td><td>~$0.005</td></tr>
+      <tr><td class="mono">runpod-wan-i2v</td><td>video (720p)</td><td><span class="tag selfhosted">RunPod (self-hosted)</span></td><td>~$0.10 / clip</td></tr>
+      <tr><td class="mono">fake-image / fake-video</td><td>both</td><td><span class="tag test">test (ffmpeg)</span></td><td>$0</td></tr>
     </tbody>
   </table>
 </section>
