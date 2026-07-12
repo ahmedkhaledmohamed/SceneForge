@@ -6,8 +6,24 @@ import time
 import urllib.request
 
 from ..config import VIDEO_POLL_INTERVAL_S
-from ..util import download, image_data_uri
+import subprocess
+from pathlib import Path
+
+from ..util import image_data_uri
 from .base import ClipResult, VideoBackend
+
+
+def _download_with_auth(url: str, out_path: Path, api_key: str) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    result = subprocess.run(
+        ["curl", "-L", "--fail", "--silent", "--show-error",
+         "-H", f"Authorization: Bearer {api_key}",
+         "-H", "User-Agent: SceneForge/1.0",
+         "-o", str(out_path), url],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Download failed for {url}: {result.stderr.strip()}")
 
 
 class OpenRouterVideoBackend(VideoBackend):
@@ -72,7 +88,7 @@ class OpenRouterVideoBackend(VideoBackend):
             video_url = f"https://openrouter.ai/api/v1/videos/{job_id}/content?index=0"
 
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        download(video_url, out_path)
+        _download_with_auth(video_url, out_path, api_key)
 
         from ..util import ffprobe_duration
         return ClipResult(
