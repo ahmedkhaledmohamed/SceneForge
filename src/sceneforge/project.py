@@ -160,6 +160,7 @@ class Project:
     scenes: list[Scene] = field(default_factory=list)
     clips: list[Clip] = field(default_factory=list)
     notes: str = ""
+    budget_usd: float = 0.0
     schema_version: int = SCHEMA_VERSION
     root: Path = field(default=Path("."), compare=False)
 

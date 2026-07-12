@@ -109,11 +109,23 @@ def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
         for _ in range(needed):
             opt_num = len(sc.images) + 1
             out = project.images_dir(sc) / f"opt-{opt_num}.png"
-            result = backend.generate_image(
-                prompt, out,
-                width=project.settings.width, height=project.settings.height,
-                reference_images=refs or None,
-            )
+            result = None
+            for attempt in range(2):
+                try:
+                    result = backend.generate_image(
+                        prompt, out,
+                        width=project.settings.width, height=project.settings.height,
+                        reference_images=refs or None,
+                    )
+                    break
+                except Exception as exc:
+                    if attempt == 0:
+                        log(f"{sc.id} opt-{opt_num}: failed, retrying ({exc})")
+                    else:
+                        log(f"{sc.id} opt-{opt_num}: FAILED after retry ({exc})")
+                        raise
+            if result is None:
+                continue
             meta = result.meta
             if "cost_usd" not in meta:
                 meta["cost_usd"] = config.MODELS.get(model_key, {}).get("price", 0)

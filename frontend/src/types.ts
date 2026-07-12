@@ -90,6 +90,7 @@ export interface Project {
   job: Job | null;
   spent_usd: number;
   notes: string;
+  budget_usd: number;
   profile_characters: Character[];
 }
 
@@ -141,6 +142,9 @@ export interface Job {
   name: string | null;
   status: "running" | "done" | "failed" | "idle";
   log: string[];
+  total: number;
+  completed: number;
+  current: string;
 }
 
 export interface ModelInfo {

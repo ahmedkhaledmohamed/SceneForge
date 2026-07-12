@@ -50,6 +50,7 @@ function SettingsDialog({ prof, slug, project, onClose, refresh }: {
   const [videoModel, setVideoModel] = useState(project.settings.video_model);
   const [options, setOptions] = useState(project.settings.image_options);
   const [anchor, setAnchor] = useState(project.style.anchor);
+  const [budget, setBudget] = useState(project.budget_usd ?? 0);
 
   const save = useMutation({
     mutationFn: () =>
@@ -58,6 +59,7 @@ function SettingsDialog({ prof, slug, project, onClose, refresh }: {
         video_model: videoModel,
         image_options: options,
         anchor,
+        budget_usd: budget,
       }),
     onSuccess: () => { toastOk("settings saved"); onClose(); refresh(); },
     onError: (e) => toastError(String(e)),
@@ -75,6 +77,9 @@ function SettingsDialog({ prof, slug, project, onClose, refresh }: {
       <label>Image options per scene</label>
       <input type="number" min={1} max={6} value={options}
              onChange={(e) => setOptions(Number(e.target.value))} style={{ width: 60 }} />
+      <label>Budget (USD, 0 = unlimited)</label>
+      <input type="number" min={0} step={1} value={budget}
+             onChange={(e) => setBudget(Number(e.target.value))} style={{ width: 80 }} />
       <div className="row" style={{ marginTop: 14 }}>
         <button onClick={() => save.mutate()} disabled={save.isPending}>save</button>
         <button className="ghost" onClick={onClose}>cancel</button>
@@ -221,6 +226,16 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
   });
   const { data: sceneModels } = useModels();
   const [sceneModel, setSceneModel] = useState(project.settings.image_model);
+  const upgradeScene = useMutation({
+    mutationFn: () => api.generateImages(prof, slug, {
+      model: "nano-banana-pro",
+      options: 1,
+      scene_ids: [scene.id],
+      force: true,
+    }),
+    onSuccess: () => { toastOk("upgrading to premium"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
   const generateScene = useMutation({
     mutationFn: () => api.generateImages(prof, slug, {
       model: sceneModel,
@@ -361,6 +376,15 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
           Generate {project.settings.image_options} images
           {" "}(~${((sceneModels?.[sceneModel]?.price ?? 0) * project.settings.image_options).toFixed(2)})
         </button>
+        {scene.images.length > 0 && scene.images.every((img) => img.model !== "nano-banana-pro") && (
+          <button className="ghost" style={{ fontSize: "0.72rem" }}
+            onClick={() => upgradeScene.mutate()}
+            disabled={busy || upgradeScene.isPending}
+            title="Regenerate with nano-banana-pro ($0.134) for highest quality"
+          >
+            ↑ premium (~$0.13)
+          </button>
+        )}
         <span className="mono muted" style={{ fontSize: "0.68rem" }}>
           {scene.refs.length} refs · {scene.images.length} images
         </span>
@@ -714,7 +738,7 @@ export default function ProjectBoard() {
       </div>
       <p className="muted">
         {proj.concept} · <span className="mono">{proj.style.anchor}</span>
-        {proj.spent_usd > 0 && <> · <span className="mono">${proj.spent_usd.toFixed(2)} GPU spend</span></>}
+        {proj.spent_usd > 0 && <> · <span className="mono">${proj.spent_usd.toFixed(2)}{proj.budget_usd > 0 ? ` / $${proj.budget_usd.toFixed(0)} budget` : ""}</span></>}
       </p>
       <JobBanner job={proj.job} onRetry={() => generateAll.mutate()} />
 

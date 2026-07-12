@@ -443,6 +443,8 @@ def make_router(home: Path) -> APIRouter:
             project.concept = payload["concept"]
         if "notes" in payload:
             project.notes = payload["notes"]
+        if "budget_usd" in payload:
+            project.budget_usd = float(payload["budget_usd"])
         for field_name in ("anchor", "suffix", "mood", "palette", "lighting"):
             if field_name in payload:
                 setattr(project.style, field_name, payload[field_name])
@@ -746,6 +748,14 @@ def make_router(home: Path) -> APIRouter:
         todo = ops.plan_images(scenes, options, force=bool(payload.get("force")))
         if not todo:
             return {"started": None, "note": "nothing to generate"}
+        estimated = sum(n for _, n in todo) * config.MODELS.get(model_key, {}).get("price", 0)
+        current_spend = sum(img.meta.get("cost_usd", 0) for sc in project.scenes for img in sc.images) \
+                      + sum(c.meta.get("cost_usd", 0) for c in project.clips)
+        if project.budget_usd > 0 and current_spend + estimated > project.budget_usd:
+            raise _err(400, "budget",
+                       f"This would exceed the project budget "
+                       f"(${current_spend:.2f} spent + ~${estimated:.2f} = ${current_spend + estimated:.2f}, "
+                       f"budget: ${project.budget_usd:.2f})")
         return start_job_or_409(
             prof, slug, f"generate images ({model_key})",
             lambda log: ops.run_images(project, todo, model_key, log=log,
