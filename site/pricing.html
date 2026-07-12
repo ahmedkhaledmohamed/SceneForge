@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pricing — SceneForge</title>
+<meta name="description" content="SceneForge pricing comparison: Together AI vs RunPod vs traditional platforms.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=Fragment+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="site-header">
+  <a class="wordmark" href="index.html">Scene<span class="spark">Forge</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="architecture.html">Architecture</a>
+    <a href="getting-started.html">Getting started</a>
+    <a href="pricing.html" aria-current="page">Pricing</a>
+    <a href="https://github.com/ahmedkhaledmohamed/SceneForge">GitHub</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="no-rule" style="padding-top: 40px">
+  <p class="eyebrow">Pricing</p>
+  <h1>Pay per generation,<br>not per subscription.</h1>
+  <p class="lede">SceneForge has no subscription fee. You pay only for the AI generations you use —
+  images and video clips — through the API providers you choose. Two options: hosted APIs
+  (Together AI) for zero setup, or self-hosted GPUs (RunPod) for lower per-unit cost.</p>
+</section>
+
+<section>
+  <h2>Per-generation pricing</h2>
+  <table>
+    <thead><tr><th>Model</th><th>Type</th><th>Provider</th><th>Price</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">flux-schnell</td><td>image</td><td>Together AI</td><td>$0.003</td><td>fast drafts</td></tr>
+      <tr><td class="mono">flux-2-pro</td><td>image (8 refs)</td><td>Together AI</td><td>$0.03</td><td>multi-reference drafts</td></tr>
+      <tr><td class="mono">nano-banana-pro</td><td>image (14 refs)</td><td>Together AI</td><td>$0.134</td><td>highest quality</td></tr>
+      <tr><td class="mono">kling-2.1</td><td>video clip</td><td>Together AI</td><td>$0.18</td><td>cheapest I2V</td></tr>
+      <tr><td class="mono">seedance-2.0</td><td>video clip</td><td>Together AI</td><td>$0.80</td><td>most realistic</td></tr>
+      <tr><td class="mono">runpod-flux</td><td>image</td><td>RunPod (self-hosted)</td><td>~$0.005</td><td>RTX 4090</td></tr>
+      <tr><td class="mono">runpod-wan-i2v</td><td>video clip (720p)</td><td>RunPod (self-hosted)</td><td>~$0.10</td><td>Wan2.2-TI2V-5B</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Model specifications</h2>
+  <table>
+    <thead><tr><th>Model</th><th>Type</th><th>Open source</th><th>Max refs</th><th>Resolution</th><th>I2V</th><th>Duration</th><th>Self-hostable</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">flux-schnell</td><td>image</td><td>Yes</td><td>0</td><td>up to 1280×720</td><td>—</td><td>—</td><td>Yes (4GB VRAM)</td></tr>
+      <tr><td class="mono">flux-dev</td><td>image</td><td>Yes</td><td>0</td><td>up to 1280×720</td><td>—</td><td>—</td><td>Yes (12GB VRAM)</td></tr>
+      <tr><td class="mono">flux-2-pro</td><td>image</td><td><span style="color:var(--danger)">No</span> (BFL)</td><td>8</td><td>up to 1280×720</td><td>—</td><td>—</td><td>No</td></tr>
+      <tr><td class="mono">nano-banana-pro</td><td>image</td><td><span style="color:var(--danger)">No</span> (Google)</td><td>14</td><td>up to 1280×720</td><td>—</td><td>—</td><td>No</td></tr>
+      <tr><td class="mono">seedance-2.0</td><td>video</td><td><span style="color:var(--danger)">No</span> (ByteDance)</td><td>—</td><td>720p</td><td>Yes</td><td>~5s</td><td>No</td></tr>
+      <tr><td class="mono">veo-3.0-fast</td><td>video</td><td><span style="color:var(--danger)">No</span> (Google)</td><td>—</td><td>720p</td><td>Unverified</td><td>~5s</td><td>No</td></tr>
+      <tr><td class="mono">kling-2.1</td><td>video</td><td><span style="color:var(--danger)">No</span> (Kuaishou)</td><td>—</td><td>720p</td><td>Yes</td><td>~5s</td><td>No</td></tr>
+      <tr><td class="mono">Wan2.2-TI2V-5B</td><td>video</td><td>Yes</td><td>—</td><td>720p (1280×704)</td><td>Yes</td><td>~5s @ 24fps</td><td>Yes (24GB VRAM)</td></tr>
+      <tr><td class="mono">FLUX.1-schnell</td><td>image</td><td>Yes</td><td>0</td><td>up to 1280×720</td><td>—</td><td>—</td><td>Yes (24GB VRAM)</td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top: 8px">
+    <b>Open source</b> models can be self-hosted on RunPod for lower per-unit cost.
+    <b>Closed</b> models are only available through Together AI's hosted API — higher quality for multi-reference composition but not self-hostable.
+    Multi-ref models (flux-2-pro, nano-banana-pro) are key for character + reference image composition.
+  </p>
+</section>
+
+<section>
+  <h2>Monthly cost comparison</h2>
+  <p class="lede">Estimated for a content creator producing 30–45 posts per month.
+  Each post: ~6 draft images, 2 premium images, 4 refinement rounds, 3 video clips.</p>
+
+  <table>
+    <thead><tr><th></th><th>Traditional platform</th><th>SceneForge + Together AI</th><th>SceneForge + RunPod</th></tr></thead>
+    <tbody>
+      <tr><td><b>Draft images</b></td><td>included</td><td>180 × $0.03 = $5.40</td><td>180 × $0.005 = $0.90</td></tr>
+      <tr><td><b>Premium images</b></td><td>included</td><td>60 × $0.134 = $8.04</td><td>60 × $0.134 = $8.04*</td></tr>
+      <tr><td><b>Refinements</b></td><td>included</td><td>120 × $0.05 = $6.00</td><td>120 × $0.005 = $0.60</td></tr>
+      <tr><td><b>Video clips</b></td><td>included</td><td>90 × $0.18 = $16.20</td><td>90 × $0.10 = $9.00</td></tr>
+      <tr><td><b>Infrastructure</b></td><td>—</td><td>—</td><td>$14/mo volume</td></tr>
+      <tr><td><b>Railway hosting</b></td><td>—</td><td>$5/mo</td><td>$5/mo</td></tr>
+      <tr style="border-top: 2px solid var(--line)">
+        <td><b>Total (USD)</b></td>
+        <td><b>$130</b></td>
+        <td><b>$41</b></td>
+        <td><b>$38</b></td>
+      </tr>
+      <tr>
+        <td><b>Total (CAD)</b></td>
+        <td><b>~$180</b></td>
+        <td><b>~$55</b></td>
+        <td><b>~$51</b></td>
+      </tr>
+      <tr>
+        <td><b>Savings</b></td>
+        <td>—</td>
+        <td class="mono" style="color: var(--gold)">69%</td>
+        <td class="mono" style="color: var(--gold)">72%</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top: 8px">* Premium images (nano-banana-pro) use Together AI even in the RunPod setup —
+  the model isn't open-source. RunPod handles drafts and video clips.</p>
+</section>
+
+<section>
+  <h2>What you get</h2>
+  <div class="ruler">
+    <div class="step">
+      <span class="tc">free</span>
+      <div><h3>SceneForge software</h3>
+      <p>Open source. No license fee. Deploy on Railway ($5/mo) or self-host.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">pay</span>
+      <div><h3>AI generation only</h3>
+      <p>You pay the API provider (Together AI or RunPod) directly for each image and clip.
+      No markup. Costs tracked per artifact in the Studio.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">own</span>
+      <div><h3>Your data, your keys</h3>
+      <p>API keys stored in your profile. Generated media on your volume.
+      No vendor lock-in — switch providers anytime.</p></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <span>Pricing based on published API rates as of July 2026. Actual costs depend on usage patterns.</span>
+  <span><a href="https://github.com/ahmedkhaledmohamed/SceneForge">source on GitHub</a></span>
+</footer>
+
+</div>
+</body>
+</html>
