@@ -11,6 +11,7 @@ import type { ProfileDoc } from "../types";
 function ProfileHeader({ prof, profile }: { prof: string; profile: ProfileDoc }) {
   const client = useQueryClient();
   const refresh = () => client.invalidateQueries({ queryKey: ["profile", prof] });
+  const { data: models } = useQuery({ queryKey: ["models"], queryFn: api.models, staleTime: Infinity });
   const [editingStyle, setEditingStyle] = useState(false);
   const [anchor, setAnchor] = useState(profile.style.anchor);
 
@@ -56,9 +57,20 @@ function ProfileHeader({ prof, profile }: { prof: string; profile: ProfileDoc })
               <button className="ghost" onClick={() => { setAnchor(profile.style.anchor); setEditingStyle(true); }}>
                 edit style
               </button>
-              <span className="mono muted">
-                {profile.defaults.image_model} / {profile.defaults.video_model}
-              </span>
+              <select className="mono" style={{ fontSize: "0.72rem" }}
+                value={profile.defaults.image_model}
+                onChange={(e) => api.patchProfile(prof, { image_model: e.target.value }).then(refresh)}>
+                {Object.entries(models ?? {}).filter(([,m]) => m.kind === "image").map(([k]) => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+              <select className="mono" style={{ fontSize: "0.72rem" }}
+                value={profile.defaults.video_model}
+                onChange={(e) => api.patchProfile(prof, { video_model: e.target.value }).then(refresh)}>
+                {Object.entries(models ?? {}).filter(([,m]) => m.kind === "video").map(([k]) => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
             </div>
           </>
         )}
