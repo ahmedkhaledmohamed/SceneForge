@@ -508,6 +508,7 @@ export default function ProjectBoard() {
   const [imageModel, setImageModel] = useState<string | null>(null);
   const [exported, setExported] = useState<string | null>(null);
   const [addingScene, setAddingScene] = useState(false);
+  const [activeTab, setActiveTab] = useState<"scenes" | "clips">("scenes");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
@@ -742,19 +743,32 @@ export default function ProjectBoard() {
         />
       )}
 
-      <div className="toolbar-sections">
-        <div className="toolbar-section">
-          <span className="toolbar-label">scenes</span>
-          <div className="row">
-            <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
-            {proj.concept && (
-              <button className="ghost" onClick={() => brainstorm.mutate()} disabled={busy || brainstorm.isPending}>
-                {brainstorm.isPending ? "thinking…" : "brainstorm"}
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="row" style={{ gap: 0, borderBottom: "1px solid var(--line)", marginBottom: 14 }}>
+        <button
+          className={activeTab === "scenes" ? "btn" : "ghost"}
+          style={{ borderRadius: "7px 7px 0 0", borderBottom: "none" }}
+          onClick={() => setActiveTab("scenes")}
+        >
+          Scenes ({proj.scenes.length})
+        </button>
+        <button
+          className={activeTab === "clips" ? "btn" : "ghost"}
+          style={{ borderRadius: "7px 7px 0 0", borderBottom: "none" }}
+          onClick={() => setActiveTab("clips")}
+        >
+          Clips ({proj.clips.length})
+        </button>
+      </div>
 
+      {activeTab === "scenes" && <>
+
+      <div className="row" style={{ marginBottom: 10 }}>
+        <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
+        {proj.concept && (
+          <button className="ghost" onClick={() => brainstorm.mutate()} disabled={busy || brainstorm.isPending}>
+            {brainstorm.isPending ? "thinking…" : "brainstorm"}
+          </button>
+        )}
       </div>
 
       {brainstormResults && (
@@ -936,7 +950,9 @@ export default function ProjectBoard() {
         />
       ))}
 
-      <h2>Clips</h2>
+      </>}
+
+      {activeTab === "clips" && <>
       <div className="row" style={{ marginBottom: 10 }}>
         <button className="ghost" onClick={() => setCreatingClip(true)}>+ clip</button>
         <button className="ghost" onClick={() => {
@@ -1107,6 +1123,7 @@ export default function ProjectBoard() {
           </div>
         ))}
       </div>
+      </>}
     </>
   );
 }
