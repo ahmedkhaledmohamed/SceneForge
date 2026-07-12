@@ -135,28 +135,30 @@
     </tbody>
   </table>
 
-  <h3>The OpenRouter path: Seedance 1.5 Pro at $0.12/clip</h3>
+  <h3>The OpenRouter path: Seedance 1.5 Pro at $0.26/clip</h3>
+  <p class="muted">Note: OpenRouter's per-second rate ($0.023/s) is misleading. Actual billing
+  is token-based: (height × width × duration × 24) / 1024 × price. A 5s 720p clip = $0.26.</p>
   <table>
     <thead><tr><th></th><th>Higgsfield MAX</th><th>SceneForge + OpenRouter<br>(Seedance 1.5 Pro)</th></tr></thead>
     <tbody>
       <tr><td><b>500 draft images</b></td><td>0 (unlimited)</td><td>$15.00 (flux-2-pro)</td></tr>
       <tr><td><b>100 premium images</b></td><td>200 credits</td><td>$13.40 (nano-banana-pro)</td></tr>
-      <tr><td><b>500 video clips (Seedance 1.5 Pro)</b></td><td>3,000 credits</td><td>500 × $0.12 = <b>$60</b></td></tr>
+      <tr><td><b>500 video clips (Seedance 1.5 Pro)</b></td><td>3,000 credits</td><td>500 × $0.26 = <b>$130</b></td></tr>
       <tr><td><b>Infrastructure</b></td><td>—</td><td>$5</td></tr>
       <tr style="border-top: 2px solid var(--line)">
         <td><b>Total (USD)</b></td>
         <td><b>$139</b></td>
-        <td><b style="color: var(--gold)">$93</b></td>
+        <td><b>$163</b></td>
       </tr>
       <tr>
         <td><b>Total (CAD)</b></td>
         <td><b>~$188</b></td>
-        <td><b style="color: var(--gold)">~$126</b></td>
+        <td><b>~$220</b></td>
       </tr>
       <tr>
         <td><b>Savings</b></td>
         <td>—</td>
-        <td class="mono" style="color: var(--gold)"><b>33% cheaper</b></td>
+        <td class="mono" style="color: var(--danger)"><b>17% more expensive</b></td>
       </tr>
       <tr>
         <td><b>Video model</b></td>
@@ -169,15 +171,14 @@
   <div class="callout" style="margin-top: 14px">
     <b>Bottom line:</b>
     <ul style="margin: 6px 0; padding-left: 20px">
-      <li><b>Best value with Seedance quality</b> — OpenRouter offers Seedance 1.5 Pro at
-        $0.12/clip (vs Higgsfield's effective $0.23/clip). SceneForge saves 33% with
-        the same video model.</li>
-      <li><b>Together AI is overpriced for Seedance</b> — $0.80/clip is 3× retail.
-        Use Together for images (nano-banana-pro, flux-2-pro) and OpenRouter for clips.</li>
-      <li><b>Maximum savings</b> — RunPod self-hosted Wan2.2 at $0.10/clip saves 39%,
-        but with different quality than Seedance.</li>
-      <li><b>SceneForge's real value</b> — consistent characters, reference image composition,
-        project organization, and generation history that Higgsfield doesn't offer.</li>
+      <li><b>For Seedance at volume</b> — Higgsfield's enterprise deal (~$0.23/clip effective)
+        beats all retail APIs. OpenRouter ($0.26) and Together ($0.80) are more expensive per clip.</li>
+      <li><b>For Kling quality</b> — Together AI at $0.18/clip saves 62% vs Higgsfield
+        with good I2V results.</li>
+      <li><b>For self-hosted</b> — RunPod Wan2.2 at ~$0.10/clip saves 60% with different quality.</li>
+      <li><b>SceneForge's value is workflow</b> — consistent characters, multi-ref composition,
+        project organization, generation history, and provider flexibility.
+        Cost is competitive with Kling; for Seedance volume, Higgsfield's bundle is hard to beat.</li>
     </ul>
   </div>
 </section>
