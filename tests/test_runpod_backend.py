@@ -165,4 +165,4 @@ def test_factory_wires_fallback():
     assert isinstance(backend.primary, RunPodVideoBackend)
     assert backend.supports_i2v is True
     # constructing the backend must not require RunPod env vars
-    assert backend.fallback.model["key"] == "seedance-2.0"
+    assert backend.fallback.model["key"] == "seedance-1.5-pro"

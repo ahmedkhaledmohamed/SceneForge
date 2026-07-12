@@ -6,6 +6,7 @@ project.json so they travel with the project.
 """
 
 import os
+import threading
 
 from dotenv import find_dotenv, load_dotenv
 
@@ -13,18 +14,18 @@ load_dotenv(find_dotenv(usecwd=True))
 
 TOGETHER_BASE_URL = "https://api.together.xyz/v1"
 
-# supports_i2v: True = confirmed image-to-video, False = text-to-video only
-# (selected image is ignored, with a warning), None = unverified — the tool
-# attempts I2V and surfaces the API error if unsupported.
 MODELS = {
-    # --- images ---
+    # --- images (Together AI) ---
     "flux-schnell": {
         "kind": "image",
         "backend": "together",
         "id": "black-forest-labs/FLUX.1-schnell",
         "price": 0.003,
         "steps": 4,
-        "notes": "fast, cheap drafts",
+        "max_refs": 0,
+        "resolutions": ["720x1280", "1280x720", "512x512", "1024x1024"],
+        "params": ["seed", "steps", "width", "height", "negative_prompt"],
+        "notes": "fast, cheap drafts — no multi-ref",
     },
     "flux-dev": {
         "kind": "image",
@@ -32,16 +33,20 @@ MODELS = {
         "id": "black-forest-labs/FLUX.1-dev",
         "price": 0.025,
         "steps": 28,
-        "notes": "higher quality, slower",
+        "max_refs": 0,
+        "resolutions": ["720x1280", "1280x720", "1024x1024"],
+        "params": ["seed", "steps", "width", "height", "negative_prompt", "guidance_scale"],
+        "notes": "higher quality, slower — no multi-ref",
     },
-    # --- multi-reference models (character + garment conditioning) ---
     "flux-2-pro": {
         "kind": "image",
         "backend": "together",
         "id": "black-forest-labs/FLUX.2-pro",
         "price": 0.03,
         "max_refs": 8,
-        "notes": "multi-ref drafts, $0.03/MP",
+        "resolutions": ["720x1280", "1280x720", "1024x1024"],
+        "params": ["seed", "width", "height"],
+        "notes": "multi-ref drafts (up to 8 reference images)",
     },
     "nano-banana-pro": {
         "kind": "image",
@@ -50,16 +55,22 @@ MODELS = {
         "price": 0.134,
         "max_refs": 14,
         "fallback": "flux-2-pro",
-        "notes": "best garment fidelity + character consistency",
+        "resolutions": ["720x1280", "1280x720", "1024x1024"],
+        "params": ["seed", "width", "height"],
+        "notes": "highest quality multi-ref (up to 14 references)",
     },
-    # --- video ---
+    # --- video (Together AI) ---
     "seedance-2.0": {
         "kind": "video",
         "backend": "together",
         "id": "ByteDance/Seedance-2.0",
-        "price": 0.80,  # $0.16/sec at 720p, 5s clip
+        "price": 0.80,
+        "price_per_s": 0.16,
         "supports_i2v": True,
-        "notes": "most realistic",
+        "resolutions": ["720p"],
+        "durations": [5],
+        "params": ["seed", "seconds", "fps"],
+        "notes": "most realistic I2V — expensive via Together",
     },
     "veo-3.0-fast": {
         "kind": "video",
@@ -67,7 +78,10 @@ MODELS = {
         "id": "google/veo-3.0-fast",
         "price": 0.40,
         "supports_i2v": None,
-        "notes": "mid-price",
+        "resolutions": ["720p"],
+        "durations": [5, 8],
+        "params": ["seed", "seconds"],
+        "notes": "mid-price, I2V unverified",
     },
     "kling-2.1": {
         "kind": "video",
@@ -75,34 +89,53 @@ MODELS = {
         "id": "kwaivgI/kling-2.1-standard",
         "price": 0.18,
         "supports_i2v": True,
-        "notes": "cheapest I2V",
+        "resolutions": ["720p"],
+        "durations": [5, 10],
+        "params": ["seed", "seconds"],
+        "notes": "cheapest hosted I2V on Together",
     },
-    # --- OpenRouter (cheaper Seedance) ---
+    # --- video (OpenRouter — cheaper Seedance) ---
     "seedance-1.5-pro": {
         "kind": "video",
         "backend": "openrouter",
         "id": "bytedance/seedance-1-5-pro",
-        "price": 0.12,  # ~$0.023/s × 5s
+        "price": 0.12,
+        "price_per_s": 0.023,
         "supports_i2v": True,
+        "supports_last_frame": True,
+        "supports_audio": True,
+        "resolutions": ["480p", "720p", "1080p"],
+        "aspect_ratios": ["16:9", "9:16", "1:1", "4:3", "3:4"],
+        "durations": [4, 5, 6, 7, 8, 9, 10, 11, 12],
+        "params": ["seed", "duration", "resolution", "aspect_ratio", "generate_audio"],
         "timeout_s": 600,
-        "notes": "Seedance 1.5 Pro via OpenRouter — best value",
+        "notes": "best value Seedance — $0.023/s via OpenRouter",
     },
     "seedance-2.0-or": {
         "kind": "video",
         "backend": "openrouter",
         "id": "bytedance/seedance-2.0",
-        "price": 0.34,  # ~$0.067/s × 5s
+        "price": 0.34,
+        "price_per_s": 0.067,
         "supports_i2v": True,
+        "supports_last_frame": True,
+        "resolutions": ["480p", "720p", "1080p"],
+        "aspect_ratios": ["16:9", "9:16", "1:1", "4:3", "3:4"],
+        "durations": [4, 5, 6, 7, 8, 9, 10],
+        "params": ["seed", "duration", "resolution", "aspect_ratio"],
         "timeout_s": 600,
-        "notes": "Seedance 2.0 via OpenRouter (cheaper than Together)",
+        "notes": "Seedance 2.0 via OpenRouter — 57% cheaper than Together",
     },
-    # --- self-hosted on RunPod serverless (see runpod-worker/) ---
+    # --- self-hosted (RunPod) ---
     "runpod-flux": {
         "kind": "image",
         "backend": "runpod",
         "id": "black-forest-labs/FLUX.1-schnell",
-        "price": 0.005,  # estimate; actual cost computed per artifact
-        "gpu_price_per_s": 0.000306,  # RTX 4090 flex, verified 2026-07
+        "price": 0.005,
+        "gpu_price_per_s": 0.000306,
+        "max_refs": 0,
+        "resolutions": ["720x1280", "1280x720"],
+        "params": ["seed", "width", "height"],
         "timeout_s": 600,
         "fallback": "flux-schnell",
         "notes": "self-hosted FLUX on RunPod 4090",
@@ -111,21 +144,26 @@ MODELS = {
         "kind": "video",
         "backend": "runpod",
         "id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
-        "price": 0.10,  # estimate; actual cost computed per artifact
+        "price": 0.10,
         "gpu_price_per_s": 0.000306,
         "supports_i2v": True,
-        "timeout_s": 1800,  # cold model load + ~9 min generation
-        "fallback": "seedance-2.0",
-        "notes": "self-hosted Wan2.2-TI2V-5B on RunPod 4090, 720p",
+        "resolutions": ["720p (1280x704)"],
+        "durations": [5],
+        "params": ["num_frames"],
+        "timeout_s": 1800,
+        "fallback": "seedance-1.5-pro",
+        "notes": "self-hosted Wan2.2 on RunPod 4090, 720p 24fps",
     },
-    # --- zero-cost test backends (ffmpeg lavfi) ---
+    # --- test ---
     "fake-image": {
         "kind": "image",
         "backend": "fake",
         "id": "lavfi/color",
         "price": 0.0,
-        "max_refs": 14,  # mirrors nano-banana-pro so ref flow is testable
-        "notes": "test backend",
+        "max_refs": 14,
+        "resolutions": ["720x1280"],
+        "params": [],
+        "notes": "test backend (ffmpeg)",
     },
     "fake-video": {
         "kind": "video",
@@ -133,12 +171,15 @@ MODELS = {
         "id": "lavfi/testsrc",
         "price": 0.0,
         "supports_i2v": False,
-        "notes": "test backend",
+        "resolutions": ["720x1280"],
+        "durations": [5],
+        "params": [],
+        "notes": "test backend (ffmpeg)",
     },
 }
 
 DEFAULT_IMAGE_MODEL = os.environ.get("SCENEFORGE_IMAGE_MODEL", "flux-schnell")
-DEFAULT_VIDEO_MODEL = os.environ.get("SCENEFORGE_VIDEO_MODEL", "seedance-2.0")
+DEFAULT_VIDEO_MODEL = os.environ.get("SCENEFORGE_VIDEO_MODEL", "seedance-1.5-pro")
 DEFAULT_LLM_MODEL = os.environ.get(
     "SCENEFORGE_LLM_MODEL", "meta-llama/Llama-3.3-70B-Instruct-Turbo"
 )
@@ -152,7 +193,6 @@ ASPECTS = {
 }
 
 
-import threading
 _active_profile = threading.local()
 
 
