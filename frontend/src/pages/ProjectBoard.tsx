@@ -249,20 +249,22 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
     <div className="card">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
-          <b>{scene.id}</b> — {scene.description}
-          <div className="muted mono">
-            {[scene.character_id, scene.pose].filter(Boolean).join(" · ")}
+          <div className="row" style={{ marginBottom: 4 }}>
+            <b>{scene.id}</b>
+            {scene.character_id && <span className="pill">{scene.character_id}</span>}
+            <span className="pill">{scene.refs.length} refs</span>
+            <span className="pill">{scene.images.length} images</span>
           </div>
+          <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>{scene.description}</p>
+          {scene.pose && <div className="mono muted" style={{ fontSize: "0.72rem" }}>{scene.pose}</div>}
         </div>
         <div className="row">
-          <button className="ghost" onClick={() => setRefineOpen(true)}>
-            refine…
-          </button>
+          <button className="ghost" onClick={() => setRefineOpen(true)}>refine</button>
           {!isFirst && <button className="ghost" onClick={() => onMove(-1)} title="move up">↑</button>}
           {!isLast && <button className="ghost" onClick={() => onMove(1)} title="move down">↓</button>}
           <button
             className="ghost"
-            style={{ color: "var(--red, #c44)" }}
+            style={{ color: "var(--danger, #c44)" }}
             onClick={() => { if (confirm(`Delete ${scene.id}?`)) deleteScene.mutate(); }}
           >
             ×
@@ -1117,7 +1119,7 @@ export default function ProjectBoard() {
                 {(clip.status === "completed" || clip.status === "failed") && (
                   <button className="ghost"
                     onClick={() => api.resetClip(prof, slug, clip.id).then(refresh).catch((e) => toastError(String(e)))}>
-                    regenerate
+                    refine
                   </button>
                 )}
                 {clip.status === "pending" && (
