@@ -90,11 +90,10 @@ def make_router(home: Path) -> APIRouter:
                 scene_doc["prompt_preview"] = None
         job = jobs.get(job_key(prof, slug))
         doc["job"] = job.as_dict() if job else None
-        doc["spent_usd"] = round(sum(
-            artifact.meta.get("cost_usd", 0.0)
-            for sc in project.scenes
-            for artifact in [*sc.images, *sc.clips]
-        ), 4)
+        doc["spent_usd"] = round(
+            sum(img.meta.get("cost_usd", 0.0) for sc in project.scenes for img in sc.images)
+            + sum(c.meta.get("cost_usd", 0.0) for c in project.clips),
+        4)
         doc["profile_characters"] = [asdict(c) for c in profile.characters] if profile else []
         return doc
 
@@ -366,9 +365,8 @@ def make_router(home: Path) -> APIRouter:
                 "concept": p.concept,
                 "scenes": len(p.scenes),
                 "refs": sum(len(sc.refs) for sc in p.scenes),
-                "clips": sum(1 for sc in p.scenes for c in sc.clips
-                             if c.status == "completed"),
-                "kept": sum(1 for sc in p.scenes for c in sc.clips if c.kept),
+                "clips": sum(1 for c in p.clips if c.status == "completed"),
+                "kept": sum(1 for c in p.clips if c.kept),
             })
         return out
 
@@ -388,15 +386,17 @@ def make_router(home: Path) -> APIRouter:
             scenes += len(p.scenes)
             for sc in p.scenes:
                 images += len(sc.images)
-                for c in sc.clips:
-                    if c.status == "completed":
-                        clips_completed += 1
-                    if c.kept:
-                        clips_kept += 1
-                for a in [*sc.images, *sc.clips]:
-                    spent += a.meta.get("cost_usd", 0.0)
-                    m = a.model
-                    models_used[m] = models_used.get(m, 0) + 1
+                for img in sc.images:
+                    spent += img.meta.get("cost_usd", 0.0)
+                    models_used[img.model] = models_used.get(img.model, 0) + 1
+            for c in p.clips:
+                if c.status == "completed":
+                    clips_completed += 1
+                if c.kept:
+                    clips_kept += 1
+                spent += c.meta.get("cost_usd", 0.0)
+                if c.model:
+                    models_used[c.model] = models_used.get(c.model, 0) + 1
         return {
             "projects": projects,
             "scenes": scenes,

@@ -258,30 +258,6 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
           <button className="ghost" onClick={() => setRefineOpen(true)}>
             refine…
           </button>
-          {scene.images.length >= 2 && (
-            <button className="ghost" onClick={() => setComparing(!comparing)}>
-              {comparing ? "thumbnails" : "compare"}
-            </button>
-          )}
-          <Link to={`/${prof}/p/${slug}/scenes/${scene.id}/takes`}>
-            <button className="ghost">
-              takes{completedTakes > 0 ? ` (${completedTakes})` : ""}
-            </button>
-          </Link>
-          <input
-            ref={imgImportRef}
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) importImg.mutate(file);
-              e.target.value = "";
-            }}
-          />
-          <button className="ghost" onClick={() => imgImportRef.current?.click()}>
-            import
-          </button>
           {!isFirst && <button className="ghost" onClick={() => onMove(-1)} title="move up">↑</button>}
           {!isLast && <button className="ghost" onClick={() => onMove(1)} title="move down">↓</button>}
           <button
