@@ -1,6 +1,4 @@
-"""Background job management: one generation job per project at a time.
-Carried over from the htmx UI — the contract (run in a thread, append to
-a log buffer, 409 on conflict) is unchanged; only the rendering moved."""
+"""Background job management: one generation job per project at a time."""
 
 import threading
 
@@ -8,11 +6,28 @@ import threading
 class Job:
     def __init__(self, name: str):
         self.name = name
-        self.status = "running"  # running | done | failed
+        self.status = "running"
         self.log: list[str] = []
+        self.total = 0
+        self.completed = 0
+        self.current = ""
+
+    def progress(self, current: str, completed: int | None = None, total: int | None = None):
+        self.current = current
+        if completed is not None:
+            self.completed = completed
+        if total is not None:
+            self.total = total
 
     def as_dict(self) -> dict:
-        return {"name": self.name, "status": self.status, "log": self.log[-30:]}
+        return {
+            "name": self.name,
+            "status": self.status,
+            "log": self.log[-30:],
+            "total": self.total,
+            "completed": self.completed,
+            "current": self.current,
+        }
 
 
 class JobManager:
@@ -35,7 +50,7 @@ class JobManager:
             try:
                 fn(job.log.append)
                 job.status = "done"
-            except Exception as exc:  # surfaced via GET .../job
+            except Exception as exc:
                 job.log.append(str(exc))
                 job.status = "failed"
 
