@@ -508,6 +508,7 @@ export default function ProjectBoard() {
   const [imageModel, setImageModel] = useState<string | null>(null);
   const [exported, setExported] = useState<string | null>(null);
   const [addingScene, setAddingScene] = useState(false);
+  const [activeTab, setActiveTab] = useState<"scenes" | "clips">("scenes");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
@@ -742,19 +743,32 @@ export default function ProjectBoard() {
         />
       )}
 
-      <div className="toolbar-sections">
-        <div className="toolbar-section">
-          <span className="toolbar-label">scenes</span>
-          <div className="row">
-            <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
-            {proj.concept && (
-              <button className="ghost" onClick={() => brainstorm.mutate()} disabled={busy || brainstorm.isPending}>
-                {brainstorm.isPending ? "thinking…" : "brainstorm"}
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="row" style={{ gap: 0, borderBottom: "1px solid var(--line)", marginBottom: 14 }}>
+        <button
+          className={activeTab === "scenes" ? "btn" : "ghost"}
+          style={{ borderRadius: "7px 7px 0 0", borderBottom: "none" }}
+          onClick={() => setActiveTab("scenes")}
+        >
+          Scenes ({proj.scenes.length})
+        </button>
+        <button
+          className={activeTab === "clips" ? "btn" : "ghost"}
+          style={{ borderRadius: "7px 7px 0 0", borderBottom: "none" }}
+          onClick={() => setActiveTab("clips")}
+        >
+          Clips ({proj.clips.length})
+        </button>
+      </div>
 
+      {activeTab === "scenes" && <>
+
+      <div className="row" style={{ marginBottom: 10 }}>
+        <button className="ghost" onClick={() => setAddingScene(true)}>+ scene</button>
+        {proj.concept && (
+          <button className="ghost" onClick={() => brainstorm.mutate()} disabled={busy || brainstorm.isPending}>
+            {brainstorm.isPending ? "thinking…" : "brainstorm"}
+          </button>
+        )}
       </div>
 
       {brainstormResults && (
@@ -936,7 +950,9 @@ export default function ProjectBoard() {
         />
       ))}
 
-      <h2>Clips</h2>
+      </>}
+
+      {activeTab === "clips" && <>
       <div className="row" style={{ marginBottom: 10 }}>
         <button className="ghost" onClick={() => setCreatingClip(true)}>+ clip</button>
         <button className="ghost" onClick={() => {
@@ -1037,76 +1053,95 @@ export default function ProjectBoard() {
       {proj.clips.length === 0 && !creatingClip && (
         <p className="muted">No clips yet — click "+ clip" or use the "+ clip" button on scene images.</p>
       )}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-        {proj.clips.map((clip) => (
-          <div key={clip.id} className="card" style={{ padding: 12 }}>
-            {clip.status === "completed" && clip.file ? (
-              <video controls preload="metadata" src={media(prof, slug, clip.file)}
-                     style={{ width: "100%", borderRadius: 6, border: clip.kept ? "2px solid var(--gold)" : "1px solid var(--line)" }} />
-            ) : clip.status === "failed" ? (
-              <div className="muted" style={{ padding: 8, color: "var(--danger)" }}>{clip.error || "failed"}</div>
-            ) : (
-              <div className="muted mono" style={{ padding: 12 }}>{clip.status}...</div>
-            )}
-            <div className="mono muted" style={{ fontSize: "0.68rem", marginTop: 4 }}>
-              {clip.id} · {clip.model} · {clip.seconds}s
-              {clip.source_images.length > 1 && " · start+end"}
-              {typeof clip.meta?.cost_usd === "number" && ` · $${(clip.meta.cost_usd as number).toFixed(2)}`}
-            </div>
-            {clip.status === "pending" ? (
-              <input
-                className="mono"
-                defaultValue={clip.prompt}
-                placeholder="motion prompt (e.g. gentle sway, slow turn)"
-                style={{ width: "100%", fontSize: "0.7rem", marginTop: 4 }}
-                onBlur={(e) => {
-                  if (e.target.value !== clip.prompt)
-                    api.patchClip(prof, slug, clip.id, { prompt: e.target.value }).then(refresh);
-                }}
-              />
-            ) : clip.prompt ? (
-              <div className="mono muted" style={{ fontSize: "0.65rem" }}>{clip.prompt}</div>
-            ) : null}
-            <div className="row" style={{ marginTop: 6 }}>
-              {(clip.status === "completed" || clip.status === "failed") && (
-                <>
-                  {clip.status === "completed" && (
-                    <>
-                      <button
-                        className={clip.kept ? "btn" : "ghost"}
-                        style={{ padding: "3px 10px", fontSize: "0.7rem" }}
-                        onClick={() => api.keepClip(prof, slug, clip.id, !clip.kept).then(refresh).catch((e) => toastError(String(e)))}
-                      >
-                        {clip.kept ? "✓ kept" : "keep"}
-                      </button>
-                      <a href={media(prof, slug, clip.file)} download className="ghost"
-                         style={{ padding: "3px 10px", fontSize: "0.7rem", borderRadius: 7,
-                                  border: "1px solid var(--line)", textDecoration: "none" }}>
-                        download
-                      </a>
-                    </>
-                  )}
-                  <button className="ghost" style={{ padding: "3px 10px", fontSize: "0.7rem" }}
+      {proj.clips.map((clip) => (
+        <div key={clip.id} className="card">
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div style={{ flex: 1 }}>
+              <div className="row" style={{ marginBottom: 6 }}>
+                <b>{clip.id}</b>
+                <span className="pill">{clip.model}</span>
+                <span className="pill">{clip.seconds}s</span>
+                {clip.source_images.length > 1 && <span className="pill gold">start + end</span>}
+                {clip.status === "pending" && <span className="pill">pending</span>}
+                {clip.status === "failed" && <span className="pill" style={{ borderColor: "var(--danger)", color: "var(--danger)" }}>failed</span>}
+                {clip.kept && <span className="pill gold">✓ kept</span>}
+                {typeof clip.meta?.cost_usd === "number" && (
+                  <span className="mono muted" style={{ fontSize: "0.72rem" }}>${(clip.meta.cost_usd as number).toFixed(2)}</span>
+                )}
+              </div>
+
+              {clip.status === "pending" ? (
+                <input
+                  className="mono"
+                  defaultValue={clip.prompt}
+                  placeholder="motion prompt (e.g. gentle sway, slow turn)"
+                  style={{ width: "100%", fontSize: "0.8rem", marginBottom: 6 }}
+                  onBlur={(e) => {
+                    if (e.target.value !== clip.prompt)
+                      api.patchClip(prof, slug, clip.id, { prompt: e.target.value }).then(refresh);
+                  }}
+                />
+              ) : clip.prompt ? (
+                <p className="muted" style={{ margin: "0 0 6px", fontSize: "0.85rem" }}>{clip.prompt}</p>
+              ) : null}
+
+              {clip.status === "failed" && clip.error && (
+                <p className="muted" style={{ color: "var(--danger)", fontSize: "0.78rem", margin: "0 0 6px" }}>{clip.error}</p>
+              )}
+
+              {clip.source_images.length > 0 && (
+                <div className="row" style={{ gap: 6, marginBottom: 6 }}>
+                  <span className="mono muted" style={{ fontSize: "0.68rem" }}>source:</span>
+                  {clip.source_images.map((src, i) => (
+                    <img key={i} src={media(prof, slug, src)} alt=""
+                         style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 4, border: "1px solid var(--line)" }} />
+                  ))}
+                </div>
+              )}
+
+              <div className="row">
+                {clip.status === "completed" && (
+                  <>
+                    <button
+                      className={clip.kept ? "btn" : "ghost"}
+                      onClick={() => api.keepClip(prof, slug, clip.id, !clip.kept).then(refresh).catch((e) => toastError(String(e)))}
+                    >
+                      {clip.kept ? "✓ kept" : "keep"}
+                    </button>
+                    <a href={media(prof, slug, clip.file)} download className="ghost"
+                       style={{ padding: "7px 14px", borderRadius: 7, border: "1px solid var(--line)", textDecoration: "none" }}>
+                      download
+                    </a>
+                  </>
+                )}
+                {(clip.status === "completed" || clip.status === "failed") && (
+                  <button className="ghost"
                     onClick={() => api.resetClip(prof, slug, clip.id).then(refresh).catch((e) => toastError(String(e)))}>
                     regenerate
                   </button>
-                </>
-              )}
-              {clip.status === "pending" && (
-                <button className="ghost" style={{ padding: "3px 10px", fontSize: "0.7rem" }}
-                  onClick={() => api.generateClip(prof, slug, clip.id).then(refresh).catch((e) => toastError(String(e)))}
-                  disabled={busy}>
-                  generate
+                )}
+                {clip.status === "pending" && (
+                  <button onClick={() => api.generateClip(prof, slug, clip.id).then(refresh).catch((e) => toastError(String(e)))}
+                    disabled={busy}>
+                    generate
+                  </button>
+                )}
+                <button className="ghost" style={{ color: "var(--danger)" }}
+                  onClick={() => { if (confirm(`Delete ${clip.id}?`)) api.deleteClip(prof, slug, clip.id).then(refresh); }}>
+                  ×
                 </button>
-              )}
-              <button className="ghost" style={{ padding: "3px 10px", fontSize: "0.7rem", color: "var(--danger)" }}
-                onClick={() => { if (confirm(`Delete ${clip.id}?`)) api.deleteClip(prof, slug, clip.id).then(refresh); }}>
-                ×
-              </button>
+              </div>
             </div>
+
+            {clip.status === "completed" && clip.file && (
+              <video controls preload="metadata" src={media(prof, slug, clip.file)}
+                     style={{ width: 240, borderRadius: 8, marginLeft: 16,
+                              border: clip.kept ? "2px solid var(--gold)" : "1px solid var(--line)" }} />
+            )}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
+      </>}
     </>
   );
 }
