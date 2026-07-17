@@ -175,6 +175,15 @@ export interface ModelInfo {
   notes?: string;
 }
 
+export interface PlatformSpec {
+  label: string;
+  aspect: string;
+  max_duration: number;
+  width: number;
+  height: number;
+  codec: string;
+}
+
 export interface HistoryRow {
   type: "image" | "clip";
   scene_id: string;

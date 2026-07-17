@@ -252,6 +252,13 @@ def recommend_model(shot_type: str = "", budget_remaining: float | None = None,
     return recommended
 
 
+PLATFORMS = {
+    "tiktok": {"label": "TikTok", "aspect": "9:16", "max_duration": 60, "width": 1080, "height": 1920, "codec": "libx264"},
+    "reels": {"label": "Instagram Reels", "aspect": "9:16", "max_duration": 90, "width": 1080, "height": 1920, "codec": "libx264"},
+    "shorts": {"label": "YouTube Shorts", "aspect": "9:16", "max_duration": 60, "width": 1080, "height": 1920, "codec": "libx264"},
+    "pinterest": {"label": "Pinterest", "aspect": "2:3", "max_duration": 60, "width": 1000, "height": 1500, "codec": "libx264"},
+}
+
 ASPECTS = {
     "9:16": (720, 1280),
     "16:9": (1280, 720),

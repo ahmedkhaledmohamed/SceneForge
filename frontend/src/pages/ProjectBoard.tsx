@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, media } from "../api";
+import { api, exportForPlatform, media } from "../api";
 import JobBanner from "../components/JobBanner";
 import Lightbox from "../components/Lightbox";
 import { toastError, toastOk } from "../components/toast";
@@ -1571,9 +1571,14 @@ function SequenceTab({ prof, slug, project, refresh, busy }: {
 }) {
   const [localSeq, setLocalSeq] = useState<string[]>(project.sequence);
   const [rendering, setRendering] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const seqQuery = useQuery({
     queryKey: ["sequence", prof, slug],
     queryFn: () => api.getSequence(prof, slug),
+  });
+  const platformsQuery = useQuery({
+    queryKey: ["platforms"],
+    queryFn: () => api.platforms(),
   });
 
   useEffect(() => {
@@ -1617,6 +1622,18 @@ function SequenceTab({ prof, slug, project, refresh, busy }: {
     saveSeq.mutate(next);
   };
 
+  const handlePlatformExport = async (platform: string) => {
+    setExporting(true);
+    try {
+      await exportForPlatform(prof, slug, platform);
+      toastOk(`exported for ${platform}`);
+    } catch (e) {
+      toastError(String(e));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const totalDuration = localSeq.reduce((sum, cid) => {
     const clip = clipsById[cid];
     return sum + (clip?.duration_s ?? 0);
@@ -1628,12 +1645,29 @@ function SequenceTab({ prof, slug, project, refresh, busy }: {
         <span className="mono muted">
           {localSeq.length} clip{localSeq.length !== 1 ? "s" : ""} · {totalDuration.toFixed(1)}s total
         </span>
-        <button
-          onClick={() => doRender.mutate()}
-          disabled={busy || doRender.isPending || localSeq.length === 0}
-        >
-          Render sequence
-        </button>
+        <div className="row" style={{ gap: 8 }}>
+          <button
+            onClick={() => doRender.mutate()}
+            disabled={busy || doRender.isPending || localSeq.length === 0}
+          >
+            Render sequence
+          </button>
+          <select
+            value=""
+            disabled={exporting || busy}
+            onChange={(e) => {
+              if (e.target.value) handlePlatformExport(e.target.value);
+            }}
+            style={{ minWidth: 140 }}
+          >
+            <option value="">{exporting ? "Exporting..." : "Export for..."}</option>
+            {Object.entries(platformsQuery.data ?? {}).map(([key, spec]) => (
+              <option key={key} value={key}>
+                {spec.label} ({spec.width}x{spec.height}, {spec.max_duration}s max)
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {localSeq.length === 0 && (

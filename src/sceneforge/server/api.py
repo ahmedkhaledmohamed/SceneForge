@@ -2037,6 +2037,90 @@ def make_router(home: Path) -> APIRouter:
 
         return start_job_or_409(prof, slug, "stitch final video", job)
 
+    # ------------------------------------------------------- platforms
+
+    @router.get("/platforms")
+    def list_platforms():
+        return dict(config.PLATFORMS)
+
+    @router.post("/profiles/{prof}/projects/{slug}/export/{platform}")
+    def export_for_platform(prof: str, slug: str, platform: str):
+        if platform not in config.PLATFORMS:
+            valid = ", ".join(config.PLATFORMS)
+            raise _err(400, "invalid",
+                       f"Unknown platform '{platform}'. Valid: {valid}")
+
+        spec = config.PLATFORMS[platform]
+        project = load_project(prof, slug)
+
+        # Find the rendered sequence file, or stitch kept clips
+        seq_path = project.output_dir / "sequence.mp4"
+        if not seq_path.is_file():
+            # Try stitching kept clips
+            kept = [c for c in project.clips
+                    if c.status == "completed" and c.kept and c.file]
+            if not kept:
+                raise _err(400, "invalid",
+                           "No rendered sequence and no kept clips. "
+                           "Render a sequence or keep some clips first.")
+            # Stitch kept clips into a temporary file
+            from ..stitch import stitch as stitch_clips
+            clip_paths = [project.root / c.file for c in kept]
+            seq_path = project.output_dir / "sequence_auto.mp4"
+            stitch_clips(
+                clip_paths, seq_path,
+                work_dir=project.work_dir,
+                width=project.settings.width,
+                height=project.settings.height,
+                speed=project.settings.clip_speed,
+                fade=project.settings.crossfade,
+            )
+
+        from ..util import run_ffmpeg
+        export_dir = project.output_dir / "platform"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        out_path = export_dir / f"{platform}.mp4"
+
+        run_ffmpeg([
+            "-i", str(seq_path),
+            "-vf", (
+                f"scale={spec['width']}:{spec['height']}"
+                f":force_original_aspect_ratio=decrease,"
+                f"pad={spec['width']}:{spec['height']}"
+                f":(ow-iw)/2:(oh-ih)/2"
+            ),
+            "-c:v", spec["codec"],
+            "-t", str(spec["max_duration"]),
+            str(out_path),
+        ])
+
+        # Pinterest: also extract thumbnail, return zip
+        if platform == "pinterest":
+            thumb_path = export_dir / "pinterest_thumbnail.jpg"
+            run_ffmpeg([
+                "-i", str(out_path),
+                "-vframes", "1",
+                "-q:v", "2",
+                str(thumb_path),
+            ])
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w") as zf:
+                zf.write(out_path, f"{platform}.mp4")
+                zf.write(thumb_path, "thumbnail.jpg")
+            return Response(
+                buf.getvalue(),
+                media_type="application/zip",
+                headers={"Content-Disposition":
+                         f"attachment; filename={slug}-{platform}.zip"},
+            )
+
+        return FileResponse(
+            out_path,
+            media_type="video/mp4",
+            headers={"Content-Disposition":
+                     f"attachment; filename={slug}-{platform}.mp4"},
+        )
+
     # ---------------------------------------------------------- history
 
     @router.get("/profiles/{prof}/projects/{slug}/history")
