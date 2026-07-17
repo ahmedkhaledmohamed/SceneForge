@@ -840,6 +840,48 @@ export default function ProjectBoard() {
       </p>
       <JobBanner job={proj.job} onRetry={() => generateAll.mutate()} />
 
+      {proj.concept && proj.scenes.length === 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "10px 14px", borderRadius: 8,
+          background: "var(--bg-raised, #2a2520)",
+          border: "1px solid var(--gold-dim, #665c3a)",
+          marginBottom: 12,
+        }}>
+          <button
+            style={{ fontWeight: 600, fontSize: "0.9rem" }}
+            disabled={busy}
+            onClick={() => {
+              const numScenes = 8;
+              const opts = proj.settings.image_options;
+              const estImgCost = numScenes * opts * (models?.[proj.settings.image_model]?.price ?? 0);
+              const estVidCost = numScenes * (models?.[proj.settings.video_model]?.price ?? 0);
+              const estTotal = estImgCost + estVidCost;
+              if (!window.confirm(
+                `AI Director will:\n` +
+                `  - Plan ${numScenes} scenes from your concept\n` +
+                `  - Generate ${numScenes * opts} image(s)\n` +
+                `  - Auto-select and generate ${numScenes} clip(s)\n\n` +
+                `Estimated cost: ~$${estTotal.toFixed(2)}\n\nContinue?`
+              )) return;
+              api.direct(prof, slug, {
+                num_scenes: numScenes,
+                image_model: proj.settings.image_model,
+                video_model: proj.settings.video_model,
+                seconds: 5,
+                character_id: defaultChar || undefined,
+              }).then(() => { toastOk("director started"); refresh(); })
+                .catch((e) => toastError(String(e)));
+            }}
+          >
+            Direct
+          </button>
+          <span className="mono muted" style={{ fontSize: "0.72rem" }}>
+            AI plans scenes, generates images &amp; clips from your concept
+          </span>
+        </div>
+      )}
+
       {proj.scenes.length > 0 && (() => {
         const imgNeeded = proj.scenes.reduce((sum, s) =>
           sum + Math.max(0, proj.settings.image_options - s.images.length), 0);

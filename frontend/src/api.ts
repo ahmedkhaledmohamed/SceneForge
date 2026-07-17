@@ -197,6 +197,9 @@ export const api = {
   produce: (prof: string, slug: string, body: unknown) =>
     request<{ started: string; estimate: { images: number; clips: number; cost_usd: number } }>(
       `${p(prof, slug)}/produce`, json(body)),
+  direct: (prof: string, slug: string, body: unknown) =>
+    request<{ started: string; estimate: { num_scenes: number; images: number; clips: number; cost_usd: number } }>(
+      `${p(prof, slug)}/direct`, json(body)),
   stitch: (prof: string, slug: string) =>
     request(`${p(prof, slug)}/stitch`, { method: "POST" }),
   export: (prof: string, slug: string) =>
