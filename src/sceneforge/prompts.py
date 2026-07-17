@@ -149,3 +149,106 @@ def compose_prompt(project: Project, scene: Scene, profile=None,
     if not cleaned:
         raise ValueError(f"Nothing to compose for {scene.id}: empty description and style")
     return ". ".join(cleaned) + "."
+
+
+# ---------------------------------------------------------------- shot list
+
+SHOT_LIST_SYSTEM = (
+    "You are a creative director for social media content. Given a concept, "
+    "generate a shot list for a photo/video series. For each shot, provide: "
+    "description (what's in the scene), composition (camera angle/framing), "
+    "shot_type (one of: hero, detail, transition, broll, wide, overhead), "
+    "and a suggested prompt for AI image generation. "
+    'Output as JSON: {"shots": [{"description": "...", "composition": "...", '
+    '"shot_type": "...", "prompt": "..."}]}'
+)
+
+SHOT_LIST_USER = """Concept: {concept}
+{style_line}{character_line}
+Generate exactly {num_scenes} shots for a short social-media content series.
+Return only the JSON object."""
+
+
+def generate_shot_list(
+    concept: str,
+    style_anchor: str = "",
+    character_desc: str = "",
+    num_scenes: int = 8,
+    model: str | None = None,
+) -> list[dict]:
+    """Call the LLM to produce a structured shot list from a concept."""
+    from .config import DEFAULT_LLM_MODEL, TOGETHER_BASE_URL, together_api_key
+    from openai import OpenAI
+
+    model = model or DEFAULT_LLM_MODEL
+    client = OpenAI(api_key=together_api_key(), base_url=TOGETHER_BASE_URL)
+
+    style_line = f"Visual style: {style_anchor}\n" if style_anchor else ""
+    character_line = f"Character: {character_desc}\n" if character_desc else ""
+    user_prompt = SHOT_LIST_USER.format(
+        concept=concept,
+        style_line=style_line,
+        character_line=character_line,
+        num_scenes=num_scenes,
+    )
+    messages = [
+        {"role": "system", "content": SHOT_LIST_SYSTEM},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    last_error = None
+    for _ in range(2):
+        response = client.chat.completions.create(
+            model=model, messages=messages, temperature=0.7,
+        )
+        raw = response.choices[0].message.content
+        try:
+            return _parse_shot_list(raw)
+        except ValueError as exc:
+            last_error = exc
+            messages.append({"role": "assistant", "content": raw})
+            messages.append({
+                "role": "user",
+                "content": f"That was invalid ({exc}). Output only the JSON object.",
+            })
+    raise ValueError(f"Shot list generation failed after retry: {last_error}")
+
+
+def _parse_shot_list(raw: str) -> list[dict]:
+    """Extract and validate the shots array from an LLM response."""
+    import json
+    import re
+
+    text = raw.strip()
+    fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL)
+    if fence:
+        text = fence.group(1).strip()
+    if not text.startswith("{"):
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not match:
+            raise ValueError(f"No JSON object found in: {raw[:200]}")
+        text = match.group(0)
+
+    data = json.loads(text)
+    shots = data.get("shots")
+    if not isinstance(shots, list) or not shots:
+        raise ValueError("Expected a non-empty 'shots' array")
+
+    valid_types = {"hero", "detail", "transition", "broll", "wide", "overhead"}
+    result = []
+    for i, shot in enumerate(shots):
+        if not isinstance(shot, dict):
+            raise ValueError(f"Shot {i + 1} is not an object")
+        desc = (shot.get("description") or "").strip()
+        if not desc:
+            raise ValueError(f"Shot {i + 1} has no description")
+        shot_type = (shot.get("shot_type") or "").strip().lower()
+        if shot_type not in valid_types:
+            shot_type = "broll"  # safe fallback
+        result.append({
+            "description": desc,
+            "composition": (shot.get("composition") or "").strip(),
+            "shot_type": shot_type,
+            "prompt": (shot.get("prompt") or "").strip(),
+        })
+    return result

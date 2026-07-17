@@ -575,6 +575,49 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return created
 
+    @router.post("/profiles/{prof}/projects/{slug}/generate-shot-list")
+    def generate_shot_list_endpoint(prof: str, slug: str, payload: dict):
+        from ..prompts import generate_shot_list
+        project = load_project(prof, slug)
+        concept = payload.get("concept") or project.concept
+        if not concept:
+            raise _err(400, "invalid", "No concept provided")
+        num_scenes = int(payload.get("num_scenes", 8))
+        style_anchor = project.style.anchor or ""
+        character_desc = ""
+        profile = load_profile(prof)
+        char_id = payload.get("character_id")
+        if char_id:
+            try:
+                char = profile.find_character(char_id)
+                character_desc = f"{char.name} ({char.description})" if char.description else char.name
+            except (KeyError, Exception):
+                pass
+        shots = generate_shot_list(concept, style_anchor=style_anchor,
+                                   character_desc=character_desc,
+                                   num_scenes=num_scenes)
+        return {"shots": shots}
+
+    @router.post("/profiles/{prof}/projects/{slug}/apply-shot-list",
+                 status_code=201)
+    def apply_shot_list(prof: str, slug: str, payload: dict):
+        project = load_project(prof, slug)
+        shots = payload.get("shots", [])
+        if not shots:
+            raise _err(400, "invalid", "No shots provided")
+        character_id = payload.get("character_id")
+        created = []
+        for shot in shots:
+            if not isinstance(shot, dict):
+                continue
+            desc = (shot.get("description") or "").strip()
+            if not desc:
+                continue
+            scene = project.add_scene(desc, character_id=character_id)
+            created.append(asdict(scene))
+        project.save()
+        return created
+
     @router.post("/profiles/{prof}/projects/{slug}/scenes", status_code=201)
     def add_scene(prof: str, slug: str, payload: dict):
         project = load_project(prof, slug)
