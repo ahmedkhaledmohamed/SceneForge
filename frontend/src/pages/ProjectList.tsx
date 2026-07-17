@@ -155,8 +155,15 @@ export default function ProjectList() {
   const effectiveProfile = profile ?? (isDemo ? DEMO_PROFILE : undefined);
   const effectiveProjects = projects ?? (isDemo ? DEMO_PROJECTS : undefined);
   const [creating, setCreating] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const navigate = useNavigate();
   const client = useQueryClient();
+  const { data: templates } = useQuery({
+    queryKey: ["templates", prof],
+    queryFn: () => api.templates(prof),
+    enabled: !isDemo && showTemplates,
+  });
 
   const create = useMutation({
     mutationFn: (body: Record<string, string>) => api.createProject(prof, body),
@@ -164,6 +171,15 @@ export default function ProjectList() {
       client.invalidateQueries({ queryKey: ["projects", prof] });
       navigate(`/${prof}/p/${project.slug}`);
     },
+  });
+  const createFromTemplate = useMutation({
+    mutationFn: ({ template, name }: { template: string; name: string }) =>
+      api.createFromTemplate(prof, template, name),
+    onSuccess: (project: { slug: string }) => {
+      client.invalidateQueries({ queryKey: ["projects", prof] });
+      navigate(`/${prof}/p/${project.slug}`);
+    },
+    onError: (e) => toastError(String(e)),
   });
 
   return (
@@ -201,7 +217,10 @@ export default function ProjectList() {
 
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h2 style={{ margin: 0 }}>Projects</h2>
-        <button onClick={() => setCreating(true)}>New project</button>
+        <div className="row">
+          <button onClick={() => { setShowTemplates(true); setCreating(false); }}>From template</button>
+          <button onClick={() => { setCreating(true); setShowTemplates(false); }}>New project</button>
+        </div>
       </div>
       <p className="muted">Each project is one concept — a post, a video, a look.</p>
 
@@ -230,6 +249,51 @@ export default function ProjectList() {
             {create.isError && <span className="muted">{String(create.error)}</span>}
           </div>
         </form>
+      )}
+
+      {showTemplates && (
+        <div className="card">
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <b>Start from template</b>
+            <button className="ghost" onClick={() => { setShowTemplates(false); setSelectedTemplate(null); }}>cancel</button>
+          </div>
+          <p className="muted" style={{ margin: "4px 0 10px" }}>Choose a template, then name your project.</p>
+          <div className="grid-cards" style={{ marginBottom: 12 }}>
+            {templates?.map((t) => (
+              <div
+                key={t.slug}
+                className="card"
+                style={{
+                  cursor: "pointer",
+                  borderColor: selectedTemplate === t.slug ? "var(--gold)" : undefined,
+                  background: selectedTemplate === t.slug ? "var(--bg-raised, #2a2520)" : undefined,
+                }}
+                onClick={() => setSelectedTemplate(t.slug)}
+              >
+                <b>{t.name}</b>
+                <div className="row" style={{ marginTop: 6 }}>
+                  <span className="pill">{t.scenes} scenes</span>
+                  {t.builtin && <span className="pill muted">built-in</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+          {selectedTemplate && (
+            <form
+              className="row"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
+                if (name && selectedTemplate) {
+                  createFromTemplate.mutate({ template: selectedTemplate, name });
+                }
+              }}
+            >
+              <input name="name" required placeholder="Project name" style={{ flex: 1 }} />
+              <button type="submit" disabled={createFromTemplate.isPending}>Create</button>
+            </form>
+          )}
+        </div>
       )}
 
       {isLoading && !isDemo && <p className="muted">Loading…</p>}

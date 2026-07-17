@@ -675,6 +675,15 @@ export default function ProjectBoard() {
     onSuccess: (p: Project) => navigate(`/${prof}/p/${p.slug}`),
     onError: (e) => { if (String(e) !== "Error: cancelled") toastError(String(e)); },
   });
+  const saveAsTemplate = useMutation({
+    mutationFn: () => {
+      const name = prompt("Template name?", project?.name ?? "");
+      if (!name) throw new Error("cancelled");
+      return api.saveAsTemplate(prof, slug, name);
+    },
+    onSuccess: (r) => toastOk(`saved template "${r.name}" (${r.scenes} scenes)`),
+    onError: (e) => { if (String(e) !== "Error: cancelled") toastError(String(e)); },
+  });
   const brainstorm = useMutation({
     mutationFn: () => api.brainstorm(prof, slug, { count: 6 }),
     onSuccess: (data) => setBrainstormResults(data.descriptions),
@@ -821,6 +830,7 @@ export default function ProjectBoard() {
         <h1>{proj.name}</h1>
         <div className="row">
           <button className="ghost" onClick={() => setSettingsOpen(true)}>settings</button>
+          <button className="ghost" onClick={() => saveAsTemplate.mutate()}>save as template</button>
           <button className="ghost" onClick={() => duplicateProject.mutate()}>duplicate</button>
           <button
             className="ghost"
