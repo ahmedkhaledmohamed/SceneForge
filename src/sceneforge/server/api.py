@@ -117,6 +117,10 @@ def make_router(home: Path) -> APIRouter:
     def models():
         return dict(config.MODELS)
 
+    @router.get("/shot-types")
+    def shot_types():
+        return dict(config.SHOT_TYPES)
+
     # --------------------------------------------------------- profiles
 
     @router.get("/profiles")
@@ -892,6 +896,10 @@ def make_router(home: Path) -> APIRouter:
             model=payload.get("model") or project.settings.video_model,
         )
         clip.seconds = int(payload.get("seconds", 5))
+        shot_type = (payload.get("shot_type") or "").strip()
+        if shot_type and shot_type not in config.SHOT_TYPES:
+            raise _err(400, "invalid", f"Unknown shot type '{shot_type}'")
+        clip.shot_type = shot_type
         project.save()
         return asdict(clip)
 
@@ -1006,6 +1014,11 @@ def make_router(home: Path) -> APIRouter:
             clip.source_images = payload["source_images"]
         if "seconds" in payload:
             clip.seconds = int(payload["seconds"])
+        if "shot_type" in payload:
+            st = (payload["shot_type"] or "").strip()
+            if st and st not in config.SHOT_TYPES:
+                raise _err(400, "invalid", f"Unknown shot type '{st}'")
+            clip.shot_type = st
         project.save()
         return asdict(clip)
 

@@ -70,6 +70,14 @@ export interface ProjectClip {
   created_at: string;
   meta: Record<string, unknown>;
   kept: boolean;
+  shot_type?: string;
+}
+
+export interface ShotTypeInfo {
+  label: string;
+  description: string;
+  color: string;
+  recommended_video: string;
 }
 
 export interface Project {

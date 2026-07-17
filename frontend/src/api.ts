@@ -1,4 +1,4 @@
-import type { HistoryRow, Job, ModelInfo, ProfileDoc, ProfileSummary, Project, ProjectSummary } from "./types";
+import type { HistoryRow, Job, ModelInfo, ProfileDoc, ProfileSummary, Project, ProjectSummary, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -63,6 +63,7 @@ function p(prof: string, slug: string) {
 
 export const api = {
   models: () => request<Record<string, ModelInfo>>("/models"),
+  shotTypes: () => request<Record<string, ShotTypeInfo>>("/shot-types"),
 
   // profiles
   profiles: () => request<ProfileSummary[]>("/profiles"),
