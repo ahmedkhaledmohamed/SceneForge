@@ -100,10 +100,10 @@ def make_router(home: Path) -> APIRouter:
     def start_job_or_409(prof: str, slug: str, name: str, fn) -> dict:
         profile = load_profile(prof)
 
-        def wrapped(log):
+        def wrapped(log, job):
             config.set_active_profile(profile)
             try:
-                return fn(log)
+                return fn(log, job)
             finally:
                 config.set_active_profile(None)
 
@@ -877,9 +877,69 @@ def make_router(home: Path) -> APIRouter:
                        f"budget: ${project.budget_usd:.2f})")
         return start_job_or_409(
             prof, slug, f"generate images ({model_key})",
-            lambda log: ops.run_images(project, todo, model_key, log=log,
-                                       profile=profile),
+            lambda log, _job: ops.run_images(project, todo, model_key, log=log,
+                                             profile=profile),
         )
+
+    @router.post("/profiles/{prof}/projects/{slug}/generate-all-scenes",
+                 status_code=202)
+    def generate_all_scenes(prof: str, slug: str, payload: dict):
+        """Batch-generate images for every scene that still needs them."""
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        model_key = payload.get("model") or project.settings.image_model
+        try:
+            config.resolve_model(model_key, "image")
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+        options = payload.get("options") or project.settings.image_options
+        todo = ops.plan_images(project.scenes, options, force=False)
+        if not todo:
+            return {"started": None, "note": "all scenes already have images"}
+        total_images = sum(n for _, n in todo)
+        price = config.MODELS.get(model_key, {}).get("price", 0)
+        estimated = total_images * price
+        current_spend = sum(
+            img.meta.get("cost_usd", 0) for sc in project.scenes for img in sc.images
+        ) + sum(c.meta.get("cost_usd", 0) for c in project.clips)
+        if project.budget_usd > 0 and current_spend + estimated > project.budget_usd:
+            raise _err(400, "budget",
+                       f"Batch would exceed budget "
+                       f"(${current_spend:.2f} spent + ~${estimated:.2f} = "
+                       f"${current_spend + estimated:.2f}, "
+                       f"budget: ${project.budget_usd:.2f})")
+
+        def job(log, bg_job):
+            bg_job.progress("starting", completed=0, total=len(todo))
+            succeeded = 0
+            failed_scenes = []
+            for i, (sc, needed) in enumerate(todo):
+                bg_job.progress(sc.id, completed=i, total=len(todo))
+                log(f"--- {sc.id} ({i + 1}/{len(todo)}) ---")
+                try:
+                    ops.run_images(project, [(sc, needed)], model_key,
+                                   log=log, profile=profile)
+                    bg_job.results.append({
+                        "scene_id": sc.id, "status": "ok", "images": needed,
+                    })
+                    succeeded += 1
+                except Exception as exc:
+                    bg_job.results.append({
+                        "scene_id": sc.id, "status": "failed",
+                        "error": str(exc),
+                    })
+                    failed_scenes.append(sc.id)
+                    log(f"{sc.id}: FAILED — {exc}")
+            bg_job.progress("done", completed=len(todo))
+            if failed_scenes:
+                log(f"{succeeded}/{len(todo)} scenes OK, "
+                    f"{len(failed_scenes)} failed: {', '.join(failed_scenes)}")
+                if succeeded == 0:
+                    raise RuntimeError(f"All {len(todo)} scenes failed")
+
+        return start_job_or_409(
+            prof, slug,
+            f"batch images: {len(todo)} scenes ({model_key})", job)
 
     @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/regenerate-image",
                  status_code=202)
@@ -892,8 +952,8 @@ def make_router(home: Path) -> APIRouter:
         todo = ops.plan_images([scene], options, force=True)
         return start_job_or_409(
             prof, slug, f"regenerate {sid} ({model_key})",
-            lambda log: ops.run_images(project, todo, model_key, log=log,
-                                       profile=profile),
+            lambda log, _job: ops.run_images(project, todo, model_key, log=log,
+                                             profile=profile),
         )
 
     @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/takes",
@@ -912,7 +972,7 @@ def make_router(home: Path) -> APIRouter:
             raise _err(400, "invalid", f"{sid} has no selected image")
         count = int(payload.get("count", 3))
 
-        def job(log):
+        def job(log, _job):
             failures = ops.run_takes(
                 project, scene, image_index, count, model_key,
                 prompt_override=payload.get("prompt_override"),
@@ -939,7 +999,7 @@ def make_router(home: Path) -> APIRouter:
         if not ready:
             raise _err(400, "invalid", "No scenes have a selected image")
 
-        def job(log):
+        def job(log, _job):
             total_failures = []
             for sc in ready:
                 log(f"--- {sc.id} ---")
@@ -1022,7 +1082,7 @@ def make_router(home: Path) -> APIRouter:
         except ValueError as exc:
             raise _err(400, "invalid", str(exc))
 
-        def job(log):
+        def job(log, _job):
             from ..backends import get_video_backend
             resolved = config.resolve_model(model_key, "video")
             backend = get_video_backend(model_key, log)
@@ -1065,7 +1125,7 @@ def make_router(home: Path) -> APIRouter:
             return {"started": None, "note": "no pending clips"}
         default_model = project.settings.video_model
 
-        def job(log):
+        def job(log, _job):
             from ..backends import get_video_backend
             for clip in pending:
                 clip_model = clip.model or default_model
@@ -1192,7 +1252,7 @@ def make_router(home: Path) -> APIRouter:
     def stitch(prof: str, slug: str):
         project = load_project(prof, slug)
 
-        def job(log):
+        def job(log, _job):
             out_path, duration = ops.run_stitch(project)
             log(f"final video: {out_path.name} ({duration:.1f}s)")
 

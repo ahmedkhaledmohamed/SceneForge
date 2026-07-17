@@ -165,6 +165,8 @@ export const api = {
     request(`${p(prof, slug)}/clips/${cid}/upgrade`, json(body)),
   generateImages: (prof: string, slug: string, body: unknown) =>
     request(`${p(prof, slug)}/generate-images`, json(body)),
+  generateAllScenes: (prof: string, slug: string, body: unknown) =>
+    request(`${p(prof, slug)}/generate-all-scenes`, json(body)),
   regenerateImage: (prof: string, slug: string, sid: string, body: unknown) =>
     request(`${p(prof, slug)}/scenes/${sid}/regenerate-image`, json(body)),
   takes: (prof: string, slug: string, sid: string, body: unknown) =>

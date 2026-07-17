@@ -11,6 +11,7 @@ class Job:
         self.total = 0
         self.completed = 0
         self.current = ""
+        self.results: list[dict] = []
 
     def progress(self, current: str, completed: int | None = None, total: int | None = None):
         self.current = current
@@ -27,6 +28,7 @@ class Job:
             "total": self.total,
             "completed": self.completed,
             "current": self.current,
+            "results": self.results,
         }
 
 
@@ -39,6 +41,9 @@ class JobManager:
         return self._jobs.get(key)
 
     def start(self, key: str, name: str, fn) -> bool:
+        """Start a background job. *fn* receives ``(log, job)`` where *log*
+        is ``job.log.append`` (shorthand) and *job* is the :class:`Job`
+        instance for structured progress updates."""
         with self._lock:
             existing = self._jobs.get(key)
             if existing and existing.status == "running":
@@ -48,7 +53,7 @@ class JobManager:
 
         def runner():
             try:
-                fn(job.log.append)
+                fn(job.log.append, job)
                 job.status = "done"
             except Exception as exc:
                 job.log.append(str(exc))

@@ -620,6 +620,25 @@ export default function ProjectBoard() {
     onSuccess: refresh,
     onError: (e) => toastError(String(e)),
   });
+  const batchScenes = useMutation({
+    mutationFn: () => {
+      const model = imageModel ?? project?.settings.image_model ?? "";
+      const price = models?.[model]?.price ?? 0;
+      const needed = (project?.scenes ?? []).reduce((sum, s) =>
+        sum + Math.max(0, (project?.settings.image_options ?? 1) - s.images.length), 0);
+      const est = needed * price;
+      if (!window.confirm(
+        `Generate images for ${needed > 0 ? `${(project?.scenes ?? []).filter(s => s.images.length < (project?.settings.image_options ?? 1)).length} scenes` : "0 scenes"}. ` +
+        `Estimated cost: $${est.toFixed(2)}. Continue?`
+      )) throw new Error("cancelled");
+      return api.generateAllScenes(prof, slug, {
+        model,
+        options: project?.settings.image_options,
+      });
+    },
+    onSuccess: () => { toastOk("batch generation started"); refresh(); },
+    onError: (e) => { if (String(e) !== "Error: cancelled") toastError(String(e)); },
+  });
   const addRef = useMutation({
     mutationFn: (form: FormData) => api.addProjectRef(prof, slug, form),
     onSuccess: () => { toastOk("reference added"); refresh(); },
@@ -857,6 +876,14 @@ export default function ProjectBoard() {
         {proj.concept && (
           <button className="ghost" onClick={() => brainstorm.mutate()} disabled={busy || brainstorm.isPending}>
             {brainstorm.isPending ? "thinking…" : "brainstorm"}
+          </button>
+        )}
+        {imagesNeeded > 0 && (
+          <button
+            onClick={() => batchScenes.mutate()}
+            disabled={busy || batchScenes.isPending}
+          >
+            Generate all scenes (~${imgCost.toFixed(2)})
           </button>
         )}
       </div>
