@@ -12,6 +12,7 @@ export interface ImageArtifact {
   created_at: string;
   meta: Record<string, unknown>;
   generation_id?: string;
+  upgraded_from?: string;
 }
 
 export interface ClipArtifact {
@@ -69,6 +70,7 @@ export interface ProjectClip {
   created_at: string;
   meta: Record<string, unknown>;
   kept: boolean;
+  upgraded_from?: string;
 }
 
 export interface Project {

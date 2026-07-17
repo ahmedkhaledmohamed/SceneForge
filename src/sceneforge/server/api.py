@@ -692,6 +692,98 @@ def make_router(home: Path) -> APIRouter:
 
     # ---------------------------------------------------------- import
 
+    # ---------------------------------------------------------- upgrade
+
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/images/{img_idx}/upgrade",
+                 status_code=202)
+    def upgrade_image(prof: str, slug: str, sid: str, img_idx: int, payload: dict = {}):
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        if not 0 <= img_idx < len(scene.images):
+            raise _err(404, "not_found", f"No image {img_idx} on {sid}")
+        source = scene.images[img_idx]
+        upgrade_model = payload.get("model", "nano-banana-pro")
+        if source.model == upgrade_model:
+            raise _err(400, "invalid", f"Image already uses {upgrade_model}")
+        try:
+            config.resolve_model(upgrade_model, "image")
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+
+        def job(log):
+            todo = ops.plan_images([scene], 1, force=True)
+            count = ops.run_images(project, todo, upgrade_model, log=log, profile=profile)
+            if count > 0:
+                new_img = scene.images[-1]
+                new_img.upgraded_from = source.model
+                project.save()
+                log(f"upgraded from {source.model} → {upgrade_model}")
+
+        return start_job_or_409(prof, slug,
+                                f"upgrade {sid} img {img_idx} → {upgrade_model}", job)
+
+    @router.post("/profiles/{prof}/projects/{slug}/clips/{cid}/upgrade",
+                 status_code=202)
+    def upgrade_clip(prof: str, slug: str, cid: str, payload: dict = {}):
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        clip = find_or_404(project.find_clip, cid)
+        if clip.status != "completed":
+            raise _err(400, "invalid", "Can only upgrade completed clips")
+        upgrade_model = payload.get("model", "seedance-2.0-or")
+        if clip.model == upgrade_model:
+            raise _err(400, "invalid", f"Clip already uses {upgrade_model}")
+        try:
+            config.resolve_model(upgrade_model, "video")
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+
+        new_clip = project.add_clip(
+            source_images=clip.source_images,
+            prompt=clip.prompt,
+            model=upgrade_model,
+        )
+        new_clip.seconds = clip.seconds
+        new_clip.upgraded_from = clip.id
+        project.save()
+
+        def job(log):
+            from ..backends import get_video_backend
+            resolved = config.resolve_model(upgrade_model, "video")
+            backend = get_video_backend(upgrade_model, log)
+            image = (project.root / new_clip.source_images[0]) if new_clip.source_images else None
+            out = project.clips_dir / f"{new_clip.id}.mp4"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            prompt = new_clip.prompt or "gentle motion"
+            log(f"{new_clip.id}: upgrading from {clip.model} → {upgrade_model}...")
+            try:
+                result = backend.generate_clip(
+                    prompt, out, image=image,
+                    width=project.settings.width,
+                    height=project.settings.height,
+                    seconds=new_clip.seconds or None,
+                    timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
+                )
+                new_clip.file = str(out.relative_to(project.root))
+                new_clip.status = "completed"
+                new_clip.duration_s = result.duration_s
+                new_clip.job_id = result.job_id
+                new_clip.meta = result.meta
+                if "cost_usd" not in new_clip.meta:
+                    new_clip.meta["cost_usd"] = config.MODELS.get(upgrade_model, {}).get("price", 0)
+                log(f"{new_clip.id}: done ({result.duration_s:.1f}s)")
+            except Exception as exc:
+                new_clip.status = "failed"
+                new_clip.error = str(exc)
+                log(f"{new_clip.id}: FAILED — {exc}")
+            project.save()
+
+        return start_job_or_409(prof, slug,
+                                f"upgrade {cid} → {upgrade_model}", job)
+
+    # ---------------------------------------------------------- import
+
     @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/import-image",
                  status_code=201)
     async def import_image(prof: str, slug: str, sid: str,
