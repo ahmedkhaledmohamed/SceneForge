@@ -187,6 +187,45 @@ DEFAULT_LLM_MODEL = os.environ.get(
 VIDEO_POLL_INTERVAL_S = 5
 VIDEO_TIMEOUT_S = 600
 
+SHOT_TYPES = {
+    "hero": {
+        "label": "Hero shot",
+        "description": "Key product or character moment — highest quality",
+        "color": "#d4a04a",
+        "recommended_video": "seedance-2.0-or",
+    },
+    "detail": {
+        "label": "Detail / Close-up",
+        "description": "Tight on product details, textures, accessories",
+        "color": "#5b9bd5",
+        "recommended_video": "seedance-1.5-pro",
+    },
+    "transition": {
+        "label": "Transition",
+        "description": "Scene change, pan, or connecting shot",
+        "color": "#888888",
+        "recommended_video": "kling-2.1",
+    },
+    "broll": {
+        "label": "B-roll",
+        "description": "Ambient, atmosphere, background movement",
+        "color": "#6baa75",
+        "recommended_video": "kling-2.1",
+    },
+    "wide": {
+        "label": "Wide / Establishing",
+        "description": "Full scene, setting, or environment",
+        "color": "#9b72aa",
+        "recommended_video": "kling-2.1",
+    },
+    "overhead": {
+        "label": "Overhead / Flat lay",
+        "description": "Top-down product arrangement",
+        "color": "#c47a5a",
+        "recommended_video": "kling-2.1",
+    },
+}
+
 ASPECTS = {
     "9:16": (720, 1280),
     "16:9": (1280, 720),
