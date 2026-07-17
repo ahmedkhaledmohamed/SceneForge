@@ -12,7 +12,7 @@ from typing import Callable
 from . import config
 from .backends import get_image_backend, get_video_backend
 from .project import ClipArtifact, ImageArtifact, Project, Scene, SceneRef
-from .prompts import compose_prompt
+from .prompts import compose_prompt, enhance_prompt
 from .stitch import stitch as stitch_clips
 
 Log = Callable[[str], None]
@@ -94,7 +94,15 @@ def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
     backend = get_image_backend(model_key, log)
     count = 0
     for sc, needed in todo:
-        prompt = compose_prompt(project, sc, profile=profile)
+        enhanced = ""
+        if project.settings.auto_enhance:
+            try:
+                enhanced = enhance_prompt(project, sc, profile=profile)
+                log(f"{sc.id}: prompt enhanced")
+            except Exception as exc:
+                log(f"{sc.id}: enhance failed ({exc}), using original")
+        prompt = compose_prompt(project, sc, profile=profile,
+                                enhanced_description=enhanced or None)
         refs = scene_reference_images(project, sc, profile=profile)
         cap = backend.max_reference_images
         if refs and cap == 0:
@@ -135,6 +143,7 @@ def run_images(project: Project, todo: list[tuple[Scene, int]], model_key: str,
                 model=model_key,
                 meta=meta,
                 generation_id=gen_id,
+                enhanced_prompt=enhanced,
             ))
             project.save()
             count += 1

@@ -119,6 +119,9 @@ export const api = {
   deleteProjectRef: (prof: string, slug: string, index: number) =>
     request(`${p(prof, slug)}/refs/${index}`, { method: "DELETE" }),
 
+  enhancePrompt: (prof: string, slug: string, sid: string) =>
+    request<{ enhanced_prompt: string; original: string }>(
+      `${p(prof, slug)}/scenes/${sid}/enhance-prompt`, { method: "POST" }),
   brainstorm: (prof: string, slug: string, body: unknown) =>
     request<{ descriptions: string[] }>(`${p(prof, slug)}/brainstorm`, json(body)),
   addScenesBulk: (prof: string, slug: string, body: unknown) =>
