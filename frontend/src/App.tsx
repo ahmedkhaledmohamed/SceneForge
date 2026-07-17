@@ -55,6 +55,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<WithBar><ProfileList /></WithBar>} />
+      <Route path="/demo" element={<WithBar><ProfileList /></WithBar>} />
+      <Route path="/demo/:prof" element={<WithBar><ProjectList /></WithBar>} />
+      <Route path="/demo/:prof/p/:slug" element={<WithBar><ProjectBoard /></WithBar>} />
+      <Route path="/demo/:prof/p/:slug/scenes/:sid/takes" element={<WithBar><TakeCompare /></WithBar>} />
+      <Route path="/demo/:prof/p/:slug/history" element={<WithBar><HistoryView /></WithBar>} />
       <Route path="/:prof" element={<WithBar><ProjectList /></WithBar>} />
       <Route path="/:prof/settings" element={<WithBar><Settings /></WithBar>} />
       <Route path="/:prof/p/:slug" element={<WithBar><ProjectBoard /></WithBar>} />

@@ -48,11 +48,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <SiteAuth>
-          <DemoProvider>
-            <BrowserRouter>
+          <BrowserRouter>
+            <DemoProvider>
               <App />
-            </BrowserRouter>
-          </DemoProvider>
+            </DemoProvider>
+          </BrowserRouter>
         </SiteAuth>
       </QueryClientProvider>
     </ErrorBoundary>
