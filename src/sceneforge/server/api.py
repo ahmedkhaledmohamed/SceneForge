@@ -117,6 +117,15 @@ def make_router(home: Path) -> APIRouter:
     def models():
         return dict(config.MODELS)
 
+    @router.get("/shot-types")
+    def shot_types():
+        return dict(config.SHOT_TYPES)
+
+    @router.get("/recommend-model")
+    def recommend_model_endpoint(shot_type: str = "", budget: float | None = None):
+        model = config.recommend_model(shot_type=shot_type, budget_remaining=budget)
+        return {"model": model, "price": config.MODELS.get(model, {}).get("price", 0)}
+
     # --------------------------------------------------------- profiles
 
     @router.get("/profiles")
@@ -456,6 +465,8 @@ def make_router(home: Path) -> APIRouter:
                            "clip_speed", "crossfade"):
             if field_name in payload:
                 setattr(project.settings, field_name, payload[field_name])
+        if "auto_enhance" in payload:
+            project.settings.auto_enhance = bool(payload["auto_enhance"])
         project.save()
         return project_doc(project, prof, slug, profile=profile)
 
@@ -524,6 +535,18 @@ def make_router(home: Path) -> APIRouter:
         return {"deleted": index}
 
     # ----------------------------------------------------------- scenes
+
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/enhance-prompt")
+    def enhance_scene_prompt(prof: str, slug: str, sid: str):
+        from ..prompts import enhance_prompt
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        try:
+            enhanced = enhance_prompt(project, scene, profile=profile)
+        except Exception as exc:
+            raise _err(500, "enhance_failed", str(exc))
+        return {"enhanced_prompt": enhanced, "original": scene.description}
 
     @router.post("/profiles/{prof}/projects/{slug}/brainstorm")
     def brainstorm(prof: str, slug: str, payload: dict):
@@ -970,6 +993,10 @@ def make_router(home: Path) -> APIRouter:
             model=payload.get("model") or project.settings.video_model,
         )
         clip.seconds = int(payload.get("seconds", 5))
+        shot_type = (payload.get("shot_type") or "").strip()
+        if shot_type and shot_type not in config.SHOT_TYPES:
+            raise _err(400, "invalid", f"Unknown shot type '{shot_type}'")
+        clip.shot_type = shot_type
         project.save()
         return asdict(clip)
 
@@ -982,6 +1009,14 @@ def make_router(home: Path) -> APIRouter:
         if clip.status == "completed":
             raise _err(400, "invalid", "Clip already generated")
         model_key = clip.model or project.settings.video_model
+        if model_key == "auto":
+            spent = sum(img.meta.get("cost_usd", 0) for sc in project.scenes for img in sc.images) \
+                  + sum(c.meta.get("cost_usd", 0) for c in project.clips)
+            budget_left = (project.budget_usd - spent) if project.budget_usd > 0 else None
+            model_key = config.recommend_model(
+                shot_type=clip.shot_type, budget_remaining=budget_left)
+            clip.model = model_key
+            project.save()
         try:
             config.resolve_model(model_key, "video")
         except ValueError as exc:
@@ -1028,18 +1063,27 @@ def make_router(home: Path) -> APIRouter:
         pending = [c for c in project.clips if c.status == "pending"]
         if not pending:
             return {"started": None, "note": "no pending clips"}
-        model_key = project.settings.video_model
+        default_model = project.settings.video_model
 
         def job(log):
             from ..backends import get_video_backend
-            resolved = config.resolve_model(model_key, "video")
-            backend = get_video_backend(model_key, log)
             for clip in pending:
+                clip_model = clip.model or default_model
+                if clip_model == "auto":
+                    spent = sum(img.meta.get("cost_usd", 0) for sc in project.scenes for img in sc.images) \
+                          + sum(c.meta.get("cost_usd", 0) for c in project.clips)
+                    budget_left = (project.budget_usd - spent) if project.budget_usd > 0 else None
+                    clip_model = config.recommend_model(
+                        shot_type=clip.shot_type, budget_remaining=budget_left)
+                    clip.model = clip_model
+                    log(f"{clip.id}: auto → {clip_model} (shot: {clip.shot_type or 'none'})")
+                resolved = config.resolve_model(clip_model, "video")
+                backend = get_video_backend(clip_model, log)
                 image = (project.root / clip.source_images[0]) if clip.source_images else None
                 out = project.clips_dir / f"{clip.id}.mp4"
                 out.parent.mkdir(parents=True, exist_ok=True)
                 prompt = clip.prompt or "gentle motion"
-                log(f"{clip.id}: generating...")
+                log(f"{clip.id}: generating ({clip_model})...")
                 try:
                     result = backend.generate_clip(
                         prompt, out, image=image,
@@ -1053,7 +1097,7 @@ def make_router(home: Path) -> APIRouter:
                     clip.duration_s = result.duration_s
                     clip.meta = result.meta
                     if "cost_usd" not in clip.meta:
-                        clip.meta["cost_usd"] = config.MODELS.get(model_key, {}).get("price", 0)
+                        clip.meta["cost_usd"] = config.MODELS.get(clip_model, {}).get("price", 0)
                     log(f"{clip.id}: done ({result.duration_s:.1f}s)")
                 except Exception as exc:
                     clip.status = "failed"
@@ -1062,7 +1106,7 @@ def make_router(home: Path) -> APIRouter:
                 project.save()
 
         return start_job_or_409(prof, slug,
-                                f"generate {len(pending)} clips ({model_key})", job)
+                                f"generate {len(pending)} clips ({default_model})", job)
 
     @router.delete("/profiles/{prof}/projects/{slug}/clips/{cid}")
     def delete_clip(prof: str, slug: str, cid: str):
@@ -1084,6 +1128,11 @@ def make_router(home: Path) -> APIRouter:
             clip.source_images = payload["source_images"]
         if "seconds" in payload:
             clip.seconds = int(payload["seconds"])
+        if "shot_type" in payload:
+            st = (payload["shot_type"] or "").strip()
+            if st and st not in config.SHOT_TYPES:
+                raise _err(400, "invalid", f"Unknown shot type '{st}'")
+            clip.shot_type = st
         project.save()
         return asdict(clip)
 

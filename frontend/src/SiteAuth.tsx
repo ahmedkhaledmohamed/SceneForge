@@ -6,7 +6,10 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 async function checkSiteAuth(): Promise<{ required: boolean }> {
   try {
     const r = await fetch(`${API_BASE}/site-check`);
-    return r.ok ? r.json() : { required: false };
+    if (!r.ok) return { required: false };
+    const ct = r.headers.get("content-type") ?? "";
+    if (!ct.includes("json")) return { required: false };
+    return await r.json();
   } catch {
     return { required: false };
   }

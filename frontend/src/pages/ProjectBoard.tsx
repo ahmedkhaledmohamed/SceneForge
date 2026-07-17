@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, media } from "../api";
@@ -51,6 +51,7 @@ function SettingsDialog({ prof, slug, project, onClose, refresh }: {
   const [options, setOptions] = useState(project.settings.image_options);
   const [anchor, setAnchor] = useState(project.style.anchor);
   const [budget, setBudget] = useState(project.budget_usd ?? 0);
+  const [autoEnhance, setAutoEnhance] = useState(project.settings.auto_enhance ?? false);
 
   const save = useMutation({
     mutationFn: () =>
@@ -60,6 +61,7 @@ function SettingsDialog({ prof, slug, project, onClose, refresh }: {
         image_options: options,
         anchor,
         budget_usd: budget,
+        auto_enhance: autoEnhance,
       }),
     onSuccess: () => { toastOk("settings saved"); onClose(); refresh(); },
     onError: (e) => toastError(String(e)),
@@ -80,6 +82,14 @@ function SettingsDialog({ prof, slug, project, onClose, refresh }: {
       <label>Budget (USD, 0 = unlimited)</label>
       <input type="number" min={0} step={1} value={budget}
              onChange={(e) => setBudget(Number(e.target.value))} style={{ width: 80 }} />
+      <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+        <input type="checkbox" checked={autoEnhance}
+               onChange={(e) => setAutoEnhance(e.target.checked)} />
+        Auto-enhance prompts with AI
+      </label>
+      <span className="muted" style={{ fontSize: "0.72rem" }}>
+        Uses LLM to expand scene descriptions before image generation
+      </span>
       <div className="row" style={{ marginTop: 14 }}>
         <button onClick={() => save.mutate()} disabled={save.isPending}>save</button>
         <button className="ghost" onClick={onClose}>cancel</button>
@@ -116,6 +126,24 @@ function RefineDialog({ prof, slug, scene, project, onClose, refresh }: {
     onError: (e) => toastError(String(e)),
   });
 
+  const enhance = useMutation({
+    mutationFn: async () => {
+      if (dirty) {
+        await api.patchScene(prof, slug, scene.id, {
+          description,
+          pose: pose || null,
+          style_override: styleOverride || null,
+        });
+      }
+      return api.enhancePrompt(prof, slug, scene.id);
+    },
+    onSuccess: (data) => {
+      setDescription(data.enhanced_prompt);
+      toastOk("prompt enhanced");
+    },
+    onError: (e) => toastError(String(e)),
+  });
+
   const regen = useMutation({
     mutationFn: async () => {
       if (dirty) {
@@ -138,9 +166,28 @@ function RefineDialog({ prof, slug, scene, project, onClose, refresh }: {
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        rows={2}
+        rows={3}
         style={{ width: "100%" }}
       />
+      <div className="row" style={{ marginTop: 4 }}>
+        <button
+          className="ghost"
+          style={{ fontSize: "0.72rem" }}
+          onClick={() => enhance.mutate()}
+          disabled={enhance.isPending}
+        >
+          {enhance.isPending ? "enhancing…" : "✦ enhance with AI"}
+        </button>
+        {description !== scene.description && (
+          <button
+            className="ghost"
+            style={{ fontSize: "0.72rem" }}
+            onClick={() => setDescription(scene.description)}
+          >
+            revert
+          </button>
+        )}
+      </div>
       <label>Pose / framing</label>
       <input value={pose} onChange={(e) => setPose(e.target.value)} style={{ width: "100%" }} />
       <label>Style override (replaces the project anchor for this scene)</label>
@@ -425,6 +472,7 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
                     <img src={media(prof, slug, img.file)} alt={`option ${globalIdx + 1}`} loading="lazy" />
                     <div className="cap">
                       {scene.selected_image === globalIdx ? "✓ " : ""}opt {globalIdx + 1} · {img.model}
+                      {img.enhanced_prompt && <span style={{ color: "var(--gold)", fontSize: "0.55rem" }}> ✦</span>}
                       <a
                         href={media(prof, slug, img.file)}
                         download
@@ -559,7 +607,9 @@ export default function ProjectBoard() {
   const [clipPrompt, setClipPrompt] = useState("");
   const [clipModel, setClipModel] = useState("");
   const [clipSeconds, setClipSeconds] = useState(5);
+  const [clipShotType, setClipShotType] = useState("");
   const { data: models } = useModels();
+  const { data: shotTypes } = useQuery({ queryKey: ["shot-types"], queryFn: api.shotTypes, staleTime: Infinity });
 
   const generateAll = useMutation({
     mutationFn: () =>
@@ -1042,10 +1092,24 @@ export default function ProjectBoard() {
             <input value={clipPrompt} onChange={(e) => setClipPrompt(e.target.value)}
                    placeholder="e.g. gentle sway, slow turn, walk forward"
                    style={{ width: "100%" }} />
+            <label>Shot type</label>
+            <select value={clipShotType} onChange={(e) => setClipShotType(e.target.value)}
+                    style={{ marginBottom: 6 }}>
+              <option value="">none</option>
+              {Object.entries(shotTypes ?? {}).map(([key, st]) => (
+                <option key={key} value={key}>{st.label}</option>
+              ))}
+            </select>
+            {clipShotType && shotTypes?.[clipShotType] && (
+              <span className="muted" style={{ fontSize: "0.72rem" }}>
+                {shotTypes[clipShotType].description}
+              </span>
+            )}
             <label>Video model</label>
             <div className="row">
               <select value={clipModel || proj.settings.video_model}
                       onChange={(e) => setClipModel(e.target.value)}>
+                <option value="auto">Auto (smart routing)</option>
                 {Object.entries(models ?? {})
                   .filter(([, m]) => m.kind === "video")
                   .map(([key, m]) => (
@@ -1054,6 +1118,11 @@ export default function ProjectBoard() {
                     </option>
                   ))}
               </select>
+              {(clipModel || proj.settings.video_model) === "auto" && clipShotType && shotTypes?.[clipShotType] && (
+                <span className="mono muted" style={{ fontSize: "0.68rem" }}>
+                  → {shotTypes[clipShotType].recommended_video}
+                </span>
+              )}
               <label style={{ margin: 0 }}>Length</label>
               <select value={clipSeconds} onChange={(e) => setClipSeconds(Number(e.target.value))}>
                 <option value={3}>3s</option>
@@ -1074,6 +1143,7 @@ export default function ProjectBoard() {
                   prompt: clipPrompt,
                   model: clipModel || proj.settings.video_model,
                   seconds: clipSeconds,
+                  shot_type: clipShotType || undefined,
                 }).then(() => {
                   setCreatingClip(false);
                   setClipStartImage("");
@@ -1081,6 +1151,7 @@ export default function ProjectBoard() {
                   setClipPrompt("");
                   setClipModel("");
                   setClipSeconds(5);
+                  setClipShotType("");
                   refresh();
                 }).catch((e) => toastError(String(e)));
               }}>create clip</button>
@@ -1099,6 +1170,12 @@ export default function ProjectBoard() {
             <div style={{ flex: 1 }}>
               <div className="row" style={{ marginBottom: 6 }}>
                 <b>{clip.id}</b>
+                {clip.shot_type && shotTypes?.[clip.shot_type] && (
+                  <span className="pill" style={{
+                    borderColor: shotTypes[clip.shot_type].color,
+                    color: shotTypes[clip.shot_type].color,
+                  }}>{shotTypes[clip.shot_type].label}</span>
+                )}
                 <span className="pill">{clip.model}</span>
                 <span className="pill">{clip.seconds}s</span>
                 {clip.source_images.length > 1 && <span className="pill gold">start + end</span>}
@@ -1143,6 +1220,17 @@ export default function ProjectBoard() {
               )}
 
               <div className="row">
+                <select
+                  className="mono"
+                  style={{ fontSize: "0.68rem", padding: "3px 6px", width: "auto" }}
+                  value={clip.shot_type || ""}
+                  onChange={(e) => api.patchClip(prof, slug, clip.id, { shot_type: e.target.value }).then(refresh).catch((err) => toastError(String(err)))}
+                >
+                  <option value="">type…</option>
+                  {Object.entries(shotTypes ?? {}).map(([key, st]) => (
+                    <option key={key} value={key}>{st.label}</option>
+                  ))}
+                </select>
                 {clip.status === "completed" && (
                   <>
                     <button

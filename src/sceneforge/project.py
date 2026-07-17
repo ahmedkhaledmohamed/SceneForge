@@ -49,6 +49,7 @@ class Settings:
     crossfade: float = 0.3
     image_model: str = "flux-schnell"
     video_model: str = "seedance-2.0"
+    auto_enhance: bool = False
 
 
 @dataclass
@@ -86,6 +87,7 @@ class ImageArtifact:
     created_at: str = field(default_factory=now_iso)
     meta: dict = field(default_factory=dict)
     generation_id: str = ""
+    enhanced_prompt: str = ""
     upgraded_from: str = ""
 
 
@@ -122,6 +124,7 @@ class Clip:
     created_at: str = field(default_factory=now_iso)
     meta: dict = field(default_factory=dict)
     kept: bool = False
+    shot_type: str = ""
     upgraded_from: str = ""
 
 

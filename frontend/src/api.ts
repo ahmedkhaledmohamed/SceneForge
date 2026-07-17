@@ -1,4 +1,4 @@
-import type { HistoryRow, Job, ModelInfo, ProfileDoc, ProfileSummary, Project, ProjectSummary } from "./types";
+import type { HistoryRow, Job, ModelInfo, ProfileDoc, ProfileSummary, Project, ProjectSummary, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -63,6 +63,7 @@ function p(prof: string, slug: string) {
 
 export const api = {
   models: () => request<Record<string, ModelInfo>>("/models"),
+  shotTypes: () => request<Record<string, ShotTypeInfo>>("/shot-types"),
 
   // profiles
   profiles: () => request<ProfileSummary[]>("/profiles"),
@@ -119,6 +120,9 @@ export const api = {
   deleteProjectRef: (prof: string, slug: string, index: number) =>
     request(`${p(prof, slug)}/refs/${index}`, { method: "DELETE" }),
 
+  enhancePrompt: (prof: string, slug: string, sid: string) =>
+    request<{ enhanced_prompt: string; original: string }>(
+      `${p(prof, slug)}/scenes/${sid}/enhance-prompt`, { method: "POST" }),
   brainstorm: (prof: string, slug: string, body: unknown) =>
     request<{ descriptions: string[] }>(`${p(prof, slug)}/brainstorm`, json(body)),
   addScenesBulk: (prof: string, slug: string, body: unknown) =>

@@ -12,6 +12,7 @@ export interface ImageArtifact {
   created_at: string;
   meta: Record<string, unknown>;
   generation_id?: string;
+  enhanced_prompt?: string;
   upgraded_from?: string;
 }
 
@@ -70,7 +71,15 @@ export interface ProjectClip {
   created_at: string;
   meta: Record<string, unknown>;
   kept: boolean;
+  shot_type?: string;
   upgraded_from?: string;
+}
+
+export interface ShotTypeInfo {
+  label: string;
+  description: string;
+  color: string;
+  recommended_video: string;
 }
 
 export interface Project {
@@ -84,6 +93,7 @@ export interface Project {
     video_model: string;
     image_options: number;
     aspect: string;
+    auto_enhance?: boolean;
   };
   characters: Character[];
   refs: ReferenceImage[];

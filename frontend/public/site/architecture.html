@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — SceneForge</title>
+<meta name="description" content="An annotated, interactive map of SceneForge's architecture: interfaces, shared operations, pluggable backends, and the ffmpeg finish line.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=Fragment+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="site-header">
+  <a class="wordmark" href="index.html">Scene<span class="spark">Forge</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="architecture.html" aria-current="page">Architecture</a>
+    <a href="getting-started.html">Getting started</a>
+    <a href="pricing.html">Pricing</a>
+    <a href="https://github.com/ahmedkhaledmohamed/SceneForge">GitHub</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="no-rule" style="padding-top: 40px">
+  <p class="eyebrow">System map</p>
+  <h1>Every box is a file.<br>Click one.</h1>
+  <p class="lede">SceneForge is a small system with strong seams: two interfaces over one
+  operations layer, a model registry over pluggable backends, and plain files as the only
+  state. Select any component for its annotation — what it does, where it lives, and the
+  design decision behind it. Or press <b>trace a clip</b> to follow one real
+  <span class="mono">generate-clips</span> job through the graph, including the moment the
+  self-hosted backend fails and the fallback takes over.</p>
+
+  <div class="board-layout">
+    <div class="board" id="board">
+      <svg class="wires" id="wires" aria-hidden="true"></svg>
+
+      <div class="lane">
+        <span class="lane-label">Interfaces — two fronts, zero duplicated logic</span>
+        <button class="node" id="n-cli" aria-pressed="false">cli.py<small>typer commands</small></button>
+        <button class="node" id="n-web" aria-pressed="false">server/ + frontend/<small>Studio SPA + JSON API</small></button>
+      </div>
+
+      <div class="lane">
+        <span class="lane-label">Core — where both fronts converge</span>
+        <button class="node" id="n-ops" aria-pressed="false">ops.py<small>generation loops</small></button>
+        <button class="node" id="n-prompts" aria-pressed="false">prompts.py<small>style anchor</small></button>
+        <button class="node" id="n-breakdown" aria-pressed="false">breakdown.py<small>LLM scenes</small></button>
+      </div>
+
+      <div class="lane">
+        <span class="lane-label">Backends — one interface, three ways to run a model</span>
+        <button class="node" id="n-registry" aria-pressed="false">config.py<small>model registry</small></button>
+        <button class="node" id="n-fallback" aria-pressed="false">fallback.py<small>auto failover</small></button>
+        <button class="node cat-hosted" id="n-together" aria-pressed="false">together_*.py<small>hosted APIs</small></button>
+        <button class="node cat-selfhosted" id="n-runpod" aria-pressed="false">runpod_*.py<small>rented GPU</small></button>
+        <button class="node cat-test" id="n-fake" aria-pressed="false">fake.py<small>$0 tests</small></button>
+      </div>
+
+      <div class="lane">
+        <span class="lane-label">State &amp; output — plain files, atomic writes</span>
+        <button class="node" id="n-profile" aria-pressed="false">profile.py<small>profiles + characters</small></button>
+        <button class="node" id="n-project" aria-pressed="false">project.py<small>project.json</small></button>
+        <button class="node" id="n-stitch" aria-pressed="false">stitch.py<small>ffmpeg two-pass</small></button>
+        <button class="node cat-selfhosted" id="n-worker" aria-pressed="false">runpod-worker/<small>Docker + diffusers</small></button>
+      </div>
+
+      <div class="trace-bar">
+        <button class="btn ghost" id="trace-btn" style="padding: 8px 16px">▶ trace a clip</button>
+        <span id="trace-status" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <aside class="panel" id="panel" aria-live="polite">
+      <p class="eyebrow" id="p-eyebrow">Annotation</p>
+      <h3 id="p-title">Pick a component</h3>
+      <p class="file" id="p-file"></p>
+      <p id="p-role">Each annotation explains the component's job, the file behind it, and the
+      why — the decisions that aren't visible in a filename.</p>
+      <ul id="p-notes"></ul>
+      <p class="hint">tip: arrow through the boxes with Tab — everything here is keyboard-first,
+      like the product.</p>
+    </aside>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Three decisions that shaped it</p>
+  <h2>The seams matter more than the boxes.</h2>
+  <div class="ruler">
+    <div class="step">
+      <span class="tc">seam 1</span>
+      <div><h3>One ops layer, two faces</h3>
+      <p>The CLI and web UI both call <span class="mono">ops.py</span> with a log callback.
+      Idempotency, artifact recording, and failure handling exist exactly once — a web button
+      and a terminal command cannot drift apart, because they are the same code.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">seam 2</span>
+      <div><h3>The registry is the product surface</h3>
+      <p>Adding a model is a dict entry: price, capabilities, backend, optional fallback.
+      The CLI's cost estimates, the web UI's dropdowns, and the failover chain all read the
+      same entry — so a new model shows up everywhere at once, priced.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">seam 3</span>
+      <div><h3>Files are the only state</h3>
+      <p><span class="mono">project.json</span> is written atomically after every artifact.
+      A crashed batch loses nothing; a re-run picks up where it stopped; the CLI and the web UI
+      can interleave freely. There is no database to migrate and nothing to host.</p></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <span>SceneForge — the diagram is the codebase; nothing here is aspirational.</span>
+  <span><a href="https://github.com/ahmedkhaledmohamed/SceneForge">source on GitHub</a></span>
+</footer>
+
+</div>
+
+<script>
+const NODES = {
+  "n-cli": {
+    title: "The CLI",
+    file: "src/sceneforge/cli.py",
+    role: "Typer commands mapping one-to-one onto the creative workflow: create, add-scenes, generate-images, select, generate-clips, stitch, status, models, regenerate, ui.",
+    notes: [
+      "Generation commands are idempotent — re-running skips what's done, so a failed batch resumes for free.",
+      "Guards fail early with the fix in the message: clips refuse to run until every scene has a selected image.",
+      "status shows estimated remaining cost before you spend, and actual GPU spend after.",
+    ],
+  },
+  "n-web": {
+    title: "Studio (SPA + JSON API)",
+    file: "src/sceneforge/server/ + frontend/",
+    role: "React SPA (Vite + react-query) over a FastAPI JSON API. Profile-scoped: everything under /profiles/{prof}/projects/{slug}/... Background jobs, live cost tracking, lightbox, refine dialog, brainstorm, batch operations.",
+    notes: [
+      "Profile-scoped routes: characters, style defaults, and seeds shared across all projects in a profile.",
+      "One background job per project; the SPA polls every 2s while running and refreshes on completion.",
+      "Deployed to Vercel as a static SPA; daily use via `sceneforge studio` which serves API + SPA together.",
+    ],
+  },
+  "n-ops": {
+    title: "Shared operations",
+    file: "src/sceneforge/ops.py",
+    role: "The generation loops both interfaces call: plan what's missing, run backends, record artifacts, save after every one.",
+    notes: [
+      "Takes a log callback instead of printing — typer echoes it, web jobs append it to a live status buffer.",
+      "A failed clip records status + error on the scene and the batch continues; failures are data, not crashes.",
+      "This layer exists because the web UI almost duplicated the CLI's loops — extracting it was the fix.",
+    ],
+  },
+  "n-prompts": {
+    title: "Style context",
+    file: "src/sceneforge/prompts.py",
+    role: "The product's thesis in ~20 lines: anchor + scene description + suffix, composed into every image and video prompt.",
+    notes: [
+      "A scene's style_override replaces the anchor for that scene only; the suffix always applies.",
+      "The composed string is stored verbatim on every artifact — you can always answer 'what prompt made this?'",
+      "Pure functions, fully unit-tested; no backend knows the composition rules.",
+    ],
+  },
+  "n-breakdown": {
+    title: "LLM scene breakdown",
+    file: "src/sceneforge/breakdown.py",
+    role: "Turns the concept + anchor into N scene descriptions, each a single static visual moment an image model can draw.",
+    notes: [
+      "Strict JSON contract with fence-stripping and one self-correcting retry on parse failure.",
+      "You confirm the scenes before anything is written — the LLM proposes, you decide.",
+      "Llama 3.3 70B via Together's OpenAI-compatible endpoint; swappable by env var.",
+    ],
+  },
+  "n-registry": {
+    title: "The model registry",
+    file: "src/sceneforge/config.py",
+    role: "One dict describing every model: kind, backend, price, capabilities (supports_i2v), timeouts, and optional fallback target.",
+    notes: [
+      "Selection precedence: --model flag → project settings → global default.",
+      "supports_i2v has three states — true, false (warn: image ignored), and unverified (attempt and surface the error).",
+      "Prices here drive the CLI's cost estimates; RunPod entries add gpu_price_per_s for measured, per-artifact cost.",
+    ],
+  },
+  "n-fallback": {
+    title: "Automatic failover",
+    file: "src/sceneforge/backends/fallback.py",
+    role: "A wrapper the factory applies when a registry entry names a fallback: try the primary, log loudly, delegate on any failure.",
+    notes: [
+      "runpod-wan-i2v falls back to seedance-2.0; runpod-flux to flux-schnell — cheap-first, reliable-second.",
+      "The rescued artifact is tagged fallback_from, so the project records what actually happened.",
+      "Composition over inheritance: ops.py never learns that failover exists.",
+    ],
+  },
+  "n-together": {
+    title: "Hosted backends (Together AI + OpenRouter)",
+    file: "src/sceneforge/backends/together_*.py · openrouter_video.py",
+    role: "Together AI for images (FLUX, Nano Banana Pro) and Kling video. OpenRouter for Seedance 1.5 Pro ($0.12/clip) and Seedance 2.0 ($0.34/clip).",
+    notes: [
+      "Media downloads use curl with a User-Agent — Together's CDN (and API) 403 Python's default agent. Learned the hard way.",
+      "Image-to-video sends the selected still as a base64 frame_images entry with frame='first'.",
+      "Verified live: Seedance 2.0 does I2V at $0.16/s of 720p output; Kling 2.1 standard is the budget option.",
+    ],
+  },
+  "n-runpod": {
+    title: "Self-hosted backend (RunPod)",
+    file: "src/sceneforge/backends/runpod_client.py · runpod_backend.py",
+    role: "Submits jobs to a serverless GPU endpoint: raw urllib against three routes — /run, /status, /health. No SDK, on purpose.",
+    notes: [
+      "~$0.12 per clip on a rented RTX 4090 vs $0.80 hosted — the whole reason this backend exists.",
+      "Cost is computed per artifact from the job's executionTime × the GPU's per-second price and stored in artifact meta.",
+      "The client is injectable, so the entire backend is tested offline with scripted HTTP responses.",
+    ],
+  },
+  "n-fake": {
+    title: "Fake backends",
+    file: "src/sceneforge/backends/fake.py",
+    role: "ffmpeg-lavfi 'models': images from prompt-hashed colors, clips from testsrc. Real files, real durations, zero cost.",
+    notes: [
+      "The entire test suite — including the web UI end-to-end — runs on these. CI needs no secrets.",
+      "They're registry entries like any model, so you can dry-run a whole project for free.",
+      "The color is derived from the prompt hash: same prompt, same 'image' — determinism for tests.",
+    ],
+  },
+  "n-project": {
+    title: "State on disk",
+    file: "src/sceneforge/project.py",
+    role: "Dataclasses over project.json: self-contained scenes with refs, project-level clips, generation lanes — with full prompt + model + cost history per artifact.",
+    notes: [
+      "Scenes own their reference images (SceneRef: role, label, optional URL) directly.",
+      "Clips are project-level entities: pick source images from any scene, set model + duration + prompt.",
+      "Schema v5 with migration from v3 (outfits) and v4 (scene-level clips) on load. Atomic writes.",
+    ],
+  },
+  "n-stitch": {
+    title: "The finish line",
+    file: "src/sceneforge/stitch.py",
+    role: "Two ffmpeg passes: normalize every clip (speed, fps, geometry, pixel format), then chain xfade crossfades into final.mp4.",
+    notes: [
+      "Offsets come from ffprobe-measured durations, not arithmetic — setpts + fps rounding would drift the math.",
+      "The output duration is asserted against the expected value; a bad stitch fails instead of shipping.",
+      "Normalizing first is what makes xfade reliable: it demands identical size, fps, and timebase.",
+    ],
+  },
+  "n-profile": {
+    title: "Profiles",
+    file: "src/sceneforge/profile.py",
+    role: "A profile is a brand/workspace: global characters (pchar-* IDs), style defaults, and seed assets shared across all projects. Characters resolve live — update refs once, every project sees them.",
+    notes: [
+      "Profile characters use pchar-* IDs; project characters use char-*. resolve_character() dispatches by prefix.",
+      "Style and model defaults are COPIED into new projects; characters resolve live because identity refs keep improving.",
+      "SCENEFORGE_HOME (~/SceneForge by default) contains profile directories, each with projects/ inside.",
+    ],
+  },
+  "n-worker": {
+    title: "The GPU worker",
+    file: "runpod-worker/ — Dockerfile, handler.py, pipelines.py",
+    role: "The Docker image RunPod runs: one handler dispatching image (FLUX.1-schnell), video (Wan2.2-TI2V-5B, 720p), and warmup tasks.",
+    notes: [
+      "Weights live on a network volume (HF_HOME) — cold starts load from disk instead of the internet.",
+      "One pipeline resident at a time: 24GB can't hold FLUX and Wan2.2 together; swapping evicts and reloads.",
+      "Wan2.2-TI2V-5B outputs native 720p (1280×704) at 24fps. Previous Wan2.1-I2V-14B OOM'd on 4090.",
+    ],
+  },
+};
+
+const EDGES = [
+  ["n-cli", "n-ops"], ["n-web", "n-ops"],
+  ["n-cli", "n-breakdown"], ["n-web", "n-breakdown"],
+  ["n-ops", "n-prompts"], ["n-ops", "n-registry"], ["n-ops", "n-project"], ["n-ops", "n-stitch"],
+  ["n-ops", "n-profile"],
+  ["n-profile", "n-project"],
+  ["n-registry", "n-fallback"],
+  ["n-fallback", "n-runpod"], ["n-fallback", "n-together"],
+  ["n-registry", "n-fake"],
+  ["n-runpod", "n-worker"],
+];
+
+const TRACE = [
+  ["n-cli", "sceneforge generate-clips --model runpod-wan-i2v"],
+  ["n-ops", "plan: 3 scenes selected, 0 clips exist → 3 jobs"],
+  ["n-prompts", "anchor + scene description + suffix → the prompt"],
+  ["n-profile", "profile character pchar-1 → resolve refs from profile root"],
+  ["n-registry", "runpod-wan-i2v: $0.10 est · i2v ✓ · fallback: seedance-2.0"],
+  ["n-runpod", "POST /run with the still as base64 … polling /status"],
+  ["n-worker", "Wan2.2-TI2V-5B loads from the volume, 121 frames at 720p"],
+  ["n-fallback", "scene-02: endpoint timeout → falling back"],
+  ["n-together", "seedance-2.0 rescues scene-02 ($0.80, tagged fallback_from)"],
+  ["n-project", "artifacts saved atomically: prompt, model, cost, source image"],
+  ["n-stitch", "normalize 2× → xfade chain → output/final.mp4 · 7.0s"],
+];
+
+const panel = {
+  title: document.getElementById("p-title"),
+  file: document.getElementById("p-file"),
+  role: document.getElementById("p-role"),
+  notes: document.getElementById("p-notes"),
+};
+
+let selected = null;
+function select(id) {
+  if (selected) document.getElementById(selected).setAttribute("aria-pressed", "false");
+  selected = id;
+  const node = document.getElementById(id);
+  node.setAttribute("aria-pressed", "true");
+  const d = NODES[id];
+  panel.title.textContent = d.title;
+  panel.file.textContent = d.file;
+  panel.role.textContent = d.role;
+  panel.notes.innerHTML = "";
+  for (const n of d.notes) {
+    const li = document.createElement("li");
+    li.textContent = n;
+    panel.notes.appendChild(li);
+  }
+}
+
+for (const id of Object.keys(NODES)) {
+  document.getElementById(id).addEventListener("click", () => select(id));
+}
+
+/* ---- wires: draw connectors between node centers ---- */
+const svg = document.getElementById("wires");
+const board = document.getElementById("board");
+
+function drawWires() {
+  const b = board.getBoundingClientRect();
+  svg.setAttribute("viewBox", `0 0 ${b.width} ${b.height}`);
+  svg.innerHTML = "";
+  for (const [from, to] of EDGES) {
+    const f = document.getElementById(from).getBoundingClientRect();
+    const t = document.getElementById(to).getBoundingClientRect();
+    const x1 = f.left - b.left + f.width / 2, y1 = f.bottom - b.top;
+    const x2 = t.left - b.left + t.width / 2, y2 = t.top - b.top;
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    const bend = Math.max(18, (y2 - y1) / 2);
+    path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${y1 + bend}, ${x2} ${y2 - bend}, ${x2} ${y2}`);
+    path.dataset.edge = `${from}->${to}`;
+    svg.appendChild(path);
+  }
+}
+drawWires();
+addEventListener("resize", drawWires);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawWires);
+
+/* ---- trace animation ---- */
+const traceBtn = document.getElementById("trace-btn");
+const traceStatus = document.getElementById("trace-status");
+let tracing = false;
+
+traceBtn.addEventListener("click", async () => {
+  if (tracing) return;
+  tracing = true;
+  traceBtn.disabled = true;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const hot = [];
+  for (let i = 0; i < TRACE.length; i++) {
+    const [id, msg] = TRACE[i];
+    const node = document.getElementById(id);
+    node.classList.add("hot");
+    hot.push(node);
+    if (i > 0) {
+      const prev = TRACE[i - 1][0];
+      const wire = svg.querySelector(`[data-edge="${prev}->${id}"], [data-edge="${id}->${prev}"]`);
+      if (wire) { wire.classList.add("hot"); }
+    }
+    traceStatus.textContent = msg;
+    select(id);
+    if (!reduce) await new Promise(r => setTimeout(r, 1600));
+  }
+  traceStatus.textContent = "done — final.mp4 written. That was one real run.";
+  setTimeout(() => {
+    hot.forEach(n => n.classList.remove("hot"));
+    svg.querySelectorAll(".hot").forEach(w => w.classList.remove("hot"));
+    traceBtn.disabled = false;
+    tracing = false;
+  }, 2500);
+});
+
+select("n-ops"); // sensible default annotation
+</script>
+</body>
+</html>
