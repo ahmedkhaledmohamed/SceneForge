@@ -825,6 +825,57 @@ export default function ProjectBoard() {
       </p>
       <JobBanner job={proj.job} onRetry={() => generateAll.mutate()} />
 
+      {proj.scenes.length > 0 && (() => {
+        const imgNeeded = proj.scenes.reduce((sum, s) =>
+          sum + Math.max(0, proj.settings.image_options - s.images.length), 0);
+        const completedSources = new Set(
+          proj.clips.filter((c) => c.status === "completed").flatMap((c) => c.source_images)
+        );
+        const clipsNeeded = proj.scenes.filter((s) => {
+          const selImg = s.selected_image !== null ? s.images[s.selected_image!]?.file : s.images[0]?.file;
+          return selImg ? !completedSources.has(selImg) : imgNeeded > 0;
+        }).length;
+        const estImgCost = imgNeeded * (models?.[proj.settings.image_model]?.price ?? 0);
+        const estVidCost = clipsNeeded * (models?.[proj.settings.video_model]?.price ?? 0);
+        const estTotal = estImgCost + estVidCost;
+        return (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 14px", borderRadius: 8,
+            background: "var(--bg-raised, #2a2520)",
+            border: "1px solid var(--gold-dim, #665c3a)",
+            marginBottom: 12,
+          }}>
+            <button
+              style={{ fontWeight: 600, fontSize: "0.9rem" }}
+              disabled={busy}
+              onClick={() => {
+                if (!window.confirm(
+                  `Produce full pipeline:\n` +
+                  `  - Generate ${imgNeeded} image(s)\n` +
+                  `  - Auto-select unselected scenes\n` +
+                  `  - Generate ~${clipsNeeded} clip(s)\n\n` +
+                  `Estimated cost: ~$${estTotal.toFixed(2)}\n\nContinue?`
+                )) return;
+                api.produce(prof, slug, {
+                  image_model: proj.settings.image_model,
+                  video_model: proj.settings.video_model,
+                  seconds: 5,
+                }).then(() => { toastOk("produce started"); refresh(); })
+                  .catch((e) => toastError(String(e)));
+              }}
+            >
+              Produce (~${estTotal.toFixed(2)})
+            </button>
+            <span className="mono muted" style={{ fontSize: "0.72rem" }}>
+              {imgNeeded > 0 ? `${imgNeeded} images` : "images done"}
+              {" + "}
+              {clipsNeeded > 0 ? `${clipsNeeded} clips` : "clips done"}
+            </span>
+          </div>
+        );
+      })()}
+
       {(proj.notes || null) && (
         <div className="mono muted" style={{ fontSize: "0.75rem", margin: "6px 0", whiteSpace: "pre-wrap" }}>
           {proj.notes}

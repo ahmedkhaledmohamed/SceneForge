@@ -190,6 +190,9 @@ export const api = {
     request(`${p(prof, slug)}/clips/${cid}`, { method: "DELETE" }),
   keepClip: (prof: string, slug: string, cid: string, kept: boolean) =>
     request(`${p(prof, slug)}/clips/${cid}/keep`, json({ kept })),
+  produce: (prof: string, slug: string, body: unknown) =>
+    request<{ started: string; estimate: { images: number; clips: number; cost_usd: number } }>(
+      `${p(prof, slug)}/produce`, json(body)),
   stitch: (prof: string, slug: string) =>
     request(`${p(prof, slug)}/stitch`, { method: "POST" }),
   export: (prof: string, slug: string) =>
