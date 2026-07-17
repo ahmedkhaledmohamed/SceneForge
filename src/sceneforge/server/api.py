@@ -1115,6 +1115,106 @@ def make_router(home: Path) -> APIRouter:
 
         return start_job_or_409(prof, slug, f"generate {clip.id} ({model_key})", job)
 
+    @router.post("/profiles/{prof}/projects/{slug}/generate-all-clips-batch",
+                 status_code=202)
+    def generate_all_clips_batch(prof: str, slug: str, payload: dict):
+        """Create clips from scenes with selected images but no completed clip,
+        then generate them all in sequence as a background job."""
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        model_override = payload.get("model", "auto")
+        seconds = int(payload.get("seconds", 5))
+
+        # Find scenes that have a selected image but no completed clip
+        # A scene "has a completed clip" if any project-level clip uses that
+        # scene's selected image file as a source.
+        completed_sources = set()
+        for c in project.clips:
+            if c.status == "completed":
+                for src in c.source_images:
+                    completed_sources.add(src)
+
+        eligible = []
+        for sc in project.scenes:
+            if sc.selected_image is None:
+                continue
+            img_file = sc.images[sc.selected_image].file
+            if img_file in completed_sources:
+                continue
+            eligible.append((sc, img_file))
+
+        if not eligible:
+            return {"started": None, "note": "no eligible scenes (all have clips or no selection)"}
+
+        # Create new Clip entities for each eligible scene
+        created_clips = []
+        default_model = project.settings.video_model
+        for sc, img_file in eligible:
+            clip = project.add_clip(
+                source_images=[img_file],
+                prompt="",
+                model=model_override,
+            )
+            clip.seconds = seconds
+            created_clips.append(clip)
+        project.save()
+
+        def job(log, bg_job):
+            from ..backends import get_video_backend
+            bg_job.progress("starting", completed=0, total=len(created_clips))
+            for i, clip in enumerate(created_clips):
+                clip_model = clip.model
+                if clip_model == "auto":
+                    spent = (
+                        sum(img.meta.get("cost_usd", 0) for s in project.scenes for img in s.images)
+                        + sum(c.meta.get("cost_usd", 0) for c in project.clips)
+                    )
+                    budget_left = (project.budget_usd - spent) if project.budget_usd > 0 else None
+                    clip_model = config.recommend_model(
+                        shot_type=clip.shot_type, budget_remaining=budget_left,
+                        fallback=default_model)
+                    clip.model = clip_model
+                    log(f"{clip.id}: auto -> {clip_model}")
+                bg_job.progress(clip.id, completed=i, total=len(created_clips))
+                resolved = config.resolve_model(clip_model, "video")
+                backend = get_video_backend(clip_model, log)
+                image = (project.root / clip.source_images[0]) if clip.source_images else None
+                out = project.clips_dir / f"{clip.id}.mp4"
+                out.parent.mkdir(parents=True, exist_ok=True)
+                prompt = clip.prompt or "gentle motion"
+                log(f"{clip.id}: generating ({clip_model})...")
+                try:
+                    result = backend.generate_clip(
+                        prompt, out, image=image,
+                        seconds=clip.seconds or None,
+                        width=project.settings.width,
+                        height=project.settings.height,
+                        timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
+                    )
+                    clip.file = str(out.relative_to(project.root))
+                    clip.status = "completed"
+                    clip.duration_s = result.duration_s
+                    clip.meta = result.meta
+                    if "cost_usd" not in clip.meta:
+                        clip.meta["cost_usd"] = config.MODELS.get(clip_model, {}).get("price", 0)
+                    bg_job.results.append({
+                        "clip_id": clip.id, "status": "ok",
+                    })
+                    log(f"{clip.id}: done ({result.duration_s:.1f}s)")
+                except Exception as exc:
+                    clip.status = "failed"
+                    clip.error = str(exc)
+                    bg_job.results.append({
+                        "clip_id": clip.id, "status": "failed", "error": str(exc),
+                    })
+                    log(f"{clip.id}: FAILED -- {exc}")
+                project.save()
+            bg_job.progress("done", completed=len(created_clips))
+
+        return start_job_or_409(
+            prof, slug,
+            f"batch clips: {len(created_clips)} from scenes", job)
+
     @router.post("/profiles/{prof}/projects/{slug}/clips/generate-all",
                  status_code=202)
     def generate_all_clips(prof: str, slug: str):
