@@ -36,7 +36,7 @@ class FakeVideoBackend(VideoBackend):
     supports_i2v = False
 
     def generate_clip(self, prompt, out_path, *, image, width, height,
-                      timeout_s=600):
+                      timeout_s=600, **_kwargs):
         out_path.parent.mkdir(parents=True, exist_ok=True)
         run_ffmpeg([
             "-f", "lavfi",

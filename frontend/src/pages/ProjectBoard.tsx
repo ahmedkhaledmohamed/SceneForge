@@ -1077,6 +1077,34 @@ export default function ProjectBoard() {
         }} disabled={busy || proj.clips.filter((c) => c.status === "pending").length === 0}>
           Generate {proj.clips.filter((c) => c.status === "pending").length} pending
         </button>
+        {(() => {
+          const completedSources = new Set(
+            proj.clips.filter((c) => c.status === "completed").flatMap((c) => c.source_images)
+          );
+          const eligible = proj.scenes.filter(
+            (s) => s.selected_image !== null && s.images[s.selected_image!] &&
+              !completedSources.has(s.images[s.selected_image!].file)
+          );
+          const batchCost = eligible.length * vidPrice;
+          return eligible.length > 0 ? (
+            <button
+              onClick={() => {
+                if (!window.confirm(
+                  `Create and generate clips for ${eligible.length} scene(s). ` +
+                  `Estimated cost: ~$${batchCost.toFixed(2)}. Continue?`
+                )) return;
+                api.generateAllClipsBatch(prof, slug, {
+                  model: proj.settings.video_model,
+                  seconds: 5,
+                }).then(() => { toastOk("batch clip generation started"); refresh(); })
+                  .catch((e) => toastError(String(e)));
+              }}
+              disabled={busy}
+            >
+              Generate clips for {eligible.length} scenes (~${batchCost.toFixed(2)})
+            </button>
+          ) : null;
+        })()}
       </div>
 
       {creatingClip && (() => {
