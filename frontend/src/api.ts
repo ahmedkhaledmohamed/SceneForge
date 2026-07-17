@@ -101,6 +101,19 @@ export const api = {
   addSeed: (prof: string, form: FormData) =>
     request(`/profiles/${prof}/seeds`, { method: "POST", body: form }),
 
+  // templates
+  templates: (prof: string) =>
+    request<{ name: string; slug: string; scenes: number; builtin: boolean }[]>(
+      `/profiles/${prof}/templates`),
+  saveAsTemplate: (prof: string, slug: string, name: string) =>
+    request<{ slug: string; name: string; scenes: number }>(
+      `${p(prof, slug)}/save-as-template`, json({ name })),
+  createFromTemplate: (prof: string, template: string, name: string) =>
+    request<Project>(`/profiles/${prof}/projects/from-template`,
+      json({ template, name })),
+  deleteTemplate: (prof: string, name: string) =>
+    request(`/profiles/${prof}/templates/${name}`, { method: "DELETE" }),
+
   // projects
   projects: (prof: string) => request<ProjectSummary[]>(`/profiles/${prof}/projects`),
   project: (prof: string, slug: string) => request<Project>(p(prof, slug)),

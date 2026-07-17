@@ -9,6 +9,7 @@ GET .../job. Errors: {"error": {"code": ..., "message": ...}}.
 
 import io
 import json
+import os
 import zipfile
 from dataclasses import asdict
 from pathlib import Path
@@ -23,6 +24,50 @@ from ..profile import PROFILE_FILE, Profile, create_profile
 from ..project import PROJECT_FILE, Project, SceneRef
 from .jobs import JobManager
 from .uploads import save_upload
+
+
+BUILTIN_TEMPLATES: dict[str, dict] = {
+    "product-lookbook": {
+        "name": "Product lookbook",
+        "concept": "Product showcase with multiple angles and contexts",
+        "style": {"anchor": ""},
+        "scenes": [
+            {"description": "Hero shot — full product front and center, clean background", "pose": None, "character_id": None},
+            {"description": "Detail close-up — texture, stitching, or material quality", "pose": None, "character_id": None},
+            {"description": "Detail close-up — label, tag, or branding element", "pose": None, "character_id": None},
+            {"description": "Outfit shot — product styled on character, head to toe", "pose": "standing, facing camera", "character_id": None},
+            {"description": "Outfit shot — different styling or angle, showing movement", "pose": "walking, three-quarter view", "character_id": None},
+            {"description": "Flat lay — product arranged with complementary items from above", "pose": None, "character_id": None},
+            {"description": "Lifestyle — product in a real-world setting, natural context", "pose": None, "character_id": None},
+            {"description": "Behind-the-scenes — styling process or creative setup", "pose": None, "character_id": None},
+        ],
+    },
+    "day-in-the-life": {
+        "name": "Day in the life",
+        "concept": "Follow a character through their day",
+        "style": {"anchor": ""},
+        "scenes": [
+            {"description": "Morning routine — waking up, soft light through windows", "pose": None, "character_id": None},
+            {"description": "Getting ready — outfit selection, mirror moment", "pose": "standing at mirror", "character_id": None},
+            {"description": "On the move — walking outside, street or transit", "pose": "walking, candid angle", "character_id": None},
+            {"description": "Activity — main event of the day, engaged in something", "pose": None, "character_id": None},
+            {"description": "Wind-down — relaxing moment, change of pace", "pose": "seated, relaxed", "character_id": None},
+            {"description": "Evening — golden hour or night setting, reflective mood", "pose": None, "character_id": None},
+        ],
+    },
+    "character-series": {
+        "name": "Character series",
+        "concept": "Character showcase across multiple contexts and poses",
+        "style": {"anchor": ""},
+        "scenes": [
+            {"description": "Portrait — close-up face and shoulders, direct eye contact", "pose": "head and shoulders, facing camera", "character_id": None},
+            {"description": "Full-body — complete outfit visible, neutral background", "pose": "standing, full body visible", "character_id": None},
+            {"description": "Action pose — character in motion or dynamic stance", "pose": "mid-action, dynamic angle", "character_id": None},
+            {"description": "With props — character interacting with meaningful objects", "pose": "holding or using props", "character_id": None},
+            {"description": "Environment shot — character placed in a themed setting", "pose": None, "character_id": None},
+        ],
+    },
+}
 
 
 def _err(status: int, code: str, message: str) -> HTTPException:
@@ -505,6 +550,121 @@ def make_router(home: Path) -> APIRouter:
         except (ValueError, FileExistsError) as exc:
             raise _err(400, "invalid", str(exc))
         return project_doc(copy, prof, copy.root.name, profile=profile)
+
+    # -------------------------------------------------------- templates
+
+    def _templates_dir(prof: str) -> Path:
+        return profile_root(prof) / "templates"
+
+    @router.get("/profiles/{prof}/templates")
+    def list_templates(prof: str):
+        profile_root(prof)  # validate profile exists
+        out = []
+        # built-in templates
+        for key, tpl in BUILTIN_TEMPLATES.items():
+            out.append({
+                "name": tpl["name"],
+                "slug": key,
+                "scenes": len(tpl["scenes"]),
+                "builtin": True,
+            })
+        # user-saved templates
+        tdir = _templates_dir(prof)
+        if tdir.is_dir():
+            for tf in sorted(tdir.glob("*.json")):
+                try:
+                    data = json.loads(tf.read_text())
+                    out.append({
+                        "name": data.get("name", tf.stem),
+                        "slug": tf.stem,
+                        "scenes": len(data.get("scenes", [])),
+                        "builtin": False,
+                    })
+                except (json.JSONDecodeError, OSError):
+                    pass
+        return out
+
+    @router.post("/profiles/{prof}/projects/{slug}/save-as-template",
+                 status_code=201)
+    def save_as_template(prof: str, slug: str, payload: dict):
+        project = load_project(prof, slug)
+        name = (payload.get("name") or "").strip()
+        if not name:
+            raise _err(400, "invalid", "Template name is required")
+        from ..util import slugify
+        tpl_slug = slugify(name)
+        if tpl_slug in BUILTIN_TEMPLATES:
+            raise _err(400, "invalid",
+                       f"Cannot overwrite built-in template '{tpl_slug}'")
+        template = {
+            "name": name,
+            "concept": project.concept,
+            "style": {"anchor": project.style.anchor},
+            "scenes": [
+                {
+                    "description": scene.description,
+                    "pose": scene.pose,
+                    "character_id": None,
+                }
+                for scene in project.scenes
+            ],
+        }
+        tdir = _templates_dir(prof)
+        tdir.mkdir(parents=True, exist_ok=True)
+        (tdir / f"{tpl_slug}.json").write_text(
+            json.dumps(template, indent=2) + "\n")
+        return {"slug": tpl_slug, "name": name, "scenes": len(template["scenes"])}
+
+    @router.post("/profiles/{prof}/projects/from-template", status_code=201)
+    def create_from_template(prof: str, payload: dict):
+        profile = load_profile(prof)
+        tpl_name = (payload.get("template") or "").strip()
+        proj_name = (payload.get("name") or "").strip()
+        if not tpl_name:
+            raise _err(400, "invalid", "Template name is required")
+        if not proj_name:
+            raise _err(400, "invalid", "Project name is required")
+
+        # resolve template
+        if tpl_name in BUILTIN_TEMPLATES:
+            tpl = BUILTIN_TEMPLATES[tpl_name]
+        else:
+            tpl_path = _templates_dir(prof) / f"{tpl_name}.json"
+            if not tpl_path.is_file():
+                raise _err(404, "not_found", f"No template '{tpl_name}'")
+            tpl = json.loads(tpl_path.read_text())
+
+        try:
+            project = ops.create_project(
+                proj_name, profile.projects_dir,
+                concept=tpl.get("concept", ""),
+                anchor=tpl.get("style", {}).get("anchor") or profile.style.anchor,
+                suffix=profile.style.suffix or None,
+                aspect=profile.defaults.aspect,
+                image_model=profile.defaults.image_model,
+                video_model=profile.defaults.video_model,
+            )
+            project.settings.image_options = profile.defaults.image_options
+            for scene_data in tpl.get("scenes", []):
+                project.add_scene(
+                    scene_data.get("description", ""),
+                    pose=scene_data.get("pose"),
+                    character_id=scene_data.get("character_id"),
+                )
+            project.save()
+        except (ValueError, FileExistsError) as exc:
+            raise _err(400, "invalid", str(exc))
+        return project_doc(project, prof, project.root.name, profile=profile)
+
+    @router.delete("/profiles/{prof}/templates/{name}")
+    def delete_template(prof: str, name: str):
+        if name in BUILTIN_TEMPLATES:
+            raise _err(400, "invalid", "Cannot delete built-in templates")
+        tpl_path = _templates_dir(prof) / f"{name}.json"
+        if not tpl_path.is_file():
+            raise _err(404, "not_found", f"No template '{name}'")
+        tpl_path.unlink()
+        return {"deleted": name}
 
     # --------------------------------------------- project references
 
