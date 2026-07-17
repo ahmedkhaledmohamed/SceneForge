@@ -1,16 +1,12 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import { api } from "./api";
+import { createContext, useContext } from "react";
+import { useLocation } from "react-router-dom";
 
 const Ctx = createContext(false);
 
 export function DemoProvider({ children }: { children: React.ReactNode }) {
-  const [demo, setDemo] = useState(false);
-
-  useEffect(() => {
-    api.models().then(() => setDemo(false)).catch(() => setDemo(true));
-  }, []);
-
-  return <Ctx.Provider value={demo}>{children}</Ctx.Provider>;
+  const { pathname } = useLocation();
+  const isDemo = pathname.startsWith("/demo");
+  return <Ctx.Provider value={isDemo}>{children}</Ctx.Provider>;
 }
 
 export function useIsDemo() { return useContext(Ctx); }
