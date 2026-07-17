@@ -2,150 +2,116 @@
 
 [![CI](https://github.com/ahmedkhaledmohamed/SceneForge/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmedkhaledmohamed/SceneForge/actions/workflows/ci.yml)
 
-**AI video production studio.** Concept to finished short-form video in one tool:
+![SceneForge Studio](site/images/og-image.png)
+
+**AI production studio for character-driven content.** Concept to finished short-form video in one tool:
 
 ```
-profile → project → scenes + reference images → generate → select → clips → export
+concept → AI shot list → scenes + refs → generate images → select → clips → sequence → export
 ```
 
-Multi-reference AI image composition, per-scene generation with reference images, configurable video clips, and direct download. Built for content creators who need consistent visuals across scenes.
+Multi-reference AI image composition (up to 14 refs), smart model routing across 3 providers, one-click "Produce" and "AI Director" modes, platform-aware export, and full cost tracking. Built for content creators who need consistent character visuals across scenes.
+
+## What makes it different
+
+- **Multi-ref composition** — 8-14 reference images per scene (character + outfit + props + background) composed into one consistent image
+- **AI Director** — describe your concept, AI plans the full shot list, generates everything, and creates clips automatically
+- **Smart model routing** — "Auto" picks the optimal model per clip: Seedance for hero shots, Kling for B-roll, based on shot type + budget
+- **Draft → Premium** — generate cheap drafts ($0.003), pick the best, one-click upgrade to premium ($0.134)
+- **3 providers, 13 models** — Together AI, OpenRouter, RunPod (self-hosted). Switch per clip, not per platform
+- **No subscription** — pay per generation only. No credits, no caps
 
 ## Studio
 
-A React SPA backed by a FastAPI API. Deploy on Railway or run locally:
-
-```bash
-# Railway (recommended): connect repo, add volume at /data, set TOGETHER_API_KEY
-# Or locally:
-pip install -e .
-sceneforge studio
-```
-
-Everything is **profile-scoped**: a profile is a brand/workspace with global characters, style defaults, and API keys shared across all projects within it.
+A React SPA backed by a FastAPI API. Everything runs from a single Docker image on Railway.
 
 ### The workflow
 
-1. **Create a profile** — name your brand, set a style anchor, add recurring characters with reference images
-2. **New project** — one project per post/video, inherits profile defaults
-3. **Add scenes** — describe each visual moment, drop reference images directly onto the scene
-4. **Generate images** — per-scene: multi-reference composition (character + scene refs → composed image), multiple options
-5. **Refine + select** — compare side by side, swap models, edit prompts, generation lanes show full history
-6. **Create clips** — pick start image (and optional end image) from any scene, set model + duration + prompt, generate
-7. **Download** — download clips directly, import into your video editor
+1. **Create a profile** — brand/workspace with global characters, style defaults, API keys
+2. **New project** — from scratch, from a template, or let the AI Director plan it
+3. **Add scenes** — describe each moment, drop reference images onto the card. Or use AI shot list / brainstorm
+4. **Generate images** — multi-reference composition, multiple options per scene, auto-enhance with LLM
+5. **Select + upgrade** — compare side by side, draft → premium upgrade with one click
+6. **Create clips** — tag shot types, pick model (or Auto), set duration + motion prompt
+7. **Sequence** — arrange clips in order, render into one video
+8. **Export** — platform-optimized for TikTok, Reels, Shorts, Pinterest. AI-generated captions + hashtags
 
 ### Key features
 
-- **Self-contained scenes** — each scene owns its reference images
-- **Clips as separate entities** — pick source images from any scene, set duration (3-10s), model, and motion prompt
-- **Multi-reference image composition** — character refs + scene refs → composed image (FLUX.2-pro $0.03 drafts, Nano Banana Pro $0.134 premium)
-- **LLM brainstorm** — describe the concept, the AI suggests scene descriptions
-- **Cost tracking** — every artifact records its GPU cost; buttons show estimated totals before you commit
-- **Profile characters** — `pchar-*` IDs resolve across all projects; identity refs update globally
-- **Import existing assets** — bring in images and clips from your library
-- **Scene reorder** — order determines stitch output
-- **Duplicate project** — copy settings + scenes without generated media
+| Feature | Description |
+|---|---|
+| **AI Director** | Concept → shot list → images → clips in one click |
+| **Produce** | One-click pipeline: generate all scenes → auto-select → create clips |
+| **Smart routing** | Auto picks optimal model per shot type + budget |
+| **Prompt enhancement** | LLM expands short descriptions into detailed generation prompts |
+| **Shot types** | Hero, detail, transition, B-roll, wide, overhead — each maps to a cost tier |
+| **Draft → Premium** | Upgrade images/clips to better models without regenerating everything |
+| **Batch generation** | Generate all scenes or all clips in parallel with progress tracking |
+| **Sequence builder** | Arrange clips, preview, render into one video |
+| **Platform export** | TikTok (9:16, 60s), Reels (90s), Shorts (60s), Pinterest (2:3) |
+| **Caption generation** | AI-written captions + hashtags per platform with tone control |
+| **Project templates** | Save/load project structures. 3 built-in: Product lookbook, Day in the life, Character series |
+| **Shot list generator** | AI plans complete shot lists with compositions and shot types |
+| **Cost tracking** | Per-artifact GPU cost, project budgets, estimated totals on every button |
+| **Profile characters** | Global characters with refs shared across all projects |
 
 ## Models
 
-Pick per operation with model dropdowns, see prices live:
+13 models across 3 providers:
 
-| Key | Kind | Price | Refs | Notes |
+| Key | Kind | Price | Provider | Notes |
 |---|---|---|---|---|
-| `flux-schnell` | image | $0.003 | – | fast drafts (default) |
-| `flux-dev` | image | $0.025 | – | higher quality |
-| `flux-2-pro` | image | $0.03 | 8 | multi-reference drafts |
-| `nano-banana-pro` | image | $0.134 | 14 | best multi-ref fidelity + character consistency |
-| `seedance-1.5-pro` | video | $0.12/clip | – | Seedance via OpenRouter — best value |
-| `seedance-2.0-or` | video | $0.34/clip | – | Seedance 2.0 via OpenRouter |
-| `seedance-2.0` | video | $0.80/clip | – | Seedance 2.0 via Together (expensive) |
-| `veo-3.0-fast` | video | $0.40/clip | – | mid-price |
-| `kling-2.1` | video | $0.18/clip | – | cheapest hosted I2V |
-| `runpod-flux` / `runpod-wan-i2v` | both | ~$0.03/~$0.10 | – | self-hosted GPU, 720p Wan2.2-TI2V-5B (see runpod-worker/) |
-| `fake-image` / `fake-video` | test | $0 | 14 | ffmpeg-generated, powers the test suite |
+| `flux-schnell` | image | $0.003 | Together AI | fast drafts |
+| `flux-2-pro` | image | $0.03 | Together AI | multi-ref (8 refs) |
+| `nano-banana-pro` | image | $0.134 | Together AI | best quality (14 refs) |
+| `seedance-1.5-pro` | video | $0.26/clip | OpenRouter | best value I2V |
+| `seedance-2.0-or` | video | $0.52/clip | OpenRouter | most realistic |
+| `kling-2.1` | video | $0.18/clip | Together AI | cheapest hosted I2V |
+| `seedance-2.0` | video | $0.80/clip | Together AI | Seedance via Together |
+| `veo-3.0-fast` | video | $0.40/clip | Together AI | mid-price |
+| `runpod-wan-i2v` | video | ~$0.10/clip | RunPod | self-hosted Wan2.2 720p |
 
 ## Architecture
 
 ```
 src/sceneforge/
-├── cli.py              typer CLI (create/add-scenes/generate/select/stitch/studio)
-├── profile.py          profile data model (SCENEFORGE_HOME layout)
-├── project.py          project data model + project.json persistence
-├── ops.py              generation loops shared by CLI and API
-├── prompts.py          style-context + character/garment prompt composition
-├── breakdown.py        LLM scene breakdown (Together AI)
-├── stitch.py           two-pass ffmpeg: normalize → xfade chain
-├── config.py           model registry + env config
-├── server/
-│   ├── api.py          FastAPI JSON API (profile-scoped routes)
-│   ├── jobs.py         background job management
-│   └── uploads.py      multipart upload validation
-└── backends/
-    ├── together_image.py   FLUX via Together AI
-    ├── together_video.py   Seedance/Veo/Kling via Together AI
-    ├── runpod_backend.py   self-hosted FLUX/Wan on RunPod
-    └── fake.py             zero-cost test backends
+├── server/api.py       82 API endpoints (profile-scoped)
+├── project.py          project data model + JSON persistence
+├── profile.py          profile data model (characters, keys, defaults)
+├── ops.py              generation pipelines (images, clips, produce, direct)
+├── prompts.py          prompt composition, enhancement, shot lists, captions
+├── config.py           model registry, shot types, platforms, smart routing
+├── stitch.py           ffmpeg normalize → xfade chain
+└── backends/           together, openrouter, runpod, fake (tests)
 
-frontend/               React SPA (Vite + react-query + react-router)
-runpod-worker/          RunPod serverless GPU worker (Wan2.2-TI2V-5B + FLUX.1-schnell)
-site/                   static landing page (Vercel)
+frontend/               React SPA (Vite + TanStack Query + React Router)
+runpod-worker/          RunPod serverless GPU worker
+site/                   static landing page
 ```
 
-Projects are plain directories — `project.json` plus `images/`, `clips/`, `output/`. No database, no accounts, no cloud dependency beyond the generation APIs.
+192 tests, $0 cost (fake backends). 82 API endpoints. ~10K LOC.
 
-## Quick start
-
-```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
-cp .env.example .env    # add your TOGETHER_API_KEY
-brew install ffmpeg     # if you don't have it
-
-sceneforge studio       # Studio SPA at http://127.0.0.1:8000
-```
-
-Or drive everything from the CLI:
-
-```bash
-sceneforge create "autumn morning"       # concept + style → project
-sceneforge add-scenes --count 6          # LLM breakdown
-sceneforge generate-images               # N options per scene
-sceneforge select scene-01 2             # pick winners
-sceneforge generate-clips                # I2V animation
-sceneforge stitch                        # final cut
-```
-
-## Deploy (remote)
-
-The full stack (API + SPA + ffmpeg) runs from a single Docker image. Deploy to Railway, Render, or any Docker host with a persistent volume:
+## Deploy
 
 ```bash
 # Railway (recommended — auto-deploy from GitHub, ~$5/month)
-# 1. Connect your repo at railway.app
-# 2. Add a volume mounted at /data
-# 3. Set env: TOGETHER_API_KEY=your-key
-# 4. Deploy — the Dockerfile handles everything
+# 1. Connect repo at railway.app
+# 2. Add volume at /data
+# 3. Set env: TOGETHER_API_KEY, OPENROUTER_API_KEY, SCENEFORGE_PASSWORD
+# 4. Deploy — Dockerfile handles everything
 
-# Or run the Docker image directly:
+# Or Docker directly:
 docker build -t sceneforge .
 docker run -p 8000:8000 -v sceneforge-data:/data \
-  -e TOGETHER_API_KEY=your-key sceneforge
+  -e TOGETHER_API_KEY=key -e SCENEFORGE_PASSWORD=pass sceneforge
 ```
 
-API keys can also be set per-profile in Settings instead of env vars.
-
-## Deploy (local)
-
-```bash
-pip install -e .
-sceneforge studio    # auto-opens browser at http://127.0.0.1:8000
-```
+API keys can also be set per-profile in Settings.
 
 ## Development
 
 ```bash
 pip install -e ".[dev]"
-pytest                   # 77 tests, $0 (fake backends)
-cd frontend && npm i && npm run dev     # SPA dev server at :5173
+pytest                              # 192 tests, fake backends
+cd frontend && npm i && npm run dev # SPA at :5173
 ```
-
-CI runs the full suite on every PR (no API secrets needed).
