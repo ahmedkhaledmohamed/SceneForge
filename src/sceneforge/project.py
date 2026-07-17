@@ -88,6 +88,7 @@ class ImageArtifact:
     meta: dict = field(default_factory=dict)
     generation_id: str = ""
     enhanced_prompt: str = ""
+    upgraded_from: str = ""
 
 
 @dataclass
@@ -124,6 +125,7 @@ class Clip:
     meta: dict = field(default_factory=dict)
     kept: bool = False
     shot_type: str = ""
+    upgraded_from: str = ""
 
 
 @dataclass

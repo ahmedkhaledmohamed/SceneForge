@@ -554,6 +554,20 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
               }}>
                 + clip
               </button>
+              {viewingImage.model !== "nano-banana-pro" && viewingImage.model !== "import" && (
+                <button className="ghost" onClick={() => {
+                  api.upgradeImage(prof, slug, scene.id, viewing, { model: "nano-banana-pro" })
+                    .then(() => { toastOk("upgrading to premium"); refresh(); setViewing(null); })
+                    .catch((e) => toastError(String(e)));
+                }}>
+                  ↑ upgrade ($0.13)
+                </button>
+              )}
+              {viewingImage.upgraded_from && (
+                <span className="pill gold" style={{ fontSize: "0.68rem" }}>
+                  upgraded from {viewingImage.upgraded_from}
+                </span>
+              )}
             </>
           }
         />
@@ -1168,6 +1182,9 @@ export default function ProjectBoard() {
                 {clip.status === "pending" && <span className="pill">pending</span>}
                 {clip.status === "failed" && <span className="pill" style={{ borderColor: "var(--danger)", color: "var(--danger)" }}>failed</span>}
                 {clip.kept && <span className="pill gold">✓ kept</span>}
+                {clip.upgraded_from && (
+                  <span className="pill gold" style={{ fontSize: "0.65rem" }}>↑ from {clip.upgraded_from}</span>
+                )}
                 {typeof clip.meta?.cost_usd === "number" && (
                   <span className="mono muted" style={{ fontSize: "0.72rem" }}>${(clip.meta.cost_usd as number).toFixed(2)}</span>
                 )}
@@ -1232,6 +1249,14 @@ export default function ProjectBoard() {
                   <button className="ghost"
                     onClick={() => api.resetClip(prof, slug, clip.id).then(refresh).catch((e) => toastError(String(e)))}>
                     refine
+                  </button>
+                )}
+                {clip.status === "completed" && clip.model !== "seedance-2.0-or" && clip.model !== "seedance-2.0" && (
+                  <button className="ghost"
+                    onClick={() => api.upgradeClip(prof, slug, clip.id, { model: "seedance-2.0-or" })
+                      .then(() => { toastOk("upgrading clip"); refresh(); })
+                      .catch((e) => toastError(String(e)))}>
+                    ↑ upgrade
                   </button>
                 )}
                 {clip.status === "pending" && (

@@ -159,6 +159,10 @@ export const api = {
   importClip: (prof: string, slug: string, sid: string, form: FormData) =>
     request(`${p(prof, slug)}/scenes/${sid}/import-clip`, { method: "POST", body: form }),
 
+  upgradeImage: (prof: string, slug: string, sid: string, imgIdx: number, body: unknown) =>
+    request(`${p(prof, slug)}/scenes/${sid}/images/${imgIdx}/upgrade`, json(body)),
+  upgradeClip: (prof: string, slug: string, cid: string, body: unknown) =>
+    request(`${p(prof, slug)}/clips/${cid}/upgrade`, json(body)),
   generateImages: (prof: string, slug: string, body: unknown) =>
     request(`${p(prof, slug)}/generate-images`, json(body)),
   regenerateImage: (prof: string, slug: string, sid: string, body: unknown) =>

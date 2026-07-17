@@ -13,6 +13,7 @@ export interface ImageArtifact {
   meta: Record<string, unknown>;
   generation_id?: string;
   enhanced_prompt?: string;
+  upgraded_from?: string;
 }
 
 export interface ClipArtifact {
@@ -71,6 +72,7 @@ export interface ProjectClip {
   meta: Record<string, unknown>;
   kept: boolean;
   shot_type?: string;
+  upgraded_from?: string;
 }
 
 export interface ShotTypeInfo {
