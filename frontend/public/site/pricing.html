@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pricing — SceneForge</title>
+<meta name="description" content="SceneForge pricing comparison: Together AI vs RunPod vs traditional platforms.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=Fragment+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="site-header">
+  <a class="wordmark" href="index.html">Scene<span class="spark">Forge</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="architecture.html">Architecture</a>
+    <a href="getting-started.html">Getting started</a>
+    <a href="pricing.html" aria-current="page">Pricing</a>
+    <a href="https://github.com/ahmedkhaledmohamed/SceneForge">GitHub</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="no-rule" style="padding-top: 40px">
+  <p class="eyebrow">Pricing</p>
+  <h1>Pay per generation,<br>not per subscription.</h1>
+  <p class="lede">SceneForge has no subscription fee. You pay only for the AI generations you use —
+  images and video clips — through the API providers you choose. Two options: hosted APIs
+  (Together AI) for zero setup, or self-hosted GPUs (RunPod) for lower per-unit cost.</p>
+</section>
+
+<section>
+  <h2>Per-generation pricing</h2>
+  <table>
+    <thead><tr><th>Model</th><th>Type</th><th>Provider</th><th>Price</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">flux-schnell</td><td>image</td><td>Together AI</td><td>$0.003</td><td>fast drafts</td></tr>
+      <tr><td class="mono">flux-2-pro</td><td>image (8 refs)</td><td>Together AI</td><td>$0.03</td><td>multi-reference drafts</td></tr>
+      <tr><td class="mono">nano-banana-pro</td><td>image (14 refs)</td><td>Together AI</td><td>$0.134</td><td>highest quality</td></tr>
+      <tr><td class="mono">kling-2.1</td><td>video clip</td><td>Together AI</td><td>$0.18</td><td>cheapest I2V</td></tr>
+      <tr><td class="mono">seedance-2.0</td><td>video clip</td><td>Together AI</td><td>$0.80</td><td>most realistic</td></tr>
+      <tr><td class="mono">runpod-flux</td><td>image</td><td>RunPod (self-hosted)</td><td>~$0.005</td><td>RTX 4090</td></tr>
+      <tr><td class="mono">runpod-wan-i2v</td><td>video clip (720p)</td><td>RunPod (self-hosted)</td><td>~$0.10</td><td>Wan2.2-TI2V-5B</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Model specifications</h2>
+  <table>
+    <thead><tr><th>Model</th><th>Type</th><th>Open source</th><th>Max refs</th><th>Resolution</th><th>I2V</th><th>Duration</th><th>Self-hostable</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">flux-schnell</td><td>image</td><td>Yes</td><td>0</td><td>up to 1280×720</td><td>—</td><td>—</td><td>Yes (4GB VRAM)</td></tr>
+      <tr><td class="mono">flux-dev</td><td>image</td><td>Yes</td><td>0</td><td>up to 1280×720</td><td>—</td><td>—</td><td>Yes (12GB VRAM)</td></tr>
+      <tr><td class="mono">flux-2-pro</td><td>image</td><td><span style="color:var(--danger)">No</span> (BFL)</td><td>8</td><td>up to 1280×720</td><td>—</td><td>—</td><td>No</td></tr>
+      <tr><td class="mono">nano-banana-pro</td><td>image</td><td><span style="color:var(--danger)">No</span> (Google)</td><td>14</td><td>up to 1280×720</td><td>—</td><td>—</td><td>No</td></tr>
+      <tr><td class="mono">seedance-2.0</td><td>video</td><td><span style="color:var(--danger)">No</span> (ByteDance)</td><td>—</td><td>720p</td><td>Yes</td><td>~5s</td><td>No</td></tr>
+      <tr><td class="mono">veo-3.0-fast</td><td>video</td><td><span style="color:var(--danger)">No</span> (Google)</td><td>—</td><td>720p</td><td>Unverified</td><td>~5s</td><td>No</td></tr>
+      <tr><td class="mono">kling-2.1</td><td>video</td><td><span style="color:var(--danger)">No</span> (Kuaishou)</td><td>—</td><td>720p</td><td>Yes</td><td>~5s</td><td>No</td></tr>
+      <tr><td class="mono">Wan2.2-TI2V-5B</td><td>video</td><td>Yes</td><td>—</td><td>720p (1280×704)</td><td>Yes</td><td>~5s @ 24fps</td><td>Yes (24GB VRAM)</td></tr>
+      <tr><td class="mono">FLUX.1-schnell</td><td>image</td><td>Yes</td><td>0</td><td>up to 1280×720</td><td>—</td><td>—</td><td>Yes (24GB VRAM)</td></tr>
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top: 8px">
+    <b>Open source</b> models can be self-hosted on RunPod for lower per-unit cost.
+    <b>Closed</b> models are only available through Together AI's hosted API — higher quality for multi-reference composition but not self-hostable.
+    Multi-ref models (flux-2-pro, nano-banana-pro) are key for character + reference image composition.
+  </p>
+</section>
+
+<section>
+  <h2>Higgsfield MAX vs SceneForge</h2>
+  <p class="lede">Compared against Higgsfield MAX ($139 USD/month, 3,600 credits).
+  Based on heavy usage: ~50 posts/month, 500+ draft images (Flux Pro unlimited), 100 premium images,
+  500 Seedance clips (maxing out credits).</p>
+
+  <h3>Why Higgsfield is cheap for Seedance</h3>
+  <table>
+    <thead><tr><th>Provider</th><th>Seedance 2.0 5s clip</th><th>Effective per-clip</th></tr></thead>
+    <tbody>
+      <tr><td>Together AI</td><td>$0.80</td><td>$0.80 (retail)</td></tr>
+      <tr><td>OpenRouter</td><td>$0.34</td><td>$0.34</td></tr>
+      <tr><td>PiAPI</td><td>$0.70–$1.00</td><td>$0.70</td></tr>
+      <tr><td>BytePlus (enterprise)</td><td>negotiated</td><td>~$0.05–$0.15</td></tr>
+      <tr><td><b>Higgsfield MAX</b></td><td>6 credits</td><td><b>~$0.23</b> ($139 ÷ 600 clips)</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">Higgsfield has an enterprise deal with ByteDance — they buy Seedance at a fraction of retail
+  API pricing. Together AI is the most expensive provider for Seedance.</p>
+
+  <h3>Monthly cost at heavy usage (~50 posts)</h3>
+  <table>
+    <thead><tr><th></th><th>Higgsfield<br>MAX</th><th>SceneForge<br>Together AI<br>(Seedance)</th><th>SceneForge<br>Together AI<br>(Kling)</th><th>SceneForge<br>OpenRouter<br>(Seedance)</th><th>SceneForge<br>RunPod<br>(Wan2.2)</th></tr></thead>
+    <tbody>
+      <tr><td><b>500 draft images</b></td><td>0 (unlimited)</td><td>$15.00</td><td>$15.00</td><td>$15.00</td><td>$2.50</td></tr>
+      <tr><td><b>100 premium images</b></td><td>200 credits</td><td>$13.40</td><td>$13.40</td><td>$13.40</td><td>$13.40</td></tr>
+      <tr><td><b>500 video clips</b></td><td>3,000 credits</td><td><span style="color:var(--danger)">$400</span></td><td>$90</td><td>$170</td><td>$50</td></tr>
+      <tr><td><b>Infrastructure</b></td><td>—</td><td>$5</td><td>$5</td><td>$5</td><td>$19</td></tr>
+      <tr style="border-top: 2px solid var(--line)">
+        <td><b>Total (USD)</b></td>
+        <td><b>$139</b></td>
+        <td><b style="color:var(--danger)">$433</b></td>
+        <td><b>$123</b></td>
+        <td><b>$203</b></td>
+        <td><b>$85</b></td>
+      </tr>
+      <tr>
+        <td><b>Total (CAD)</b></td>
+        <td><b>~$188</b></td>
+        <td><b style="color:var(--danger)">~$585</b></td>
+        <td><b>~$166</b></td>
+        <td><b>~$274</b></td>
+        <td><b style="color:var(--gold)">~$115</b></td>
+      </tr>
+      <tr>
+        <td><b>vs Higgsfield</b></td>
+        <td>—</td>
+        <td style="color:var(--danger)">3.1× more</td>
+        <td>12% cheaper</td>
+        <td>46% more</td>
+        <td style="color:var(--gold)"><b>39% cheaper</b></td>
+      </tr>
+      <tr>
+        <td><b>Video quality</b></td>
+        <td>Seedance 2.0</td>
+        <td>Seedance 2.0</td>
+        <td>Kling 2.1</td>
+        <td>Seedance 2.0</td>
+        <td>Wan2.2 (720p)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>The OpenRouter path: Seedance 1.5 Pro at $0.26/clip</h3>
+  <p class="muted">Note: OpenRouter's per-second rate ($0.023/s) is misleading. Actual billing
+  is token-based: (height × width × duration × 24) / 1024 × price. A 5s 720p clip = $0.26.</p>
+  <table>
+    <thead><tr><th></th><th>Higgsfield MAX</th><th>SceneForge + OpenRouter<br>(Seedance 1.5 Pro)</th></tr></thead>
+    <tbody>
+      <tr><td><b>500 draft images</b></td><td>0 (unlimited)</td><td>$15.00 (flux-2-pro)</td></tr>
+      <tr><td><b>100 premium images</b></td><td>200 credits</td><td>$13.40 (nano-banana-pro)</td></tr>
+      <tr><td><b>500 video clips (Seedance 1.5 Pro)</b></td><td>3,000 credits</td><td>500 × $0.26 = <b>$130</b></td></tr>
+      <tr><td><b>Infrastructure</b></td><td>—</td><td>$5</td></tr>
+      <tr style="border-top: 2px solid var(--line)">
+        <td><b>Total (USD)</b></td>
+        <td><b>$139</b></td>
+        <td><b>$163</b></td>
+      </tr>
+      <tr>
+        <td><b>Total (CAD)</b></td>
+        <td><b>~$188</b></td>
+        <td><b>~$220</b></td>
+      </tr>
+      <tr>
+        <td><b>Savings</b></td>
+        <td>—</td>
+        <td class="mono" style="color: var(--danger)"><b>17% more expensive</b></td>
+      </tr>
+      <tr>
+        <td><b>Video model</b></td>
+        <td>Seedance 1.5 Pro</td>
+        <td>Seedance 1.5 Pro (same model)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout" style="margin-top: 14px">
+    <b>Bottom line:</b>
+    <ul style="margin: 6px 0; padding-left: 20px">
+      <li><b>For Seedance at volume</b> — Higgsfield's enterprise deal (~$0.23/clip effective)
+        beats all retail APIs. OpenRouter ($0.26) and Together ($0.80) are more expensive per clip.</li>
+      <li><b>For Kling quality</b> — Together AI at $0.18/clip saves 62% vs Higgsfield
+        with good I2V results.</li>
+      <li><b>For self-hosted</b> — RunPod Wan2.2 at ~$0.10/clip saves 60% with different quality.</li>
+      <li><b>SceneForge's value is workflow</b> — consistent characters, multi-ref composition,
+        project organization, generation history, and provider flexibility.
+        Cost is competitive with Kling; for Seedance volume, Higgsfield's bundle is hard to beat.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>What you get</h2>
+  <div class="ruler">
+    <div class="step">
+      <span class="tc">free</span>
+      <div><h3>SceneForge software</h3>
+      <p>Open source. No license fee. Deploy on Railway ($5/mo) or self-host.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">pay</span>
+      <div><h3>AI generation only</h3>
+      <p>You pay the API provider (Together AI or RunPod) directly for each image and clip.
+      No markup. Costs tracked per artifact in the Studio.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">own</span>
+      <div><h3>Your data, your keys</h3>
+      <p>API keys stored in your profile. Generated media on your volume.
+      No vendor lock-in — switch providers anytime.</p></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <span>Pricing based on published API rates as of July 2026. Actual costs depend on usage patterns.</span>
+  <span><a href="https://github.com/ahmedkhaledmohamed/SceneForge">source on GitHub</a></span>
+</footer>
+
+</div>
+</body>
+</html>

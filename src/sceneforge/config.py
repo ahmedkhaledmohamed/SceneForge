@@ -227,6 +227,7 @@ SHOT_TYPES = {
 }
 
 
+
 def recommend_model(shot_type: str = "", budget_remaining: float | None = None,
                     fallback: str = DEFAULT_VIDEO_MODEL) -> str:
     """Pick the best video model for a shot type and budget."""

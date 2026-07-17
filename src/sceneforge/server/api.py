@@ -465,6 +465,8 @@ def make_router(home: Path) -> APIRouter:
                            "clip_speed", "crossfade"):
             if field_name in payload:
                 setattr(project.settings, field_name, payload[field_name])
+        if "auto_enhance" in payload:
+            project.settings.auto_enhance = bool(payload["auto_enhance"])
         project.save()
         return project_doc(project, prof, slug, profile=profile)
 
@@ -533,6 +535,18 @@ def make_router(home: Path) -> APIRouter:
         return {"deleted": index}
 
     # ----------------------------------------------------------- scenes
+
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/enhance-prompt")
+    def enhance_scene_prompt(prof: str, slug: str, sid: str):
+        from ..prompts import enhance_prompt
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        try:
+            enhanced = enhance_prompt(project, scene, profile=profile)
+        except Exception as exc:
+            raise _err(500, "enhance_failed", str(exc))
+        return {"enhanced_prompt": enhanced, "original": scene.description}
 
     @router.post("/profiles/{prof}/projects/{slug}/brainstorm")
     def brainstorm(prof: str, slug: str, payload: dict):
@@ -887,7 +901,10 @@ def make_router(home: Path) -> APIRouter:
             model=payload.get("model") or project.settings.video_model,
         )
         clip.seconds = int(payload.get("seconds", 5))
-        clip.shot_type = (payload.get("shot_type") or "").strip()
+        shot_type = (payload.get("shot_type") or "").strip()
+        if shot_type and shot_type not in config.SHOT_TYPES:
+            raise _err(400, "invalid", f"Unknown shot type '{shot_type}'")
+        clip.shot_type = shot_type
         project.save()
         return asdict(clip)
 
@@ -1020,7 +1037,10 @@ def make_router(home: Path) -> APIRouter:
         if "seconds" in payload:
             clip.seconds = int(payload["seconds"])
         if "shot_type" in payload:
-            clip.shot_type = (payload["shot_type"] or "").strip()
+            st = (payload["shot_type"] or "").strip()
+            if st and st not in config.SHOT_TYPES:
+                raise _err(400, "invalid", f"Unknown shot type '{st}'")
+            clip.shot_type = st
         project.save()
         return asdict(clip)
 
