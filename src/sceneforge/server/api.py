@@ -1316,6 +1316,201 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return asdict(clip)
 
+    # --------------------------------------------------------- produce
+
+    @router.post("/profiles/{prof}/projects/{slug}/produce",
+                 status_code=202)
+    def produce(prof: str, slug: str, payload: dict):
+        """Full pipeline: generate images → auto-select → create & generate clips."""
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        if not project.scenes:
+            raise _err(400, "invalid", "Project has no scenes")
+
+        image_model = payload.get("image_model") or project.settings.image_model
+        video_model = payload.get("video_model") or project.settings.video_model
+        seconds = int(payload.get("seconds", 5))
+
+        try:
+            config.resolve_model(image_model, "image")
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+        if video_model != "auto":
+            try:
+                config.resolve_model(video_model, "video")
+            except ValueError as exc:
+                raise _err(400, "invalid", str(exc))
+
+        # Budget estimate
+        options = project.settings.image_options
+        scenes_needing_images = [
+            sc for sc in project.scenes if len(sc.images) < options
+        ]
+        images_needed = sum(
+            max(0, options - len(sc.images)) for sc in scenes_needing_images
+        )
+        img_price = config.MODELS.get(image_model, {}).get("price", 0)
+        vid_price = config.MODELS.get(video_model, {}).get("price", 0) if video_model != "auto" else 0
+        # Scenes that will eventually need clips: those without a completed
+        # project-level clip whose source is their selected image.
+        completed_sources = set()
+        for c in project.clips:
+            if c.status == "completed":
+                for src in c.source_images:
+                    completed_sources.add(src)
+        clip_eligible = 0
+        for sc in project.scenes:
+            if sc.selected_image is not None:
+                img_file = sc.images[sc.selected_image].file
+                if img_file not in completed_sources:
+                    clip_eligible += 1
+            elif sc.images:
+                # Will be auto-selected, then needs clip
+                img_file = sc.images[0].file
+                if img_file not in completed_sources:
+                    clip_eligible += 1
+            elif images_needed > 0:
+                # Will get images generated, auto-selected, then needs clip
+                clip_eligible += 1
+
+        estimated_cost = images_needed * img_price + clip_eligible * vid_price
+        current_spend = sum(
+            img.meta.get("cost_usd", 0)
+            for sc in project.scenes for img in sc.images
+        ) + sum(c.meta.get("cost_usd", 0) for c in project.clips)
+
+        if project.budget_usd > 0 and current_spend + estimated_cost > project.budget_usd:
+            raise _err(400, "budget",
+                       f"Produce would exceed budget "
+                       f"(${current_spend:.2f} spent + ~${estimated_cost:.2f} = "
+                       f"${current_spend + estimated_cost:.2f}, "
+                       f"budget: ${project.budget_usd:.2f})")
+
+        def job(log, bg_job):
+            # Stage 1/3: Generate images for scenes that need them
+            log("Stage 1/3: Generating images...")
+            todo = ops.plan_images(project.scenes, options, force=False)
+            if todo:
+                bg_job.progress("images", completed=0, total=3)
+                total_images = sum(n for _, n in todo)
+                log(f"  {len(todo)} scene(s), {total_images} image(s) to generate")
+                ops.run_images(project, todo, image_model, log=log, profile=profile)
+            else:
+                log("  all scenes already have images")
+
+            # Stage 2/3: Auto-select first image for unselected scenes
+            log("Stage 2/3: Auto-selecting...")
+            bg_job.progress("select", completed=1, total=3)
+            selected_count = 0
+            for sc in project.scenes:
+                if sc.selected_image is None and sc.images:
+                    sc.selected_image = 0
+                    selected_count += 1
+            if selected_count:
+                project.save()
+                log(f"  auto-selected {selected_count} scene(s)")
+            else:
+                log("  all scenes already have selections")
+
+            # Stage 3/3: Create and generate clips
+            log("Stage 3/3: Generating clips...")
+            bg_job.progress("clips", completed=2, total=3)
+
+            # Reload completed sources after stages 1-2
+            clip_completed_sources = set()
+            for c in project.clips:
+                if c.status == "completed":
+                    for src in c.source_images:
+                        clip_completed_sources.add(src)
+
+            eligible = []
+            default_model = project.settings.video_model
+            for sc in project.scenes:
+                if sc.selected_image is None:
+                    continue
+                img_file = sc.images[sc.selected_image].file
+                if img_file in clip_completed_sources:
+                    continue
+                eligible.append((sc, img_file))
+
+            if not eligible:
+                log("  all scenes already have clips")
+            else:
+                log(f"  {len(eligible)} clip(s) to generate")
+                from ..backends import get_video_backend
+                created_clips = []
+                for sc, img_file in eligible:
+                    clip = project.add_clip(
+                        source_images=[img_file],
+                        prompt="",
+                        model=video_model,
+                    )
+                    clip.seconds = seconds
+                    created_clips.append(clip)
+                project.save()
+
+                for i, clip in enumerate(created_clips):
+                    clip_model = clip.model
+                    if clip_model == "auto":
+                        spent = (
+                            sum(img.meta.get("cost_usd", 0)
+                                for s in project.scenes for img in s.images)
+                            + sum(c.meta.get("cost_usd", 0) for c in project.clips)
+                        )
+                        budget_left = (project.budget_usd - spent) if project.budget_usd > 0 else None
+                        clip_model = config.recommend_model(
+                            shot_type=clip.shot_type,
+                            budget_remaining=budget_left,
+                            fallback=default_model)
+                        clip.model = clip_model
+                        log(f"  {clip.id}: auto -> {clip_model}")
+                    resolved = config.resolve_model(clip_model, "video")
+                    backend = get_video_backend(clip_model, log)
+                    image = (project.root / clip.source_images[0]) if clip.source_images else None
+                    out = project.clips_dir / f"{clip.id}.mp4"
+                    out.parent.mkdir(parents=True, exist_ok=True)
+                    prompt = clip.prompt or "gentle motion"
+                    log(f"  {clip.id}: generating ({clip_model})...")
+                    try:
+                        result = backend.generate_clip(
+                            prompt, out, image=image,
+                            seconds=clip.seconds or None,
+                            width=project.settings.width,
+                            height=project.settings.height,
+                            timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
+                        )
+                        clip.file = str(out.relative_to(project.root))
+                        clip.status = "completed"
+                        clip.duration_s = result.duration_s
+                        clip.meta = result.meta
+                        if "cost_usd" not in clip.meta:
+                            clip.meta["cost_usd"] = config.MODELS.get(clip_model, {}).get("price", 0)
+                        bg_job.results.append({
+                            "clip_id": clip.id, "status": "ok",
+                        })
+                        log(f"  {clip.id}: done ({result.duration_s:.1f}s)")
+                    except Exception as exc:
+                        clip.status = "failed"
+                        clip.error = str(exc)
+                        bg_job.results.append({
+                            "clip_id": clip.id, "status": "failed",
+                            "error": str(exc),
+                        })
+                        log(f"  {clip.id}: FAILED -- {exc}")
+                    project.save()
+
+            bg_job.progress("done", completed=3, total=3)
+            log("Produce complete.")
+
+        return {
+            **start_job_or_409(prof, slug, "produce (full pipeline)", job),
+            "estimate": {
+                "images": images_needed,
+                "clips": clip_eligible,
+                "cost_usd": round(estimated_cost, 4),
+            },
+        }
+
     # --------------------------------------------------- export / stitch
 
     @router.post("/profiles/{prof}/projects/{slug}/export")
