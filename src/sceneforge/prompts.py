@@ -151,6 +151,134 @@ def compose_prompt(project: Project, scene: Scene, profile=None,
     return ". ".join(cleaned) + "."
 
 
+# --------------------------------------------------------------- captions
+
+CAPTION_SYSTEM = (
+    "You are a social media copywriter. Given a content concept and scene "
+    "descriptions, write a post caption with hashtags. Output JSON: "
+    '{"caption": "...", "hashtags": ["..."], "cta": "..."}'
+)
+
+CAPTION_PLATFORM_GUIDANCE = {
+    "instagram": "Write a longer, storytelling caption (2-4 sentences). Include 15-25 hashtags.",
+    "tiktok": "Write a short, punchy caption (1 sentence max). Include 3-5 trending hashtags.",
+    "youtube": "Write a descriptive caption for a YouTube Short (2-3 sentences). Include 5-10 hashtags.",
+    "pinterest": "Write an SEO-friendly description (2-3 sentences). Include 5-10 keyword-rich hashtags.",
+}
+
+CAPTION_TONE_GUIDANCE = {
+    "playful": "Use a playful, fun, emoji-friendly tone.",
+    "professional": "Use a polished, professional tone. Minimal emojis.",
+    "casual": "Use a relaxed, conversational tone.",
+    "minimal": "Use a minimal, clean aesthetic. Very few words.",
+}
+
+CAPTION_USER = """Concept: {concept}
+
+Scenes:
+{scene_lines}
+
+{product_lines}Platform: {platform}
+{platform_guidance}
+{tone_guidance}
+Write a caption for this content. Return only the JSON object."""
+
+
+def generate_caption(
+    concept: str,
+    scene_descriptions: list[str],
+    product_refs: list[dict],
+    platform: str = "instagram",
+    tone: str = "playful",
+    model: str | None = None,
+) -> dict:
+    """Call the LLM to produce a social-media caption with hashtags."""
+    from .config import DEFAULT_LLM_MODEL, TOGETHER_BASE_URL, together_api_key
+    from openai import OpenAI
+
+    model = model or DEFAULT_LLM_MODEL
+    client = OpenAI(api_key=together_api_key(), base_url=TOGETHER_BASE_URL)
+
+    scene_lines = "\n".join(
+        f"- {desc}" for desc in scene_descriptions if desc.strip()
+    ) or "- (no scenes yet)"
+
+    product_lines = ""
+    if product_refs:
+        lines = []
+        for ref in product_refs:
+            label = ref.get("label", "")
+            url = ref.get("url", "")
+            if label and url:
+                lines.append(f"- {label}: {url}")
+            elif label:
+                lines.append(f"- {label}")
+        if lines:
+            product_lines = "Products (include shop links in CTA):\n" + "\n".join(lines) + "\n\n"
+
+    platform_guidance = CAPTION_PLATFORM_GUIDANCE.get(platform, CAPTION_PLATFORM_GUIDANCE["instagram"])
+    tone_guidance = CAPTION_TONE_GUIDANCE.get(tone, CAPTION_TONE_GUIDANCE["playful"])
+
+    user_prompt = CAPTION_USER.format(
+        concept=concept,
+        scene_lines=scene_lines,
+        product_lines=product_lines,
+        platform=platform,
+        platform_guidance=platform_guidance,
+        tone_guidance=tone_guidance,
+    )
+
+    messages = [
+        {"role": "system", "content": CAPTION_SYSTEM},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    last_error = None
+    for _ in range(2):
+        response = client.chat.completions.create(
+            model=model, messages=messages, temperature=0.7,
+        )
+        raw = response.choices[0].message.content
+        try:
+            return _parse_caption(raw)
+        except ValueError as exc:
+            last_error = exc
+            messages.append({"role": "assistant", "content": raw})
+            messages.append({
+                "role": "user",
+                "content": f"That was invalid ({exc}). Output only the JSON object.",
+            })
+    raise ValueError(f"Caption generation failed after retry: {last_error}")
+
+
+def _parse_caption(raw: str) -> dict:
+    """Extract and validate caption JSON from an LLM response."""
+    import json
+    import re
+
+    text = raw.strip()
+    fence = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL)
+    if fence:
+        text = fence.group(1).strip()
+    if not text.startswith("{"):
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if not match:
+            raise ValueError(f"No JSON object found in: {raw[:200]}")
+        text = match.group(0)
+
+    data = json.loads(text)
+    caption = (data.get("caption") or "").strip()
+    if not caption:
+        raise ValueError("Caption text is empty")
+    hashtags = data.get("hashtags", [])
+    if not isinstance(hashtags, list):
+        hashtags = []
+    hashtags = [str(h).strip().lstrip("#") for h in hashtags if str(h).strip()]
+    cta = (data.get("cta") or "").strip()
+
+    return {"caption": caption, "hashtags": hashtags, "cta": cta}
+
+
 # ---------------------------------------------------------------- shot list
 
 SHOT_LIST_SYSTEM = (

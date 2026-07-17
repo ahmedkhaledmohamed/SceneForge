@@ -1747,6 +1747,194 @@ function SequenceTab({ prof, slug, project, refresh, busy }: {
           ))}
         </>
       )}
+
+      <CaptionSection prof={prof} slug={slug} project={project} refresh={refresh} busy={busy} />
+    </>
+  );
+}
+
+
+function CaptionSection({ prof, slug, project, refresh, busy }: {
+  prof: string; slug: string; project: Project; refresh: () => void; busy: boolean;
+}) {
+  const [platform, setPlatform] = useState("instagram");
+  const [tone, setTone] = useState("playful");
+  const [editedCaption, setEditedCaption] = useState("");
+  const [editedHashtags, setEditedHashtags] = useState<string[]>([]);
+  const [editedCta, setEditedCta] = useState("");
+  const [activePlatform, setActivePlatform] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const captions = project.captions ?? {};
+  const platforms = ["instagram", "tiktok", "youtube", "pinterest"];
+  const tones = ["playful", "professional", "casual", "minimal"];
+
+  // Sync local state when a caption is loaded or generated
+  useEffect(() => {
+    if (activePlatform && captions[activePlatform]) {
+      const c = captions[activePlatform];
+      setEditedCaption(c.caption);
+      setEditedHashtags(c.hashtags);
+      setEditedCta(c.cta);
+    }
+  }, [activePlatform, captions]);
+
+  // Show first available caption on mount
+  useEffect(() => {
+    if (!activePlatform) {
+      const first = Object.keys(captions)[0];
+      if (first) setActivePlatform(first);
+    }
+  }, [captions, activePlatform]);
+
+  const generate = useMutation({
+    mutationFn: () => api.generateCaption(prof, slug, { platform, tone }),
+    onSuccess: (data) => {
+      toastOk(`${platform} caption generated`);
+      setActivePlatform(platform);
+      setEditedCaption(data.caption);
+      setEditedHashtags(data.hashtags);
+      setEditedCta(data.cta);
+      refresh();
+    },
+    onError: (e) => toastError(String(e)),
+  });
+
+  const deleteCaption = useMutation({
+    mutationFn: (p: string) => api.deleteCaption(prof, slug, p),
+    onSuccess: (_data, p) => {
+      toastOk(`${p} caption deleted`);
+      if (activePlatform === p) {
+        setActivePlatform(null);
+        setEditedCaption("");
+        setEditedHashtags([]);
+        setEditedCta("");
+      }
+      refresh();
+    },
+    onError: (e) => toastError(String(e)),
+  });
+
+  const removeHashtag = (index: number) => {
+    setEditedHashtags((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const copyToClipboard = async () => {
+    const hashtags = editedHashtags.map((h) => `#${h}`).join(" ");
+    const text = [editedCaption, "", hashtags, editedCta ? `\n${editedCta}` : ""]
+      .filter(Boolean)
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toastError("Failed to copy");
+    }
+  };
+
+  return (
+    <>
+      <h3 style={{ marginTop: 24 }}>Caption</h3>
+
+      <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <select value={platform} onChange={(e) => setPlatform(e.target.value)}>
+          {platforms.map((p) => (
+            <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+          ))}
+        </select>
+        <select value={tone} onChange={(e) => setTone(e.target.value)}>
+          {tones.map((t) => (
+            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => generate.mutate()}
+          disabled={busy || generate.isPending || !project.concept}
+          title={!project.concept ? "Set a concept first" : ""}
+        >
+          {generate.isPending ? "Generating..." : "Generate caption"}
+        </button>
+      </div>
+
+      {Object.keys(captions).length > 0 && (
+        <div className="row" style={{ gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+          {Object.keys(captions).map((p) => (
+            <button
+              key={p}
+              className={activePlatform === p ? "btn" : "ghost"}
+              onClick={() => setActivePlatform(p)}
+              style={{ fontSize: "0.82rem" }}
+            >
+              {p.charAt(0).toUpperCase() + p.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activePlatform && captions[activePlatform] && (
+        <div className="card" style={{ padding: 16 }}>
+          <div className="row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+            <b style={{ textTransform: "capitalize" }}>{activePlatform}</b>
+            <div className="row" style={{ gap: 6 }}>
+              <button
+                className="ghost"
+                onClick={copyToClipboard}
+                style={{ fontSize: "0.82rem" }}
+              >
+                {copied ? "Copied!" : "Copy to clipboard"}
+              </button>
+              <button
+                className="ghost"
+                style={{ color: "var(--danger, #c44)", fontSize: "0.82rem" }}
+                onClick={() => deleteCaption.mutate(activePlatform)}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+
+          <textarea
+            value={editedCaption}
+            onChange={(e) => setEditedCaption(e.target.value)}
+            rows={4}
+            style={{ width: "100%", resize: "vertical", marginBottom: 8 }}
+          />
+
+          <div style={{ marginBottom: 8 }}>
+            <span className="muted" style={{ fontSize: "0.78rem", marginBottom: 4, display: "block" }}>
+              Hashtags
+            </span>
+            <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+              {editedHashtags.map((tag, i) => (
+                <span
+                  key={`${tag}-${i}`}
+                  className="pill"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => removeHashtag(i)}
+                  title="Click to remove"
+                >
+                  #{tag} x
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {editedCta && (
+            <div>
+              <span className="muted" style={{ fontSize: "0.78rem", marginBottom: 4, display: "block" }}>
+                CTA
+              </span>
+              <input
+                type="text"
+                value={editedCta}
+                onChange={(e) => setEditedCta(e.target.value)}
+                style={{ width: "100%" }}
+              />
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }

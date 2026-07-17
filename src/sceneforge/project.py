@@ -165,6 +165,7 @@ class Project:
     scenes: list[Scene] = field(default_factory=list)
     clips: list[Clip] = field(default_factory=list)
     sequence: list[str] = field(default_factory=list)
+    captions: dict = field(default_factory=dict)
     notes: str = ""
     budget_usd: float = 0.0
     schema_version: int = SCHEMA_VERSION
@@ -324,6 +325,7 @@ class Project:
             scenes=scenes,
             clips=project_clips,
             sequence=data.get("sequence", []),
+            captions=data.get("captions", {}),
             notes=data.get("notes", ""),
             schema_version=SCHEMA_VERSION,
             root=root,
