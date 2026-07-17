@@ -213,6 +213,19 @@ export const api = {
   direct: (prof: string, slug: string, body: unknown) =>
     request<{ started: string; estimate: { num_scenes: number; images: number; clips: number; cost_usd: number } }>(
       `${p(prof, slug)}/direct`, json(body)),
+  // sequence
+  getSequence: (prof: string, slug: string) =>
+    request<{ sequence: { id: string; file: string; model: string; duration_s: number | null; kept: boolean; status: string }[]; total_duration: number }>(
+      `${p(prof, slug)}/sequence`),
+  setSequence: (prof: string, slug: string, clipIds: string[]) =>
+    request(`${p(prof, slug)}/sequence`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clip_ids: clipIds }),
+    }),
+  renderSequence: (prof: string, slug: string) =>
+    request(`${p(prof, slug)}/sequence/render`, { method: "POST" }),
+
   stitch: (prof: string, slug: string) =>
     request(`${p(prof, slug)}/stitch`, { method: "POST" }),
   export: (prof: string, slug: string) =>

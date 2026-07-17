@@ -106,6 +106,7 @@ export interface Project {
   refs: ReferenceImage[];
   scenes: Scene[];
   clips: ProjectClip[];
+  sequence: string[];
   job: Job | null;
   spent_usd: number;
   notes: string;

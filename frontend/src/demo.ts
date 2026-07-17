@@ -100,6 +100,7 @@ export const DEMO_PROJECT: Project = {
     { id: "clip-01", source_images: ["images/scene-01/opt-1.png"], prompt: "gentle sway", model: "kling-2.1", seconds: 5, file: "clips/clip-01.mp4", status: "completed" as const, error: null, duration_s: 5.0, created_at: "2026-07-10T10:05:00Z", meta: { cost_usd: 0.18 }, kept: true },
     { id: "clip-02", source_images: ["images/scene-02/opt-2.png"], prompt: "slow turn", model: "kling-2.1", seconds: 5, file: "clips/clip-02.mp4", status: "completed" as const, error: null, duration_s: 5.0, created_at: "2026-07-10T10:07:00Z", meta: { cost_usd: 0.18 }, kept: false },
   ],
+  sequence: ["clip-01", "clip-02"],
   job: null,
   spent_usd: 0.84,
   notes: "",

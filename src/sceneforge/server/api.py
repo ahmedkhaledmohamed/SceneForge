@@ -1928,6 +1928,73 @@ def make_router(home: Path) -> APIRouter:
             },
         }
 
+    # -------------------------------------------------------- sequence
+
+    @router.get("/profiles/{prof}/projects/{slug}/sequence")
+    def get_sequence(prof: str, slug: str):
+        project = load_project(prof, slug)
+        clips_by_id = {c.id: c for c in project.clips}
+        items = []
+        for cid in project.sequence:
+            clip = clips_by_id.get(cid)
+            if clip:
+                items.append({
+                    "id": clip.id,
+                    "file": clip.file,
+                    "model": clip.model,
+                    "duration_s": clip.duration_s,
+                    "kept": clip.kept,
+                    "status": clip.status,
+                })
+        total_duration = sum(
+            (it["duration_s"] or 0) for it in items
+        )
+        return {"sequence": items, "total_duration": round(total_duration, 2)}
+
+    @router.put("/profiles/{prof}/projects/{slug}/sequence")
+    def set_sequence(prof: str, slug: str, payload: dict):
+        project = load_project(prof, slug)
+        clip_ids = payload.get("clip_ids", [])
+        if not isinstance(clip_ids, list):
+            raise _err(400, "invalid", "clip_ids must be a list")
+        valid_ids = {c.id for c in project.clips if c.status == "completed"}
+        invalid = [cid for cid in clip_ids if cid not in valid_ids]
+        if invalid:
+            raise _err(400, "invalid",
+                       f"Invalid or non-completed clip IDs: {', '.join(invalid)}")
+        project.sequence = clip_ids
+        project.save()
+        return get_sequence(prof, slug)
+
+    @router.post("/profiles/{prof}/projects/{slug}/sequence/render",
+                 status_code=202)
+    def render_sequence(prof: str, slug: str):
+        from ..stitch import stitch as stitch_clips
+        project = load_project(prof, slug)
+        if not project.sequence:
+            raise _err(400, "invalid", "Sequence is empty")
+        clips_by_id = {c.id: c for c in project.clips}
+        clip_paths = []
+        for cid in project.sequence:
+            clip = clips_by_id.get(cid)
+            if not clip or clip.status != "completed":
+                raise _err(400, "invalid", f"Clip '{cid}' is not completed")
+            clip_paths.append(project.root / clip.file)
+
+        def job(log, _job):
+            out_path = project.output_dir / "sequence.mp4"
+            duration = stitch_clips(
+                clip_paths, out_path,
+                work_dir=project.work_dir,
+                width=project.settings.width,
+                height=project.settings.height,
+                speed=project.settings.clip_speed,
+                fade=project.settings.crossfade,
+            )
+            log(f"sequence rendered: {out_path.name} ({duration:.1f}s)")
+
+        return start_job_or_409(prof, slug, "render sequence", job)
+
     # --------------------------------------------------- export / stitch
 
     @router.post("/profiles/{prof}/projects/{slug}/export")
