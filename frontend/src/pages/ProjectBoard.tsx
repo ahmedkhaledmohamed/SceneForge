@@ -596,7 +596,7 @@ export default function ProjectBoard() {
   const [imageModel, setImageModel] = useState<string | null>(null);
   const [exported, setExported] = useState<string | null>(null);
   const [addingScene, setAddingScene] = useState(false);
-  const [activeTab, setActiveTab] = useState<"scenes" | "clips">("scenes");
+  const [activeTab, setActiveTab] = useState<"scenes" | "clips" | "sequence">("scenes");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
@@ -984,6 +984,13 @@ export default function ProjectBoard() {
           onClick={() => setActiveTab("clips")}
         >
           Clips ({proj.clips.length})
+        </button>
+        <button
+          className={activeTab === "sequence" ? "btn" : "ghost"}
+          style={{ borderRadius: "7px 7px 0 0", borderBottom: "none" }}
+          onClick={() => setActiveTab("sequence")}
+        >
+          Sequence ({proj.sequence.length})
         </button>
       </div>
 
@@ -1551,6 +1558,161 @@ export default function ProjectBoard() {
         </div>
       ))}
       </>}
+
+      {activeTab === "sequence" && <>
+      <SequenceTab prof={prof} slug={slug} project={proj} refresh={refresh} busy={!!busy} />
+      </>}
+    </>
+  );
+}
+
+function SequenceTab({ prof, slug, project, refresh, busy }: {
+  prof: string; slug: string; project: Project; refresh: () => void; busy: boolean;
+}) {
+  const [localSeq, setLocalSeq] = useState<string[]>(project.sequence);
+  const [rendering, setRendering] = useState(false);
+  const seqQuery = useQuery({
+    queryKey: ["sequence", prof, slug],
+    queryFn: () => api.getSequence(prof, slug),
+  });
+
+  useEffect(() => {
+    setLocalSeq(project.sequence);
+  }, [project.sequence]);
+
+  const completedClips = project.clips.filter((c) => c.status === "completed");
+  const clipsById = Object.fromEntries(completedClips.map((c) => [c.id, c]));
+  const inSequence = new Set(localSeq);
+  const available = completedClips.filter((c) => !inSequence.has(c.id));
+
+  const saveSeq = useMutation({
+    mutationFn: (ids: string[]) => api.setSequence(prof, slug, ids),
+    onSuccess: () => { toastOk("sequence saved"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+
+  const doRender = useMutation({
+    mutationFn: () => api.renderSequence(prof, slug),
+    onSuccess: () => { toastOk("rendering started"); setRendering(true); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+
+  const moveItem = (index: number, dir: -1 | 1) => {
+    const next = [...localSeq];
+    const j = index + dir;
+    [next[index], next[j]] = [next[j], next[index]];
+    setLocalSeq(next);
+    saveSeq.mutate(next);
+  };
+
+  const addToSequence = (clipId: string) => {
+    const next = [...localSeq, clipId];
+    setLocalSeq(next);
+    saveSeq.mutate(next);
+  };
+
+  const removeFromSequence = (index: number) => {
+    const next = localSeq.filter((_, i) => i !== index);
+    setLocalSeq(next);
+    saveSeq.mutate(next);
+  };
+
+  const totalDuration = localSeq.reduce((sum, cid) => {
+    const clip = clipsById[cid];
+    return sum + (clip?.duration_s ?? 0);
+  }, 0);
+
+  return (
+    <>
+      <div className="row" style={{ marginBottom: 10, justifyContent: "space-between" }}>
+        <span className="mono muted">
+          {localSeq.length} clip{localSeq.length !== 1 ? "s" : ""} · {totalDuration.toFixed(1)}s total
+        </span>
+        <button
+          onClick={() => doRender.mutate()}
+          disabled={busy || doRender.isPending || localSeq.length === 0}
+        >
+          Render sequence
+        </button>
+      </div>
+
+      {localSeq.length === 0 && (
+        <p className="muted">
+          No clips in sequence yet. Add completed clips from below.
+        </p>
+      )}
+
+      {localSeq.map((cid, idx) => {
+        const clip = clipsById[cid];
+        if (!clip) return null;
+        return (
+          <div key={`${cid}-${idx}`} className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 12px" }}>
+            <span className="mono" style={{ width: 24, textAlign: "center", fontSize: "0.85rem", color: "var(--taupe)" }}>
+              {idx + 1}
+            </span>
+            {clip.file && (
+              <video
+                preload="metadata"
+                src={media(prof, slug, clip.file)}
+                style={{ width: 100, borderRadius: 6, border: "1px solid var(--line)" }}
+              />
+            )}
+            <div style={{ flex: 1 }}>
+              <div className="row" style={{ marginBottom: 4 }}>
+                <b>{clip.id}</b>
+                <span className="pill">{clip.model}</span>
+                {clip.duration_s && <span className="mono muted" style={{ fontSize: "0.72rem" }}>{clip.duration_s.toFixed(1)}s</span>}
+                {clip.kept && <span className="pill gold">kept</span>}
+              </div>
+              {clip.prompt && <p className="muted" style={{ margin: 0, fontSize: "0.78rem" }}>{clip.prompt}</p>}
+            </div>
+            <div className="row" style={{ gap: 4 }}>
+              {idx > 0 && (
+                <button className="ghost" onClick={() => moveItem(idx, -1)} title="move up">^</button>
+              )}
+              {idx < localSeq.length - 1 && (
+                <button className="ghost" onClick={() => moveItem(idx, 1)} title="move down">v</button>
+              )}
+              <button
+                className="ghost"
+                style={{ color: "var(--danger, #c44)" }}
+                onClick={() => removeFromSequence(idx)}
+                title="remove from sequence"
+              >
+                x
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      {available.length > 0 && (
+        <>
+          <h3 style={{ marginTop: 16 }}>Available clips</h3>
+          {available.map((clip) => (
+            <div key={clip.id} className="card" style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 12px", opacity: 0.8 }}>
+              {clip.file && (
+                <video
+                  preload="metadata"
+                  src={media(prof, slug, clip.file)}
+                  style={{ width: 80, borderRadius: 6, border: "1px solid var(--line)" }}
+                />
+              )}
+              <div style={{ flex: 1 }}>
+                <div className="row" style={{ marginBottom: 4 }}>
+                  <b>{clip.id}</b>
+                  <span className="pill">{clip.model}</span>
+                  {clip.duration_s && <span className="mono muted" style={{ fontSize: "0.72rem" }}>{clip.duration_s.toFixed(1)}s</span>}
+                  {clip.kept && <span className="pill gold">kept</span>}
+                </div>
+              </div>
+              <button className="ghost" onClick={() => addToSequence(clip.id)}>
+                + add
+              </button>
+            </div>
+          ))}
+        </>
+      )}
     </>
   );
 }

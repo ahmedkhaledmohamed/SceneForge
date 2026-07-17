@@ -164,6 +164,7 @@ class Project:
     refs: list[ReferenceImage] = field(default_factory=list)
     scenes: list[Scene] = field(default_factory=list)
     clips: list[Clip] = field(default_factory=list)
+    sequence: list[str] = field(default_factory=list)
     notes: str = ""
     budget_usd: float = 0.0
     schema_version: int = SCHEMA_VERSION
@@ -322,6 +323,7 @@ class Project:
             refs=[ReferenceImage(**r) for r in data.get("refs", [])],
             scenes=scenes,
             clips=project_clips,
+            sequence=data.get("sequence", []),
             notes=data.get("notes", ""),
             schema_version=SCHEMA_VERSION,
             root=root,
