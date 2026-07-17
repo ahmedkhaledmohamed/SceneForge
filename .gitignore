@@ -17,6 +17,7 @@ build/
 *.mp4
 *.png
 !docs/**/*.png
+!site/images/*.png
 
 # Frontend
 frontend/node_modules/
