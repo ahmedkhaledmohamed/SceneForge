@@ -226,6 +226,32 @@ SHOT_TYPES = {
     },
 }
 
+
+
+def recommend_model(shot_type: str = "", budget_remaining: float | None = None,
+                    fallback: str = DEFAULT_VIDEO_MODEL) -> str:
+    """Pick the best video model for a shot type and budget."""
+    if shot_type and shot_type in SHOT_TYPES:
+        recommended = SHOT_TYPES[shot_type]["recommended_video"]
+    else:
+        recommended = fallback
+
+    if recommended not in MODELS:
+        recommended = fallback
+
+    if budget_remaining is not None and budget_remaining < 1.0:
+        cheapest = min(
+            (k for k, m in MODELS.items()
+             if m["kind"] == "video" and k not in ("fake-video",)),
+            key=lambda k: MODELS[k]["price"],
+            default=fallback,
+        )
+        if MODELS.get(recommended, {}).get("price", 0) > MODELS.get(cheapest, {}).get("price", 0):
+            recommended = cheapest
+
+    return recommended
+
+
 ASPECTS = {
     "9:16": (720, 1280),
     "16:9": (1280, 720),

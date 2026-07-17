@@ -1095,6 +1095,7 @@ export default function ProjectBoard() {
             <div className="row">
               <select value={clipModel || proj.settings.video_model}
                       onChange={(e) => setClipModel(e.target.value)}>
+                <option value="auto">Auto (smart routing)</option>
                 {Object.entries(models ?? {})
                   .filter(([, m]) => m.kind === "video")
                   .map(([key, m]) => (
@@ -1103,6 +1104,11 @@ export default function ProjectBoard() {
                     </option>
                   ))}
               </select>
+              {(clipModel || proj.settings.video_model) === "auto" && clipShotType && shotTypes?.[clipShotType] && (
+                <span className="mono muted" style={{ fontSize: "0.68rem" }}>
+                  → {shotTypes[clipShotType].recommended_video}
+                </span>
+              )}
               <label style={{ margin: 0 }}>Length</label>
               <select value={clipSeconds} onChange={(e) => setClipSeconds(Number(e.target.value))}>
                 <option value={3}>3s</option>

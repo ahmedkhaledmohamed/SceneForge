@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SceneForge — AI video production studio</title>
+<meta name="description" content="One pipeline from concept to finished short-form video, with one consistent look. AI video production studio with multi-reference image composition and clip generation.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=Fragment+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="site-header">
+  <a class="wordmark" href="index.html">Scene<span class="spark">Forge</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="architecture.html">Architecture</a>
+    <a href="getting-started.html">Getting started</a>
+    <a href="pricing.html">Pricing</a>
+    <a href="https://github.com/ahmedkhaledmohamed/SceneForge">GitHub</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="hero no-rule">
+  <p class="eyebrow">AI video production studio</p>
+  <h1>Concept to final cut,<br>one consistent look.</h1>
+  <p class="lede">SceneForge turns a concept into a finished short-form video. Add reference images to a
+  scene, generate AI-composed images, create video clips with configurable duration and motion —
+  all from a web-based Studio. A project-level <em>style anchor</em> keeps every scene visually
+  consistent without manual prompt engineering.</p>
+
+  <div class="filmstrip" id="filmstrip" aria-label="A scene moving through the SceneForge pipeline">
+    <div class="frame" data-stage="0">
+      <div class="canvas c1">"steam rises from a ceramic mug"</div>
+      <div class="slate">01 · scene text</div>
+    </div>
+    <div class="frame" data-stage="1">
+      <div class="canvas c2"></div>
+      <div class="slate">02 · image options</div>
+    </div>
+    <div class="frame" data-stage="2">
+      <div class="canvas c3"></div>
+      <div class="slate">03 · selected still</div>
+    </div>
+    <div class="frame" data-stage="3">
+      <div class="canvas c4">▶ 5.0s</div>
+      <div class="slate">04 · i2v clip</div>
+    </div>
+    <div class="frame" data-stage="4" style="flex-basis: 240px">
+      <div class="canvas c5">▶ final.mp4 · 720×1280</div>
+      <div class="slate">05 · stitched cut</div>
+    </div>
+  </div>
+  <p class="anchor-line">style anchor · <b>"warm golden hour light through windows, muted earth
+  tones, amber, cream"</b> — prepended to every prompt above, automatically.</p>
+
+  <div class="hero-cta">
+    <a class="btn" href="getting-started.html">Make your first video</a>
+    <a class="btn ghost" href="architecture.html">See how it works</a>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Why it exists</p>
+  <h2>Prompt-by-prompt generation drifts.<br>Projects shouldn't.</h2>
+  <p class="lede">Generate six scenes as six independent prompts and each one finds its own
+  palette, its own light, its own lens. SceneForge captures mood, palette, and lighting once
+  at project creation and composes them into every image and video prompt. Per-scene overrides
+  stay possible; drift doesn't.</p>
+
+  <div class="compare">
+    <div class="col drift">
+      <h3>Six prompts, no anchor</h3>
+      <div class="strip">
+        <div class="mini m1"></div><div class="mini m2"></div>
+        <div class="mini m3"></div><div class="mini m4"></div>
+      </div>
+      <p class="verdict">four scenes, four color scripts</p>
+    </div>
+    <div class="col anchored">
+      <h3>Six prompts, one anchor</h3>
+      <div class="strip">
+        <div class="mini m1"></div><div class="mini m2"></div>
+        <div class="mini m3"></div><div class="mini m4"></div>
+      </div>
+      <p class="verdict">different scenes, same light</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">The workflow</p>
+  <h2>Profile → scene → done.</h2>
+  <div class="ruler">
+    <div class="step">
+      <span class="tc">once</span>
+      <div><h3>Create a profile + character</h3>
+      <p>A profile is your brand — style defaults and recurring characters with reference images.
+      Characters are global: update the refs once, every project uses them.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">00:00</span>
+      <div><h3>New project + scenes</h3>
+      <p>One project per post. Add scenes — each one is a visual moment with its own
+      reference images. Drop photos directly onto scene cards.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">00:01</span>
+      <div><h3>Generate images</h3>
+      <p>Multi-reference image composition: character refs + scene refs → composed image.
+      Multiple options per scene. Brainstorm scenes with an LLM, or describe them manually.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">00:05</span>
+      <div><h3>Refine + select</h3>
+      <p>Compare images side by side. Refine with prompt editing, model swapping,
+      or regeneration. Cost shown before each operation. Keyboard shortcuts (1/2/3) to select.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">00:06</span>
+      <div><h3>Create clips</h3>
+      <p>Clips are separate from scenes — pick a start image (and optionally an end image)
+      from any scene, set model + duration + motion prompt, generate. Download directly.</p></div>
+    </div>
+    <div class="step">
+      <span class="tc">00:10</span>
+      <div><h3>Download + edit</h3>
+      <p>Download clips directly to your device. Import into your video editor,
+      add music, publish.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="eyebrow">Models</p>
+  <h2>Pick the model per run,<br>see the price before you spend.</h2>
+  <p class="lede">Model choice is a workflow decision, not a config constant. Three providers —
+  Together AI for images, OpenRouter for cheap Seedance clips, RunPod for self-hosted —
+  swap per generation, fall back automatically when a provider is down.</p>
+  <table>
+    <thead><tr><th>Model</th><th>Kind</th><th>Provider</th><th>Price</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">flux-schnell</td><td>image</td><td><span class="tag hosted">Together AI</span></td><td>$0.003</td></tr>
+      <tr><td class="mono">flux-2-pro</td><td>image (8 refs)</td><td><span class="tag hosted">Together AI</span></td><td>$0.03</td></tr>
+      <tr><td class="mono">nano-banana-pro</td><td>image (14 refs)</td><td><span class="tag hosted">Together AI</span></td><td>$0.134</td></tr>
+      <tr><td class="mono">seedance-1.5-pro</td><td>video</td><td><span class="tag hosted" style="background:#2a4">OpenRouter</span></td><td>$0.12 / clip</td></tr>
+      <tr><td class="mono">seedance-2.0</td><td>video</td><td><span class="tag hosted" style="background:#2a4">OpenRouter</span></td><td>$0.34 / clip</td></tr>
+      <tr><td class="mono">kling-2.1</td><td>video</td><td><span class="tag hosted">Together AI</span></td><td>$0.18 / clip</td></tr>
+      <tr><td class="mono">runpod-flux</td><td>image</td><td><span class="tag selfhosted">RunPod (self-hosted)</span></td><td>~$0.005</td></tr>
+      <tr><td class="mono">runpod-wan-i2v</td><td>video (720p)</td><td><span class="tag selfhosted">RunPod (self-hosted)</span></td><td>~$0.10 / clip</td></tr>
+      <tr><td class="mono">fake-image / fake-video</td><td>both</td><td><span class="tag test">test (ffmpeg)</span></td><td>$0</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <p class="eyebrow">Simple storage</p>
+  <h2>A project is a folder.</h2>
+  <p class="lede">No complex database — profiles and projects are plain directories with
+  <span class="mono">profile.json</span> and <span class="mono">project.json</span> next to your media.
+  Deploy on Railway, run locally, or self-host anywhere with Docker.</p>
+  <div class="term" role="img" aria-label="A SceneForge home directory tree">
+<pre style="margin:0">~/SceneForge/
+└── my-brand/
+    ├── profile.json              <span class="out">← style defaults, character refs</span>
+    ├── refs/characters/pchar-1/  <span class="out">← shared character reference photos</span>
+    └── projects/spring-look/
+        ├── project.json          <span class="out">← scenes, clips, refs, prompt history</span>
+        ├── refs/scenes/scene-01/ <span class="out">← reference images per scene</span>
+        ├── images/scene-01/      <span class="out">← generated image options</span>
+        └── clips/                <span class="out">← generated video clips (downloadable)</span></pre>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <span>SceneForge — built for a real content workflow, shared as one.</span>
+  <span><a href="https://github.com/ahmedkhaledmohamed/SceneForge">github.com/ahmedkhaledmohamed/SceneForge</a></span>
+</footer>
+
+</div>
+
+<script>
+// The filmstrip lights up frame by frame, like the pipeline running.
+(function () {
+  const frames = document.querySelectorAll("#filmstrip .frame");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) { frames.forEach(f => f.classList.add("lit")); return; }
+  let i = 0;
+  function tick() {
+    if (i < frames.length) { frames[i++].classList.add("lit"); setTimeout(tick, 550); }
+    else setTimeout(() => { frames.forEach(f => f.classList.remove("lit")); i = 0; setTimeout(tick, 700); }, 3800);
+  }
+  setTimeout(tick, 500);
+})();
+</script>
+</body>
+</html>

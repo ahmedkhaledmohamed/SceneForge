@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started — SceneForge</title>
+<meta name="description" content="Get started with SceneForge: create a profile, add scenes with reference images, generate AI-composed images and video clips.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=Fragment+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap steps-page">
+
+<header class="site-header">
+  <a class="wordmark" href="index.html">Scene<span class="spark">Forge</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="architecture.html">Architecture</a>
+    <a href="getting-started.html" aria-current="page">Getting started</a>
+    <a href="pricing.html">Pricing</a>
+    <a href="https://github.com/ahmedkhaledmohamed/SceneForge">GitHub</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="no-rule" style="padding-top: 40px; padding-bottom: 24px">
+  <p class="eyebrow">Getting started</p>
+  <h1>First video in<br>ten minutes.</h1>
+  <p class="lede">SceneForge runs as a web app. Deploy on Railway or run locally.
+  You'll need a <a href="https://api.together.ai">Together AI</a> key for images and an
+  <a href="https://openrouter.ai/keys">OpenRouter</a> key for cheap Seedance video clips.
+  See <a href="pricing.html">pricing</a> for a full cost breakdown.</p>
+</section>
+
+<h2 id="deploy"><span class="n">1</span>Deploy</h2>
+<p>Connect the repo to <a href="https://railway.app">Railway</a>, add a volume at <span class="mono">/data</span>,
+set <span class="mono">TOGETHER_API_KEY</span> and <span class="mono">SCENEFORGE_PASSWORD</span> in variables. Done.</p>
+<div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="cmt"># Or run locally:</span>
+<span class="ps1">$</span> git clone https://github.com/ahmedkhaledmohamed/SceneForge.git && cd SceneForge
+<span class="ps1">$</span> pip install -e . && brew install ffmpeg
+<span class="ps1">$</span> sceneforge studio</pre></div>
+
+<h2 id="profile"><span class="n">2</span>Create a profile</h2>
+<p>A profile is your brand — style defaults and recurring characters with reference images.
+Go to Settings to enter your API key. Characters are global: update the refs once, every project uses them.</p>
+
+<h2 id="concepts"><span class="n">3</span>How reference images work</h2>
+<p>Each scene owns its reference images. Profile characters are shared across all scenes.</p>
+<div class="term" role="img"><pre style="margin:0"><b>Profile character</b> (recurring subject) → sent to every scene using that character
+       ↓
+<b>Scene refs</b> (product photos, style)    → owned by the scene, dropped onto the card
+       ↓
+<b>Project refs</b> (shared background)      → sent to ALL scenes (optional)
+       ↓
+<b>AI generation</b> = character + scene refs + project refs + scene text → image</pre></div>
+
+<h2 id="scenes"><span class="n">4</span>Create a project + scenes</h2>
+<p>One project per post or video. Add scenes — each one describes a visual moment.
+Drop reference images directly onto the scene card when creating it, or add them after.</p>
+
+<h2 id="generate"><span class="n">5</span>Generate images</h2>
+<p>Each scene has its own "Generate images" button with model picker and cost estimate.
+Multi-reference composition uses character refs + scene refs to produce the image.
+Multiple options per scene — click to view full size, then select the best.</p>
+
+<h2 id="refine"><span class="n">6</span>Refine</h2>
+<p>Click "refine" on a scene to edit the prompt, pose, or model. Regenerating creates
+a new lane — you see the full history of attempts. Use generated images from one
+scene as references in another for iterative refinement.</p>
+
+<h2 id="clips"><span class="n">7</span>Create clips</h2>
+<p>Switch to the <b>Clips</b> tab. Click "+ clip" → pick a start image from any scene,
+optionally an end image (the AI interpolates between them). Set duration (3-10s),
+model, and motion prompt. Use <span class="mono">seedance-1.5-pro</span> via OpenRouter
+for the best value ($0.12/clip). Generate, download, import into your editor.</p>
+
+<h2 id="free"><span class="n">8</span>Try for free</h2>
+<p>The <span class="mono">fake</span> models run the entire pipeline for $0 — real files, zero API cost.
+Good for testing the workflow before spending.</p>
+
+<h2 id="selfhost"><span class="n">9</span>Optional: self-hosted GPU</h2>
+<p><span class="mono">runpod-wan-i2v</span> runs Wan2.2-TI2V-5B on a rented RTX 4090 —
+~$0.10/clip vs $0.18 hosted. See
+<a href="https://github.com/ahmedkhaledmohamed/SceneForge/tree/main/runpod-worker">runpod-worker/README.md</a>
+for the setup runbook.</p>
+
+</main>
+
+<footer class="footer">
+  <span>Stuck? The <a href="architecture.html">architecture page</a> explains every moving part.</span>
+  <span><a href="https://github.com/ahmedkhaledmohamed/SceneForge">source on GitHub</a></span>
+</footer>
+
+</div>
+
+<script>
+for (const btn of document.querySelectorAll("[data-copy]")) {
+  btn.addEventListener("click", async () => {
+    const pre = btn.parentElement.querySelector("pre");
+    const text = [...pre.childNodes]
+      .map(n => n.textContent)
+      .join("")
+      .split("\n")
+      .filter(line => line.startsWith("$ "))
+      .map(line => line.slice(2))
+      .join("\n") || pre.textContent;
+    await navigator.clipboard.writeText(text);
+    btn.textContent = "copied";
+    setTimeout(() => (btn.textContent = "copy"), 1500);
+  });
+}
+</script>
+</body>
+</html>
