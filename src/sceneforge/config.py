@@ -187,6 +187,70 @@ DEFAULT_LLM_MODEL = os.environ.get(
 VIDEO_POLL_INTERVAL_S = 5
 VIDEO_TIMEOUT_S = 600
 
+SHOT_TYPES = {
+    "hero": {
+        "label": "Hero shot",
+        "description": "Key product or character moment — highest quality",
+        "color": "#d4a04a",
+        "recommended_video": "seedance-2.0-or",
+    },
+    "detail": {
+        "label": "Detail / Close-up",
+        "description": "Tight on product details, textures, accessories",
+        "color": "#5b9bd5",
+        "recommended_video": "seedance-1.5-pro",
+    },
+    "transition": {
+        "label": "Transition",
+        "description": "Scene change, pan, or connecting shot",
+        "color": "#888888",
+        "recommended_video": "kling-2.1",
+    },
+    "broll": {
+        "label": "B-roll",
+        "description": "Ambient, atmosphere, background movement",
+        "color": "#6baa75",
+        "recommended_video": "kling-2.1",
+    },
+    "wide": {
+        "label": "Wide / Establishing",
+        "description": "Full scene, setting, or environment",
+        "color": "#9b72aa",
+        "recommended_video": "kling-2.1",
+    },
+    "overhead": {
+        "label": "Overhead / Flat lay",
+        "description": "Top-down product arrangement",
+        "color": "#c47a5a",
+        "recommended_video": "kling-2.1",
+    },
+}
+
+
+def recommend_model(shot_type: str = "", budget_remaining: float | None = None,
+                    fallback: str = DEFAULT_VIDEO_MODEL) -> str:
+    """Pick the best video model for a shot type and budget."""
+    if shot_type and shot_type in SHOT_TYPES:
+        recommended = SHOT_TYPES[shot_type]["recommended_video"]
+    else:
+        recommended = fallback
+
+    if recommended not in MODELS:
+        recommended = fallback
+
+    if budget_remaining is not None and budget_remaining < 1.0:
+        cheapest = min(
+            (k for k, m in MODELS.items()
+             if m["kind"] == "video" and k not in ("fake-video",)),
+            key=lambda k: MODELS[k]["price"],
+            default=fallback,
+        )
+        if MODELS.get(recommended, {}).get("price", 0) > MODELS.get(cheapest, {}).get("price", 0):
+            recommended = cheapest
+
+    return recommended
+
+
 ASPECTS = {
     "9:16": (720, 1280),
     "16:9": (1280, 720),

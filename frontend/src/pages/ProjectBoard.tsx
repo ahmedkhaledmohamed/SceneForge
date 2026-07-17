@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, media } from "../api";
@@ -545,7 +545,9 @@ export default function ProjectBoard() {
   const [clipPrompt, setClipPrompt] = useState("");
   const [clipModel, setClipModel] = useState("");
   const [clipSeconds, setClipSeconds] = useState(5);
+  const [clipShotType, setClipShotType] = useState("");
   const { data: models } = useModels();
+  const { data: shotTypes } = useQuery({ queryKey: ["shot-types"], queryFn: api.shotTypes, staleTime: Infinity });
 
   const generateAll = useMutation({
     mutationFn: () =>
@@ -1028,10 +1030,19 @@ export default function ProjectBoard() {
             <input value={clipPrompt} onChange={(e) => setClipPrompt(e.target.value)}
                    placeholder="e.g. gentle sway, slow turn, walk forward"
                    style={{ width: "100%" }} />
+            <label>Shot type</label>
+            <select value={clipShotType} onChange={(e) => setClipShotType(e.target.value)}
+                    style={{ marginBottom: 6 }}>
+              <option value="">none</option>
+              {Object.entries(shotTypes ?? {}).map(([key, st]) => (
+                <option key={key} value={key}>{st.label}</option>
+              ))}
+            </select>
             <label>Video model</label>
             <div className="row">
               <select value={clipModel || proj.settings.video_model}
                       onChange={(e) => setClipModel(e.target.value)}>
+                <option value="auto">Auto (smart routing)</option>
                 {Object.entries(models ?? {})
                   .filter(([, m]) => m.kind === "video")
                   .map(([key, m]) => (
@@ -1040,6 +1051,11 @@ export default function ProjectBoard() {
                     </option>
                   ))}
               </select>
+              {(clipModel || proj.settings.video_model) === "auto" && clipShotType && shotTypes?.[clipShotType] && (
+                <span className="mono muted" style={{ fontSize: "0.68rem" }}>
+                  → {shotTypes[clipShotType].recommended_video}
+                </span>
+              )}
               <label style={{ margin: 0 }}>Length</label>
               <select value={clipSeconds} onChange={(e) => setClipSeconds(Number(e.target.value))}>
                 <option value={3}>3s</option>
@@ -1060,6 +1076,7 @@ export default function ProjectBoard() {
                   prompt: clipPrompt,
                   model: clipModel || proj.settings.video_model,
                   seconds: clipSeconds,
+                  shot_type: clipShotType || undefined,
                 }).then(() => {
                   setCreatingClip(false);
                   setClipStartImage("");
@@ -1067,6 +1084,7 @@ export default function ProjectBoard() {
                   setClipPrompt("");
                   setClipModel("");
                   setClipSeconds(5);
+                  setClipShotType("");
                   refresh();
                 }).catch((e) => toastError(String(e)));
               }}>create clip</button>
@@ -1085,6 +1103,12 @@ export default function ProjectBoard() {
             <div style={{ flex: 1 }}>
               <div className="row" style={{ marginBottom: 6 }}>
                 <b>{clip.id}</b>
+                {clip.shot_type && shotTypes?.[clip.shot_type] && (
+                  <span className="pill" style={{
+                    borderColor: shotTypes[clip.shot_type].color,
+                    color: shotTypes[clip.shot_type].color,
+                  }}>{shotTypes[clip.shot_type].label}</span>
+                )}
                 <span className="pill">{clip.model}</span>
                 <span className="pill">{clip.seconds}s</span>
                 {clip.source_images.length > 1 && <span className="pill gold">start + end</span>}
@@ -1126,6 +1150,17 @@ export default function ProjectBoard() {
               )}
 
               <div className="row">
+                <select
+                  className="mono"
+                  style={{ fontSize: "0.68rem", padding: "3px 6px", width: "auto" }}
+                  value={clip.shot_type || ""}
+                  onChange={(e) => api.patchClip(prof, slug, clip.id, { shot_type: e.target.value }).then(refresh).catch((err) => toastError(String(err)))}
+                >
+                  <option value="">type…</option>
+                  {Object.entries(shotTypes ?? {}).map(([key, st]) => (
+                    <option key={key} value={key}>{st.label}</option>
+                  ))}
+                </select>
                 {clip.status === "completed" && (
                   <>
                     <button

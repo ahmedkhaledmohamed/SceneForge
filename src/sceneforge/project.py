@@ -121,6 +121,7 @@ class Clip:
     created_at: str = field(default_factory=now_iso)
     meta: dict = field(default_factory=dict)
     kept: bool = False
+    shot_type: str = ""
 
 
 @dataclass
