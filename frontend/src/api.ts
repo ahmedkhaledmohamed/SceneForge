@@ -1,4 +1,4 @@
-import type { HistoryRow, Job, ModelInfo, PlatformSpec, ProfileDoc, ProfileSummary, Project, ProjectSummary, ShotListItem, ShotTypeInfo } from "./types";
+import type { CaptionResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileDoc, ProfileSummary, Project, ProjectSummary, ShotListItem, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -214,6 +214,14 @@ export const api = {
   direct: (prof: string, slug: string, body: unknown) =>
     request<{ started: string; estimate: { num_scenes: number; images: number; clips: number; cost_usd: number } }>(
       `${p(prof, slug)}/direct`, json(body)),
+  // captions
+  generateCaption: (prof: string, slug: string, body: { platform: string; tone: string }) =>
+    request<CaptionResult>(`${p(prof, slug)}/generate-caption`, json(body)),
+  getCaptions: (prof: string, slug: string) =>
+    request<Record<string, CaptionResult>>(`${p(prof, slug)}/captions`),
+  deleteCaption: (prof: string, slug: string, platform: string) =>
+    request(`${p(prof, slug)}/captions/${platform}`, { method: "DELETE" }),
+
   // sequence
   getSequence: (prof: string, slug: string) =>
     request<{ sequence: { id: string; file: string; model: string; duration_s: number | null; kept: boolean; status: string }[]; total_duration: number }>(

@@ -89,6 +89,12 @@ export interface ShotListItem {
   prompt: string;
 }
 
+export interface CaptionResult {
+  caption: string;
+  hashtags: string[];
+  cta: string;
+}
+
 export interface Project {
   slug: string;
   profile: string;
@@ -107,6 +113,7 @@ export interface Project {
   scenes: Scene[];
   clips: ProjectClip[];
   sequence: string[];
+  captions: Record<string, CaptionResult>;
   job: Job | null;
   spent_usd: number;
   notes: string;

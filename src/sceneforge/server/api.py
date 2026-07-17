@@ -1995,6 +1995,54 @@ def make_router(home: Path) -> APIRouter:
 
         return start_job_or_409(prof, slug, "render sequence", job)
 
+    # --------------------------------------------------------- captions
+
+    @router.post("/profiles/{prof}/projects/{slug}/generate-caption")
+    def generate_caption_endpoint(prof: str, slug: str, payload: dict):
+        from ..prompts import generate_caption
+        project = load_project(prof, slug)
+        if not project.concept:
+            raise _err(400, "invalid", "Project has no concept")
+
+        platform = (payload.get("platform") or "instagram").strip().lower()
+        tone = (payload.get("tone") or "playful").strip().lower()
+
+        scene_descriptions = [sc.description for sc in project.scenes]
+        product_refs = []
+        for sc in project.scenes:
+            for ref in sc.refs:
+                if ref.url:
+                    product_refs.append({"label": ref.label, "url": ref.url})
+
+        try:
+            result = generate_caption(
+                concept=project.concept,
+                scene_descriptions=scene_descriptions,
+                product_refs=product_refs,
+                platform=platform,
+                tone=tone,
+            )
+        except Exception as exc:
+            raise _err(500, "caption_failed", str(exc))
+
+        project.captions[platform] = result
+        project.save()
+        return result
+
+    @router.get("/profiles/{prof}/projects/{slug}/captions")
+    def get_captions(prof: str, slug: str):
+        project = load_project(prof, slug)
+        return project.captions
+
+    @router.delete("/profiles/{prof}/projects/{slug}/captions/{platform}")
+    def delete_caption(prof: str, slug: str, platform: str):
+        project = load_project(prof, slug)
+        if platform not in project.captions:
+            raise _err(404, "not_found", f"No caption for '{platform}'")
+        del project.captions[platform]
+        project.save()
+        return {"deleted": platform}
+
     # --------------------------------------------------- export / stitch
 
     @router.post("/profiles/{prof}/projects/{slug}/export")
