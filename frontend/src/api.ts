@@ -1,4 +1,4 @@
-import type { HistoryRow, Job, ModelInfo, ProfileDoc, ProfileSummary, Project, ProjectSummary, ShotTypeInfo } from "./types";
+import type { HistoryRow, Job, ModelInfo, ProfileDoc, ProfileSummary, Project, ProjectSummary, ShotListItem, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -125,6 +125,10 @@ export const api = {
       `${p(prof, slug)}/scenes/${sid}/enhance-prompt`, { method: "POST" }),
   brainstorm: (prof: string, slug: string, body: unknown) =>
     request<{ descriptions: string[] }>(`${p(prof, slug)}/brainstorm`, json(body)),
+  generateShotList: (prof: string, slug: string, body: unknown) =>
+    request<{ shots: ShotListItem[] }>(`${p(prof, slug)}/generate-shot-list`, json(body)),
+  applyShotList: (prof: string, slug: string, body: unknown) =>
+    request(`${p(prof, slug)}/apply-shot-list`, json(body)),
   addScenesBulk: (prof: string, slug: string, body: unknown) =>
     request(`${p(prof, slug)}/scenes/bulk`, json(body)),
   addScene: (prof: string, slug: string, body: unknown) =>

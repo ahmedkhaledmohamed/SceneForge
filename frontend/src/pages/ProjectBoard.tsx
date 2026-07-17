@@ -8,7 +8,7 @@ import { toastError, toastOk } from "../components/toast";
 import { DEMO_PROJECT } from "../demo";
 import { useIsDemo } from "../DemoContext";
 import { useInvalidateProject, useModels, useProject } from "../hooks";
-import type { Character, Project, Scene } from "../types";
+import type { Character, Project, Scene, ShotListItem } from "../types";
 
 function ModelPicker({ kind, value, onChange }: {
   kind: "image" | "video"; value: string; onChange: (v: string) => void;
@@ -600,6 +600,7 @@ export default function ProjectBoard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
+  const [shotListResults, setShotListResults] = useState<ShotListItem[] | null>(null);
   const [clipCount, setClipCount] = useState(2);
   const [creatingClip, setCreatingClip] = useState(false);
   const [clipStartImage, setClipStartImage] = useState("");
@@ -683,6 +684,20 @@ export default function ProjectBoard() {
     mutationFn: (descriptions: string[]) =>
       api.addScenesBulk(prof, slug, { descriptions, character_id: defaultChar || undefined }),
     onSuccess: () => { setBrainstormResults(null); toastOk("scenes added"); refresh(); },
+    onError: (e) => toastError(String(e)),
+  });
+  const shotList = useMutation({
+    mutationFn: () => api.generateShotList(prof, slug, { num_scenes: 8 }),
+    onSuccess: (data) => setShotListResults(data.shots),
+    onError: (e) => toastError(String(e)),
+  });
+  const applyShotList = useMutation({
+    mutationFn: (shots: ShotListItem[]) =>
+      api.applyShotList(prof, slug, {
+        shots,
+        character_id: defaultChar || undefined,
+      }),
+    onSuccess: () => { setShotListResults(null); toastOk("scenes added from shot list"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
   const selectAll = useMutation({
@@ -929,6 +944,11 @@ export default function ProjectBoard() {
             {brainstorm.isPending ? "thinking…" : "brainstorm"}
           </button>
         )}
+        {proj.concept && (
+          <button className="ghost" onClick={() => shotList.mutate()} disabled={busy || shotList.isPending}>
+            {shotList.isPending ? "generating…" : "shot list"}
+          </button>
+        )}
         {imagesNeeded > 0 && (
           <button
             onClick={() => batchScenes.mutate()}
@@ -974,6 +994,98 @@ export default function ProjectBoard() {
               add {brainstormResults.filter((d) => d.trim()).length} scenes
             </button>
             <button className="ghost" onClick={() => setBrainstormResults(null)}>cancel</button>
+          </div>
+        </div>
+      )}
+
+      {shotListResults && (
+        <div className="card">
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <b>Shot list ({shotListResults.length} shots)</b>
+            <button className="ghost" onClick={() => setShotListResults(null)}>dismiss</button>
+          </div>
+          <p className="muted">Review, edit, reorder, or remove shots. Click "apply" to create scenes.</p>
+          {shotListResults.map((shot, i) => (
+            <div key={i} className="card" style={{ marginBottom: 8, padding: "8px 12px" }}>
+              <div className="row" style={{ justifyContent: "space-between", marginBottom: 4 }}>
+                <div className="row" style={{ gap: 6, alignItems: "center" }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, textTransform: "uppercase",
+                    padding: "1px 6px", borderRadius: 4,
+                    background: "var(--surface, #333)", color: "var(--fg, #eee)",
+                  }}>
+                    {shot.shot_type}
+                  </span>
+                  {i > 0 && (
+                    <button className="ghost" style={{ fontSize: 11, padding: "0 4px" }}
+                      onClick={() => {
+                        const next = [...shotListResults];
+                        [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                        setShotListResults(next);
+                      }}>↑</button>
+                  )}
+                  {i < shotListResults.length - 1 && (
+                    <button className="ghost" style={{ fontSize: 11, padding: "0 4px" }}
+                      onClick={() => {
+                        const next = [...shotListResults];
+                        [next[i], next[i + 1]] = [next[i + 1], next[i]];
+                        setShotListResults(next);
+                      }}>↓</button>
+                  )}
+                </div>
+                <button
+                  className="ghost"
+                  style={{ color: "var(--red, #c44)" }}
+                  onClick={() => setShotListResults(shotListResults.filter((_, j) => j !== i))}
+                >
+                  ×
+                </button>
+              </div>
+              <input
+                value={shot.description}
+                onChange={(e) => {
+                  const next = [...shotListResults];
+                  next[i] = { ...next[i], description: e.target.value };
+                  setShotListResults(next);
+                }}
+                style={{ width: "100%", marginBottom: 4 }}
+                placeholder="Description"
+              />
+              <div className="row" style={{ gap: 8 }}>
+                <input
+                  value={shot.composition}
+                  onChange={(e) => {
+                    const next = [...shotListResults];
+                    next[i] = { ...next[i], composition: e.target.value };
+                    setShotListResults(next);
+                  }}
+                  style={{ flex: 1 }}
+                  placeholder="Composition"
+                />
+                <select
+                  value={shot.shot_type}
+                  onChange={(e) => {
+                    const next = [...shotListResults];
+                    next[i] = { ...next[i], shot_type: e.target.value };
+                    setShotListResults(next);
+                  }}
+                  style={{ width: 120 }}
+                >
+                  {["hero", "detail", "transition", "broll", "wide", "overhead"].map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          ))}
+          <div className="row" style={{ marginTop: 10 }}>
+            <button
+              onClick={() => applyShotList.mutate(shotListResults.filter((s) => s.description.trim()))}
+              disabled={applyShotList.isPending}
+            >
+              apply {shotListResults.filter((s) => s.description.trim()).length} shots
+            </button>
+            <button className="ghost" onClick={() => setShotListResults(null)}>cancel</button>
           </div>
         </div>
       )}

@@ -82,6 +82,13 @@ export interface ShotTypeInfo {
   recommended_video: string;
 }
 
+export interface ShotListItem {
+  description: string;
+  composition: string;
+  shot_type: string;
+  prompt: string;
+}
+
 export interface Project {
   slug: string;
   profile: string;
