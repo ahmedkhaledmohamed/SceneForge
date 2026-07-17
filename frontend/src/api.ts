@@ -1,4 +1,4 @@
-import type { HistoryRow, Job, ModelInfo, ProfileDoc, ProfileSummary, Project, ProjectSummary, ShotListItem, ShotTypeInfo } from "./types";
+import type { HistoryRow, Job, ModelInfo, PlatformSpec, ProfileDoc, ProfileSummary, Project, ProjectSummary, ShotListItem, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -64,6 +64,7 @@ function p(prof: string, slug: string) {
 export const api = {
   models: () => request<Record<string, ModelInfo>>("/models"),
   shotTypes: () => request<Record<string, ShotTypeInfo>>("/shot-types"),
+  platforms: () => request<Record<string, PlatformSpec>>("/platforms"),
 
   // profiles
   profiles: () => request<ProfileSummary[]>("/profiles"),
@@ -235,6 +236,35 @@ export const api = {
   history: (prof: string, slug: string, params = "") =>
     request<HistoryRow[]>(`${p(prof, slug)}/history${params}`),
 };
+
+export async function exportForPlatform(prof: string, slug: string, platform: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (_authToken) headers["Authorization"] = `Bearer ${_authToken}`;
+  const response = await fetch(
+    `${API_BASE}/profiles/${prof}/projects/${slug}/export/${platform}`,
+    { method: "POST", headers },
+  );
+  if (!response.ok) {
+    let message = response.statusText;
+    try {
+      const body = await response.json();
+      message = body?.error?.message ?? body?.detail?.message ?? message;
+    } catch { /* not json */ }
+    throw new Error(message);
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const match = disposition.match(/filename=(.+)/);
+  const filename = match ? match[1] : `${slug}-${platform}.mp4`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export const media = (prof: string, slug: string, file: string) =>
   `${API_BASE}/profiles/${prof}/projects/${slug}/media/${file}`;
