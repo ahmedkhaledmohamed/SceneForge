@@ -1554,6 +1554,220 @@ def make_router(home: Path) -> APIRouter:
             },
         }
 
+    # ---------------------------------------------------------- direct
+
+    @router.post("/profiles/{prof}/projects/{slug}/direct",
+                 status_code=202)
+    def direct(prof: str, slug: str, payload: dict):
+        """AI Director: concept → shot list → images → auto-select → clips."""
+        from ..prompts import generate_shot_list
+
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        if not project.concept:
+            raise _err(400, "invalid", "Project has no concept — set one first")
+
+        num_scenes = int(payload.get("num_scenes", 8))
+        image_model = payload.get("image_model") or project.settings.image_model
+        video_model = payload.get("video_model") or project.settings.video_model
+        seconds = int(payload.get("seconds", 5))
+        character_id = payload.get("character_id")
+
+        try:
+            config.resolve_model(image_model, "image")
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+        if video_model != "auto":
+            try:
+                config.resolve_model(video_model, "video")
+            except ValueError as exc:
+                raise _err(400, "invalid", str(exc))
+
+        # Budget estimate: num_scenes images + num_scenes clips
+        options = project.settings.image_options
+        img_price = config.MODELS.get(image_model, {}).get("price", 0)
+        vid_price = config.MODELS.get(video_model, {}).get("price", 0) if video_model != "auto" else 0
+        images_needed = num_scenes * options
+        estimated_cost = images_needed * img_price + num_scenes * vid_price
+        current_spend = sum(
+            img.meta.get("cost_usd", 0)
+            for sc in project.scenes for img in sc.images
+        ) + sum(c.meta.get("cost_usd", 0) for c in project.clips)
+
+        if project.budget_usd > 0 and current_spend + estimated_cost > project.budget_usd:
+            raise _err(400, "budget",
+                       f"Director would exceed budget "
+                       f"(${current_spend:.2f} spent + ~${estimated_cost:.2f} = "
+                       f"${current_spend + estimated_cost:.2f}, "
+                       f"budget: ${project.budget_usd:.2f})")
+
+        def job(log, bg_job):
+            # Stage 1/5: Generate shot list from concept
+            log("Stage 1/5: Planning shot list...")
+            bg_job.progress("shot-list", completed=0, total=5)
+            style_anchor = project.style.anchor or ""
+            character_desc = ""
+            if character_id:
+                try:
+                    char = profile.find_character(character_id)
+                    character_desc = (
+                        f"{char.name} ({char.description})"
+                        if char.description else char.name
+                    )
+                except (KeyError, Exception):
+                    pass
+            shots = generate_shot_list(
+                project.concept,
+                style_anchor=style_anchor,
+                character_desc=character_desc,
+                num_scenes=num_scenes,
+            )
+            log(f"  planned {len(shots)} shots")
+
+            # Stage 2/5: Create scenes from the shot list
+            log("Stage 2/5: Creating scenes...")
+            bg_job.progress("scenes", completed=1, total=5)
+            for shot in shots:
+                desc = (shot.get("description") or "").strip()
+                if desc:
+                    project.add_scene(desc, character_id=character_id)
+            project.save()
+            log(f"  created {len(project.scenes)} scenes")
+
+            # Stage 3/5: Generate images for all scenes
+            log("Stage 3/5: Generating images...")
+            bg_job.progress("images", completed=2, total=5)
+            todo = ops.plan_images(project.scenes, options, force=False)
+            if todo:
+                total_images = sum(n for _, n in todo)
+                log(f"  {len(todo)} scene(s), {total_images} image(s) to generate")
+                ops.run_images(project, todo, image_model, log=log,
+                               profile=profile)
+            else:
+                log("  all scenes already have images")
+
+            # Stage 4/5: Auto-select first image per scene
+            log("Stage 4/5: Auto-selecting...")
+            bg_job.progress("select", completed=3, total=5)
+            selected_count = 0
+            for sc in project.scenes:
+                if sc.selected_image is None and sc.images:
+                    sc.selected_image = 0
+                    selected_count += 1
+            if selected_count:
+                project.save()
+                log(f"  auto-selected {selected_count} scene(s)")
+            else:
+                log("  all scenes already have selections")
+
+            # Stage 5/5: Create and generate clips
+            log("Stage 5/5: Generating clips...")
+            bg_job.progress("clips", completed=4, total=5)
+
+            clip_completed_sources = set()
+            for c in project.clips:
+                if c.status == "completed":
+                    for src in c.source_images:
+                        clip_completed_sources.add(src)
+
+            eligible = []
+            default_model = project.settings.video_model
+            for sc in project.scenes:
+                if sc.selected_image is None:
+                    continue
+                img_file = sc.images[sc.selected_image].file
+                if img_file in clip_completed_sources:
+                    continue
+                eligible.append((sc, img_file))
+
+            if not eligible:
+                log("  all scenes already have clips")
+            else:
+                log(f"  {len(eligible)} clip(s) to generate")
+                from ..backends import get_video_backend
+                created_clips = []
+                for sc, img_file in eligible:
+                    clip = project.add_clip(
+                        source_images=[img_file],
+                        prompt="",
+                        model=video_model,
+                    )
+                    clip.seconds = seconds
+                    created_clips.append(clip)
+                project.save()
+
+                for i, clip in enumerate(created_clips):
+                    clip_model = clip.model
+                    if clip_model == "auto":
+                        spent = (
+                            sum(img.meta.get("cost_usd", 0)
+                                for s in project.scenes for img in s.images)
+                            + sum(c.meta.get("cost_usd", 0)
+                                  for c in project.clips)
+                        )
+                        budget_left = (
+                            (project.budget_usd - spent)
+                            if project.budget_usd > 0 else None
+                        )
+                        clip_model = config.recommend_model(
+                            shot_type=clip.shot_type,
+                            budget_remaining=budget_left,
+                            fallback=default_model)
+                        clip.model = clip_model
+                        log(f"  {clip.id}: auto -> {clip_model}")
+                    resolved = config.resolve_model(clip_model, "video")
+                    backend = get_video_backend(clip_model, log)
+                    image = (
+                        (project.root / clip.source_images[0])
+                        if clip.source_images else None
+                    )
+                    out = project.clips_dir / f"{clip.id}.mp4"
+                    out.parent.mkdir(parents=True, exist_ok=True)
+                    prompt = clip.prompt or "gentle motion"
+                    log(f"  {clip.id}: generating ({clip_model})...")
+                    try:
+                        result = backend.generate_clip(
+                            prompt, out, image=image,
+                            seconds=clip.seconds or None,
+                            width=project.settings.width,
+                            height=project.settings.height,
+                            timeout_s=resolved.get("timeout_s",
+                                                   config.VIDEO_TIMEOUT_S),
+                        )
+                        clip.file = str(out.relative_to(project.root))
+                        clip.status = "completed"
+                        clip.duration_s = result.duration_s
+                        clip.meta = result.meta
+                        if "cost_usd" not in clip.meta:
+                            clip.meta["cost_usd"] = config.MODELS.get(
+                                clip_model, {}).get("price", 0)
+                        bg_job.results.append({
+                            "clip_id": clip.id, "status": "ok",
+                        })
+                        log(f"  {clip.id}: done ({result.duration_s:.1f}s)")
+                    except Exception as exc:
+                        clip.status = "failed"
+                        clip.error = str(exc)
+                        bg_job.results.append({
+                            "clip_id": clip.id, "status": "failed",
+                            "error": str(exc),
+                        })
+                        log(f"  {clip.id}: FAILED -- {exc}")
+                    project.save()
+
+            bg_job.progress("done", completed=5, total=5)
+            log("Director complete.")
+
+        return {
+            **start_job_or_409(prof, slug, "direct (AI director)", job),
+            "estimate": {
+                "num_scenes": num_scenes,
+                "images": images_needed,
+                "clips": num_scenes,
+                "cost_usd": round(estimated_cost, 4),
+            },
+        }
+
     # --------------------------------------------------- export / stitch
 
     @router.post("/profiles/{prof}/projects/{slug}/export")
