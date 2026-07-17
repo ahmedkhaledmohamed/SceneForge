@@ -456,6 +456,8 @@ def make_router(home: Path) -> APIRouter:
                            "clip_speed", "crossfade"):
             if field_name in payload:
                 setattr(project.settings, field_name, payload[field_name])
+        if "auto_enhance" in payload:
+            project.settings.auto_enhance = bool(payload["auto_enhance"])
         project.save()
         return project_doc(project, prof, slug, profile=profile)
 
@@ -524,6 +526,18 @@ def make_router(home: Path) -> APIRouter:
         return {"deleted": index}
 
     # ----------------------------------------------------------- scenes
+
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/enhance-prompt")
+    def enhance_scene_prompt(prof: str, slug: str, sid: str):
+        from ..prompts import enhance_prompt
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        try:
+            enhanced = enhance_prompt(project, scene, profile=profile)
+        except Exception as exc:
+            raise _err(500, "enhance_failed", str(exc))
+        return {"enhanced_prompt": enhanced, "original": scene.description}
 
     @router.post("/profiles/{prof}/projects/{slug}/brainstorm")
     def brainstorm(prof: str, slug: str, payload: dict):

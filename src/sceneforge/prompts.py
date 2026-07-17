@@ -1,4 +1,4 @@
-"""Style-context prompt composition.
+"""Style-context prompt composition and LLM-powered prompt enhancement.
 
 The project-level style anchor is prepended to every generation so all
 scenes share one visual language — the core consistency mechanism.
@@ -11,6 +11,70 @@ order ops.py sends them: character refs first, then item photos.
 """
 
 from .project import Project, Scene
+
+ENHANCE_SYSTEM = (
+    "You are a prompt engineer for AI image generation models (FLUX, Stable Diffusion). "
+    "Given a scene description and context, expand it into a detailed, high-quality "
+    "generation prompt. Rules:\n"
+    "- Keep the user's original intent and subject\n"
+    "- Add specific composition, lighting, color, and detail guidance\n"
+    "- Include camera angle and framing if not specified\n"
+    "- Maintain the style anchor's visual language\n"
+    "- Mention garments/outfits by name if provided\n"
+    "- Output ONLY the enhanced prompt text, nothing else — no quotes, "
+    "no explanation, no markdown"
+)
+
+ENHANCE_USER = """Style anchor: {anchor}
+Scene description: {description}
+{character_line}{garment_line}{suffix_line}
+Enhance this into a detailed image generation prompt (40-80 words)."""
+
+
+def enhance_prompt(project: Project, scene: Scene, profile=None) -> str:
+    """Call the LLM to expand a short scene description into a detailed
+    image generation prompt, using the scene's context."""
+    from .config import DEFAULT_LLM_MODEL, TOGETHER_BASE_URL, together_api_key
+
+    anchor = scene.style_override or project.style.anchor
+    character_line = ""
+    if scene.character_id:
+        try:
+            from .profile import resolve_character
+            char, _ = resolve_character(project, profile, scene.character_id)
+            desc = f" ({char.description})" if char.description else ""
+            character_line = f"Character: {char.name}{desc}\n"
+        except Exception:
+            pass
+
+    garments = [r for r in scene.refs if r.role == "garment" and r.label]
+    garment_line = ""
+    if garments:
+        listing = ", ".join(r.label for r in garments)
+        garment_line = f"Garments: {listing}\n"
+
+    suffix_line = f"Suffix constraints: {project.style.suffix}\n" if project.style.suffix else ""
+
+    user_prompt = ENHANCE_USER.format(
+        anchor=anchor or "(none set)",
+        description=scene.description,
+        character_line=character_line,
+        garment_line=garment_line,
+        suffix_line=suffix_line,
+    )
+
+    from openai import OpenAI
+    client = OpenAI(api_key=together_api_key(), base_url=TOGETHER_BASE_URL)
+    response = client.chat.completions.create(
+        model=DEFAULT_LLM_MODEL,
+        messages=[
+            {"role": "system", "content": ENHANCE_SYSTEM},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.7,
+        max_tokens=200,
+    )
+    return response.choices[0].message.content.strip().strip('"')
 
 DEFAULT_SUFFIX = (
     "photorealistic, cinematic composition, vertical framing, "
@@ -64,9 +128,10 @@ def _garment_clause(project: Project, scene: Scene) -> str | None:
     )
 
 
-def compose_prompt(project: Project, scene: Scene, profile=None) -> str:
+def compose_prompt(project: Project, scene: Scene, profile=None,
+                   enhanced_description: str | None = None) -> str:
     anchor = scene.style_override or project.style.anchor
-    description = scene.description
+    description = enhanced_description or scene.description
     if scene.pose:
         description = f"{description.rstrip('.')}. Pose: {scene.pose}"
     suffix = project.style.suffix

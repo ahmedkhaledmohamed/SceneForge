@@ -51,6 +51,7 @@ function SettingsDialog({ prof, slug, project, onClose, refresh }: {
   const [options, setOptions] = useState(project.settings.image_options);
   const [anchor, setAnchor] = useState(project.style.anchor);
   const [budget, setBudget] = useState(project.budget_usd ?? 0);
+  const [autoEnhance, setAutoEnhance] = useState(project.settings.auto_enhance ?? false);
 
   const save = useMutation({
     mutationFn: () =>
@@ -60,6 +61,7 @@ function SettingsDialog({ prof, slug, project, onClose, refresh }: {
         image_options: options,
         anchor,
         budget_usd: budget,
+        auto_enhance: autoEnhance,
       }),
     onSuccess: () => { toastOk("settings saved"); onClose(); refresh(); },
     onError: (e) => toastError(String(e)),
@@ -80,6 +82,14 @@ function SettingsDialog({ prof, slug, project, onClose, refresh }: {
       <label>Budget (USD, 0 = unlimited)</label>
       <input type="number" min={0} step={1} value={budget}
              onChange={(e) => setBudget(Number(e.target.value))} style={{ width: 80 }} />
+      <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+        <input type="checkbox" checked={autoEnhance}
+               onChange={(e) => setAutoEnhance(e.target.checked)} />
+        Auto-enhance prompts with AI
+      </label>
+      <span className="muted" style={{ fontSize: "0.72rem" }}>
+        Uses LLM to expand scene descriptions before image generation
+      </span>
       <div className="row" style={{ marginTop: 14 }}>
         <button onClick={() => save.mutate()} disabled={save.isPending}>save</button>
         <button className="ghost" onClick={onClose}>cancel</button>
@@ -116,6 +126,24 @@ function RefineDialog({ prof, slug, scene, project, onClose, refresh }: {
     onError: (e) => toastError(String(e)),
   });
 
+  const enhance = useMutation({
+    mutationFn: async () => {
+      if (dirty) {
+        await api.patchScene(prof, slug, scene.id, {
+          description,
+          pose: pose || null,
+          style_override: styleOverride || null,
+        });
+      }
+      return api.enhancePrompt(prof, slug, scene.id);
+    },
+    onSuccess: (data) => {
+      setDescription(data.enhanced_prompt);
+      toastOk("prompt enhanced");
+    },
+    onError: (e) => toastError(String(e)),
+  });
+
   const regen = useMutation({
     mutationFn: async () => {
       if (dirty) {
@@ -138,9 +166,28 @@ function RefineDialog({ prof, slug, scene, project, onClose, refresh }: {
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        rows={2}
+        rows={3}
         style={{ width: "100%" }}
       />
+      <div className="row" style={{ marginTop: 4 }}>
+        <button
+          className="ghost"
+          style={{ fontSize: "0.72rem" }}
+          onClick={() => enhance.mutate()}
+          disabled={enhance.isPending}
+        >
+          {enhance.isPending ? "enhancing…" : "✦ enhance with AI"}
+        </button>
+        {description !== scene.description && (
+          <button
+            className="ghost"
+            style={{ fontSize: "0.72rem" }}
+            onClick={() => setDescription(scene.description)}
+          >
+            revert
+          </button>
+        )}
+      </div>
       <label>Pose / framing</label>
       <input value={pose} onChange={(e) => setPose(e.target.value)} style={{ width: "100%" }} />
       <label>Style override (replaces the project anchor for this scene)</label>
@@ -425,6 +472,7 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
                     <img src={media(prof, slug, img.file)} alt={`option ${globalIdx + 1}`} loading="lazy" />
                     <div className="cap">
                       {scene.selected_image === globalIdx ? "✓ " : ""}opt {globalIdx + 1} · {img.model}
+                      {img.enhanced_prompt && <span style={{ color: "var(--gold)", fontSize: "0.55rem" }}> ✦</span>}
                       <a
                         href={media(prof, slug, img.file)}
                         download

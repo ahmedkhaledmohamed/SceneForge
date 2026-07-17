@@ -12,6 +12,7 @@ export interface ImageArtifact {
   created_at: string;
   meta: Record<string, unknown>;
   generation_id?: string;
+  enhanced_prompt?: string;
 }
 
 export interface ClipArtifact {
@@ -82,6 +83,7 @@ export interface Project {
     video_model: string;
     image_options: number;
     aspect: string;
+    auto_enhance?: boolean;
   };
   characters: Character[];
   refs: ReferenceImage[];
