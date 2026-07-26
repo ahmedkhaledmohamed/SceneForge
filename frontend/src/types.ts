@@ -211,6 +211,38 @@ export interface PlatformSpec {
   codec: string;
 }
 
+export interface ModelStats {
+  images: number;
+  clips: number;
+  clips_kept: number;
+  clips_failed: number;
+  keep_rate: number;
+  success_rate: number;
+  spend_usd: number;
+  cost_per_kept: number | null;
+}
+
+export interface ProfileAnalytics {
+  projects: number;
+  total_images: number;
+  total_clips: number;
+  total_kept: number;
+  total_spend_usd: number;
+  avg_cost_per_kept: number | null;
+  best_value_model: string | null;
+  models: Record<string, ModelStats>;
+  spend_trend: { week: string; spend_usd: number }[];
+}
+
+export interface ProjectAnalytics {
+  total_images: number;
+  total_clips: number;
+  total_kept: number;
+  total_spend_usd: number;
+  avg_cost_per_kept: number | null;
+  models: Record<string, ModelStats>;
+}
+
 export interface HistoryRow {
   type: "image" | "clip";
   scene_id: string;
