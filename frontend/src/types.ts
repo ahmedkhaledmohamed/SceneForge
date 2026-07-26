@@ -89,6 +89,12 @@ export interface ShotListItem {
   prompt: string;
 }
 
+export interface ConsistencyResult {
+  score: number;
+  outliers: { scene_id: string; similarity: number }[];
+  images_scored: number;
+}
+
 export interface Asset {
   id: string;
   file: string;

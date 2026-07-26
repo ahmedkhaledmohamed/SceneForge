@@ -670,6 +670,8 @@ export default function ProjectBoard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
   const [promptLibOpen, setPromptLibOpen] = useState(false);
+  const [consistencyScore, setConsistencyScore] = useState<{score: number; outliers: {scene_id: string; similarity: number}[]} | null>(null);
+  const [scoringBusy, setScoringBusy] = useState(false);
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
   const [shotListResults, setShotListResults] = useState<ShotListItem[] | null>(null);
   const [clipCount, setClipCount] = useState(2);
@@ -918,7 +920,45 @@ export default function ProjectBoard() {
       <p className="muted">
         {proj.concept} · <span className="mono">{proj.style.anchor}</span>
         {proj.spent_usd > 0 && <> · <span className="mono">${proj.spent_usd.toFixed(2)}{proj.budget_usd > 0 ? ` / $${proj.budget_usd.toFixed(0)} budget` : ""}</span></>}
+        {consistencyScore && (() => {
+          const s = consistencyScore.score;
+          const color = s > 0.8 ? "var(--green, #4a4)" : s > 0.6 ? "var(--gold, #daa520)" : "var(--danger, #c44)";
+          return (
+            <> · <span className="pill" style={{ background: color, color: "#fff", fontSize: "0.72rem" }}>
+              consistency {(s * 100).toFixed(0)}%
+            </span>
+            {consistencyScore.outliers.length > 0 && (
+              <span className="muted" style={{ fontSize: "0.72rem" }}>
+                {" "}({consistencyScore.outliers.length} outlier{consistencyScore.outliers.length !== 1 ? "s" : ""})
+              </span>
+            )}
+            </>
+          );
+        })()}
       </p>
+      <div className="row" style={{ marginBottom: 8, gap: 8 }}>
+        {proj.scenes.filter(s => s.selected_image != null).length >= 2 && (
+          <button
+            className="ghost"
+            style={{ fontSize: "0.78rem" }}
+            disabled={scoringBusy}
+            onClick={async () => {
+              setScoringBusy(true);
+              try {
+                const result = await api.scoreConsistency(prof, slug);
+                setConsistencyScore(result);
+                toastOk(`Consistency: ${(result.score * 100).toFixed(0)}%`);
+              } catch (e) {
+                toastError(String(e));
+              } finally {
+                setScoringBusy(false);
+              }
+            }}
+          >
+            {scoringBusy ? "Scoring..." : "Check consistency"}
+          </button>
+        )}
+      </div>
       <JobBanner job={proj.job} onRetry={() => generateAll.mutate()} />
 
       {proj.concept && proj.scenes.length === 0 && (

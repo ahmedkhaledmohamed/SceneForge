@@ -2124,6 +2124,23 @@ def make_router(home: Path) -> APIRouter:
 
         return start_job_or_409(prof, slug, "render sequence", job)
 
+    # ------------------------------------------------ style consistency
+
+    @router.post("/profiles/{prof}/projects/{slug}/score-consistency")
+    def score_consistency_endpoint(prof: str, slug: str):
+        from ..backends.clip_scorer import score_project_consistency
+        project = load_project(prof, slug)
+        profile = load_profile(prof)
+        try:
+            api_key = config.together_api_key(profile)
+        except RuntimeError as exc:
+            raise _err(400, "no_key", str(exc))
+        try:
+            result = score_project_consistency(project, api_key=api_key)
+        except Exception as exc:
+            raise _err(500, "scoring_failed", str(exc))
+        return result
+
     # --------------------------------------------------------- captions
 
     @router.post("/profiles/{prof}/projects/{slug}/generate-caption")
