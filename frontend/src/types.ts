@@ -73,6 +73,13 @@ export interface ProjectClip {
   kept: boolean;
   shot_type?: string;
   upgraded_from?: string;
+  audio_file?: string;
+  audio_type?: string;
+}
+
+export interface AudioTypeInfo {
+  label: string;
+  description: string;
 }
 
 export interface ShotTypeInfo {

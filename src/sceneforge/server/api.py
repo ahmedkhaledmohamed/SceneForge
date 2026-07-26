@@ -1648,6 +1648,68 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return asdict(clip)
 
+    # ----------------------------------------------------------- audio
+
+    @router.get("/audio-types")
+    def list_audio_types():
+        return dict(config.AUDIO_TYPES)
+
+    @router.post("/profiles/{prof}/projects/{slug}/clips/{cid}/add-audio",
+                 status_code=201)
+    async def add_audio(prof: str, slug: str, cid: str,
+                        audio_type: str = Form("ambient"),
+                        file: UploadFile = File(...)):
+        project = load_project(prof, slug)
+        clip = find_or_404(project.find_clip, cid)
+        if audio_type not in config.AUDIO_TYPES:
+            raise _err(400, "invalid",
+                       f"Unknown audio type '{audio_type}'. "
+                       f"Valid: {', '.join(config.AUDIO_TYPES)}")
+        audio_dir = project.clips_dir / "audio"
+        dest = await save_upload(file, audio_dir, kinds=("image", "video"))
+        clip.audio_file = str(dest.relative_to(project.root))
+        clip.audio_type = audio_type
+        project.save()
+        return {"audio_file": clip.audio_file, "audio_type": clip.audio_type}
+
+    @router.post("/profiles/{prof}/projects/{slug}/clips/{cid}/merge-audio")
+    def merge_audio(prof: str, slug: str, cid: str):
+        from ..audio import merge_audio_video
+        project = load_project(prof, slug)
+        clip = find_or_404(project.find_clip, cid)
+        if not clip.audio_file:
+            raise _err(400, "invalid", "Clip has no audio file attached")
+        if not clip.file:
+            raise _err(400, "invalid", "Clip has no video file")
+        video_path = project.root / clip.file
+        audio_path = project.root / clip.audio_file
+        if not video_path.is_file():
+            raise _err(404, "not_found", "Video file missing")
+        if not audio_path.is_file():
+            raise _err(404, "not_found", "Audio file missing")
+        out_name = f"{clip.id}-merged.mp4"
+        out_path = project.clips_dir / out_name
+        try:
+            merge_audio_video(video_path, audio_path, out_path)
+        except RuntimeError as exc:
+            raise _err(500, "merge_failed", str(exc))
+        clip.file = str(out_path.relative_to(project.root))
+        project.save()
+        return {"file": clip.file, "merged": True}
+
+    @router.delete("/profiles/{prof}/projects/{slug}/clips/{cid}/audio")
+    def remove_audio(prof: str, slug: str, cid: str):
+        project = load_project(prof, slug)
+        clip = find_or_404(project.find_clip, cid)
+        if clip.audio_file:
+            audio_path = project.root / clip.audio_file
+            if audio_path.is_file():
+                audio_path.unlink()
+        clip.audio_file = ""
+        clip.audio_type = ""
+        project.save()
+        return {"deleted": cid}
+
     # --------------------------------------------------------- produce
 
     @router.post("/profiles/{prof}/projects/{slug}/produce",

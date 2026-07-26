@@ -126,6 +126,8 @@ class Clip:
     kept: bool = False
     shot_type: str = ""
     upgraded_from: str = ""
+    audio_file: str = ""
+    audio_type: str = ""  # ambient | music | voiceover | none
 
 
 @dataclass
