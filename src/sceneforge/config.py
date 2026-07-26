@@ -178,6 +178,13 @@ MODELS = {
     },
 }
 
+AUDIO_TYPES = {
+    "ambient": {"label": "Ambient", "description": "Background atmosphere and environmental sounds"},
+    "music": {"label": "Music", "description": "Background music or beat"},
+    "voiceover": {"label": "Voiceover", "description": "Spoken narration or dialogue"},
+    "none": {"label": "None", "description": "No audio"},
+}
+
 DEFAULT_IMAGE_MODEL = os.environ.get("SCENEFORGE_IMAGE_MODEL", "flux-schnell")
 DEFAULT_VIDEO_MODEL = os.environ.get("SCENEFORGE_VIDEO_MODEL", "seedance-1.5-pro")
 DEFAULT_LLM_MODEL = os.environ.get(

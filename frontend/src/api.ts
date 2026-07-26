@@ -1,4 +1,4 @@
-import type { Asset, CaptionResult, ConsistencyResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileAnalytics, ProfileDoc, ProfileSummary, Project, ProjectAnalytics, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
+import type { Asset, AudioTypeInfo, CaptionResult, ConsistencyResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileAnalytics, ProfileDoc, ProfileSummary, Project, ProjectAnalytics, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -65,6 +65,7 @@ export const api = {
   models: () => request<Record<string, ModelInfo>>("/models"),
   shotTypes: () => request<Record<string, ShotTypeInfo>>("/shot-types"),
   platforms: () => request<Record<string, PlatformSpec>>("/platforms"),
+  audioTypes: () => request<Record<string, AudioTypeInfo>>("/audio-types"),
 
   // profiles
   profiles: () => request<ProfileSummary[]>("/profiles"),
@@ -240,6 +241,12 @@ export const api = {
     request(`${p(prof, slug)}/clips/${cid}`, { method: "DELETE" }),
   keepClip: (prof: string, slug: string, cid: string, kept: boolean) =>
     request(`${p(prof, slug)}/clips/${cid}/keep`, json({ kept })),
+  addClipAudio: (prof: string, slug: string, cid: string, form: FormData) =>
+    request(`${p(prof, slug)}/clips/${cid}/add-audio`, { method: "POST", body: form }),
+  mergeClipAudio: (prof: string, slug: string, cid: string) =>
+    request(`${p(prof, slug)}/clips/${cid}/merge-audio`, { method: "POST" }),
+  removeClipAudio: (prof: string, slug: string, cid: string) =>
+    request(`${p(prof, slug)}/clips/${cid}/audio`, { method: "DELETE" }),
   produce: (prof: string, slug: string, body: unknown) =>
     request<{ started: string; estimate: { images: number; clips: number; cost_usd: number } }>(
       `${p(prof, slug)}/produce`, json(body)),

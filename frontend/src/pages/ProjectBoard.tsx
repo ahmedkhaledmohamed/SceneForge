@@ -1673,6 +1673,9 @@ export default function ProjectBoard() {
                               border: clip.kept ? "2px solid var(--gold)" : "1px solid var(--line)" }} />
             )}
           </div>
+          {clip.status === "completed" && (
+            <ClipAudioSection prof={prof} slug={slug} clip={clip} refresh={refresh} />
+          )}
         </div>
       ))}
       </>}
@@ -1683,6 +1686,90 @@ export default function ProjectBoard() {
     </>
   );
 }
+
+function ClipAudioSection({ prof, slug, clip, refresh }: {
+  prof: string; slug: string; clip: { id: string; audio_file?: string; audio_type?: string }; refresh: () => void;
+}) {
+  const [audioType, setAudioType] = useState(clip.audio_type || "ambient");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const hasAudio = !!clip.audio_file;
+
+  const handleUpload = async (file: File) => {
+    const form = new FormData();
+    form.set("file", file);
+    form.set("audio_type", audioType);
+    try {
+      await api.addClipAudio(prof, slug, clip.id, form);
+      toastOk("Audio attached");
+      refresh();
+    } catch (e) {
+      toastError(String(e));
+    }
+  };
+
+  const handleMerge = async () => {
+    try {
+      await api.mergeClipAudio(prof, slug, clip.id);
+      toastOk("Audio merged into clip");
+      refresh();
+    } catch (e) {
+      toastError(String(e));
+    }
+  };
+
+  const handleRemove = async () => {
+    try {
+      await api.removeClipAudio(prof, slug, clip.id);
+      toastOk("Audio removed");
+      refresh();
+    } catch (e) {
+      toastError(String(e));
+    }
+  };
+
+  return (
+    <div style={{ padding: "6px 16px 0", fontSize: "0.78rem" }}>
+      <div className="row" style={{ gap: 6 }}>
+        {hasAudio ? (
+          <>
+            <span className="pill" style={{ fontSize: "0.7rem" }}>
+              {clip.audio_type}: {clip.audio_file?.split("/").pop()}
+            </span>
+            <button className="ghost" style={{ fontSize: "0.72rem" }} onClick={handleMerge}>
+              Merge into clip
+            </button>
+            <button className="ghost" style={{ fontSize: "0.72rem", color: "var(--danger, #c44)" }} onClick={handleRemove}>
+              Remove audio
+            </button>
+          </>
+        ) : (
+          <>
+            <select value={audioType} onChange={(e) => setAudioType(e.target.value)} style={{ fontSize: "0.72rem" }}>
+              <option value="ambient">Ambient</option>
+              <option value="music">Music</option>
+              <option value="voiceover">Voiceover</option>
+            </select>
+            <button className="ghost" style={{ fontSize: "0.72rem" }} onClick={() => fileRef.current?.click()}>
+              Add audio
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="audio/*,.mp3,.wav,.m4a,.mp4"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleUpload(f);
+              }}
+            />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function PromptLibrary({ prof }: { prof: string }) {
   const [filterTag, setFilterTag] = useState("");
