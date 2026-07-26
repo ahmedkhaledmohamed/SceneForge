@@ -333,6 +333,34 @@ td .tag {
 .step h3 .cmd { color: var(--gold); font-family: var(--font-mono); font-weight: 400; font-size: 0.95rem; }
 .step p { color: var(--taupe); margin: 6px 0 0; max-width: 60ch; }
 
+/* ---------- landing: features grid ---------- */
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 40px;
+}
+
+.feat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px 22px;
+}
+.feat h3 {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  margin: 0 0 8px;
+  color: var(--cream);
+}
+.feat p {
+  color: var(--taupe);
+  font-size: 0.88rem;
+  margin: 0;
+  line-height: 1.55;
+}
+
 /* ---------- architecture board ---------- */
 
 .board-layout {
