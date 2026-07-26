@@ -1749,6 +1749,83 @@ function SequenceTab({ prof, slug, project, refresh, busy }: {
       )}
 
       <CaptionSection prof={prof} slug={slug} project={project} refresh={refresh} busy={busy} />
+      <LinkCardSection prof={prof} slug={slug} project={project} busy={busy} />
+    </>
+  );
+}
+
+
+function LinkCardSection({ prof, slug, project, busy }: {
+  prof: string; slug: string; project: Project; busy: boolean;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [linksCopied, setLinksCopied] = useState(false);
+
+  const hasProductRefs = project.scenes.some((s) => s.refs.some((r) => r.url));
+
+  const handleGenerateCard = async () => {
+    setGenerating(true);
+    try {
+      await api.generateLinkCard(prof, slug);
+      toastOk("Link card downloaded");
+      setShowPreview(true);
+    } catch (e) {
+      toastError(String(e));
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleCopyLinks = async () => {
+    try {
+      const text = await api.getLinksText(prof, slug);
+      await navigator.clipboard.writeText(text);
+      setLinksCopied(true);
+      setTimeout(() => setLinksCopied(false), 2000);
+    } catch (e) {
+      toastError(String(e));
+    }
+  };
+
+  const handleDownloadOverlay = async () => {
+    try {
+      await api.generateLinksOverlay(prof, slug);
+      toastOk("Links overlay downloaded");
+    } catch (e) {
+      toastError(String(e));
+    }
+  };
+
+  if (!hasProductRefs) return null;
+
+  return (
+    <>
+      <h3 style={{ marginTop: 24 }}>Shop Links</h3>
+      <div className="row" style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <button
+          onClick={handleGenerateCard}
+          disabled={busy || generating}
+        >
+          {generating ? "Generating..." : "Generate link card"}
+        </button>
+        <button className="ghost" onClick={handleCopyLinks}>
+          {linksCopied ? "Copied!" : "Copy link list"}
+        </button>
+        <button className="ghost" onClick={handleDownloadOverlay}>
+          Download overlay (.srt)
+        </button>
+      </div>
+      {showPreview && (
+        <div className="card" style={{ padding: 12 }}>
+          <img
+            src={api.getLinkCardPreview(prof, slug)}
+            alt="Link card preview"
+            style={{ maxWidth: "100%", borderRadius: 6 }}
+            onError={() => setShowPreview(false)}
+          />
+        </div>
+      )}
     </>
   );
 }

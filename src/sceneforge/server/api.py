@@ -2043,6 +2043,56 @@ def make_router(home: Path) -> APIRouter:
         project.save()
         return {"deleted": platform}
 
+    # ------------------------------------------------------ link cards
+
+    @router.post("/profiles/{prof}/projects/{slug}/link-card")
+    def link_card(prof: str, slug: str):
+        from ..link_card import generate_link_card
+        project = load_project(prof, slug)
+        try:
+            out = generate_link_card(project)
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+        return FileResponse(
+            out,
+            media_type="image/png",
+            headers={"Content-Disposition":
+                     f"attachment; filename={slug}-link-card.png"},
+        )
+
+    @router.get("/profiles/{prof}/projects/{slug}/link-card/preview")
+    def link_card_preview(prof: str, slug: str):
+        project = load_project(prof, slug)
+        card_path = project.output_dir / "link-card.png"
+        if not card_path.is_file():
+            raise _err(404, "not_found", "No link card generated yet")
+        return FileResponse(card_path, media_type="image/png")
+
+    @router.get("/profiles/{prof}/projects/{slug}/links-text")
+    def links_text(prof: str, slug: str):
+        from ..link_card import generate_links_text
+        project = load_project(prof, slug)
+        try:
+            text = generate_links_text(project)
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+        return PlainTextResponse(text)
+
+    @router.post("/profiles/{prof}/projects/{slug}/links-overlay")
+    def links_overlay(prof: str, slug: str):
+        from ..link_card import generate_links_overlay
+        project = load_project(prof, slug)
+        try:
+            out = generate_links_overlay(project)
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+        return FileResponse(
+            out,
+            media_type="application/x-subrip",
+            headers={"Content-Disposition":
+                     f"attachment; filename={slug}-links.srt"},
+        )
+
     # --------------------------------------------------- export / stitch
 
     @router.post("/profiles/{prof}/projects/{slug}/export")
