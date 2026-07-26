@@ -1,4 +1,4 @@
-import type { Asset, CaptionResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileAnalytics, ProfileDoc, ProfileSummary, Project, ProjectAnalytics, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
+import type { Asset, CaptionResult, ConsistencyResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileAnalytics, ProfileDoc, ProfileSummary, Project, ProjectAnalytics, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -246,6 +246,10 @@ export const api = {
   direct: (prof: string, slug: string, body: unknown) =>
     request<{ started: string; estimate: { num_scenes: number; images: number; clips: number; cost_usd: number } }>(
       `${p(prof, slug)}/direct`, json(body)),
+  // style consistency
+  scoreConsistency: (prof: string, slug: string) =>
+    request<ConsistencyResult>(`${p(prof, slug)}/score-consistency`, { method: "POST" }),
+
   // captions
   generateCaption: (prof: string, slug: string, body: { platform: string; tone: string }) =>
     request<CaptionResult>(`${p(prof, slug)}/generate-caption`, json(body)),
