@@ -580,6 +580,20 @@ def make_router(home: Path) -> APIRouter:
             "models_used": models_used,
         }
 
+    # ------------------------------------------------------- analytics
+
+    @router.get("/profiles/{prof}/analytics")
+    def get_profile_analytics(prof: str):
+        from ..analytics import profile_analytics
+        root = profile_root(prof)
+        return profile_analytics(root)
+
+    @router.get("/profiles/{prof}/projects/{slug}/analytics")
+    def get_project_analytics(prof: str, slug: str):
+        from ..analytics import project_analytics
+        project = load_project(prof, slug)
+        return project_analytics(project)
+
     @router.post("/profiles/{prof}/projects", status_code=201)
     def new_project(prof: str, payload: dict):
         profile = load_profile(prof)

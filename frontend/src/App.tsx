@@ -1,5 +1,6 @@
 import { NavLink, Route, Routes, useParams } from "react-router-dom";
 import { Toaster } from "./components/toast";
+import Analytics from "./pages/Analytics";
 import HistoryView from "./pages/HistoryView";
 import ProfileList from "./pages/ProfileList";
 import ProjectBoard from "./pages/ProjectBoard";
@@ -22,6 +23,9 @@ function TopBar() {
             </NavLink>
             <NavLink to={`/${prof}/settings`}>
               settings
+            </NavLink>
+            <NavLink to={`/${prof}/analytics`}>
+              analytics
             </NavLink>
           </>
         )}
@@ -62,6 +66,7 @@ export default function App() {
       <Route path="/demo/:prof/p/:slug/history" element={<WithBar><HistoryView /></WithBar>} />
       <Route path="/:prof" element={<WithBar><ProjectList /></WithBar>} />
       <Route path="/:prof/settings" element={<WithBar><Settings /></WithBar>} />
+      <Route path="/:prof/analytics" element={<WithBar><Analytics /></WithBar>} />
       <Route path="/:prof/p/:slug" element={<WithBar><ProjectBoard /></WithBar>} />
       <Route path="/:prof/p/:slug/scenes/:sid/takes" element={<WithBar><TakeCompare /></WithBar>} />
       <Route path="/:prof/p/:slug/history" element={<WithBar><HistoryView /></WithBar>} />

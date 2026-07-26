@@ -1,4 +1,4 @@
-import type { Asset, CaptionResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileDoc, ProfileSummary, Project, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
+import type { Asset, CaptionResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileAnalytics, ProfileDoc, ProfileSummary, Project, ProjectAnalytics, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -127,6 +127,12 @@ export const api = {
   usePrompt: (prof: string, pid: string) =>
     request<{ text: string; times_used: number }>(
       `/profiles/${prof}/prompts/${pid}/use`, { method: "POST" }),
+
+  // analytics
+  profileAnalytics: (prof: string) =>
+    request<ProfileAnalytics>(`/profiles/${prof}/analytics`),
+  projectAnalytics: (prof: string, slug: string) =>
+    request<ProjectAnalytics>(`${p(prof, slug)}/analytics`),
 
   // templates
   templates: (prof: string) =>
