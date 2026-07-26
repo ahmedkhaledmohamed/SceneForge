@@ -222,6 +222,16 @@ export const api = {
   deleteCaption: (prof: string, slug: string, platform: string) =>
     request(`${p(prof, slug)}/captions/${platform}`, { method: "DELETE" }),
 
+  // link cards
+  generateLinkCard: (prof: string, slug: string) =>
+    downloadFile(`/profiles/${prof}/projects/${slug}/link-card`, "POST", `${slug}-link-card.png`),
+  getLinkCardPreview: (prof: string, slug: string) =>
+    `${API_BASE}/profiles/${prof}/projects/${slug}/link-card/preview`,
+  getLinksText: (prof: string, slug: string) =>
+    request<string>(`${p(prof, slug)}/links-text`),
+  generateLinksOverlay: (prof: string, slug: string) =>
+    downloadFile(`/profiles/${prof}/projects/${slug}/links-overlay`, "POST", `${slug}-links.srt`),
+
   // sequence
   getSequence: (prof: string, slug: string) =>
     request<{ sequence: { id: string; file: string; model: string; duration_s: number | null; kept: boolean; status: string }[]; total_duration: number }>(
@@ -244,6 +254,29 @@ export const api = {
   history: (prof: string, slug: string, params = "") =>
     request<HistoryRow[]>(`${p(prof, slug)}/history${params}`),
 };
+
+async function downloadFile(path: string, method: string, filename: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (_authToken) headers["Authorization"] = `Bearer ${_authToken}`;
+  const response = await fetch(`${API_BASE}${path}`, { method, headers });
+  if (!response.ok) {
+    let message = response.statusText;
+    try {
+      const body = await response.json();
+      message = body?.error?.message ?? body?.detail?.message ?? message;
+    } catch { /* not json */ }
+    throw new Error(message);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export async function exportForPlatform(prof: string, slug: string, platform: string): Promise<void> {
   const headers: Record<string, string> = {};
