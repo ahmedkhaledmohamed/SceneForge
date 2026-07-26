@@ -440,6 +440,81 @@ def make_router(home: Path) -> APIRouter:
         profile.save()
         return {"text": prompt.text, "times_used": prompt.times_used}
 
+    # ---------------------------------------------------------- assets
+
+    @router.get("/profiles/{prof}/assets")
+    def list_assets(prof: str, tag: str | None = None, role: str | None = None):
+        profile = load_profile(prof)
+        assets = profile.assets
+        if tag:
+            assets = [a for a in assets if tag in a.tags]
+        if role:
+            assets = [a for a in assets if a.role == role]
+        return [asdict(a) for a in assets]
+
+    @router.post("/profiles/{prof}/assets", status_code=201)
+    async def add_asset(prof: str,
+                        role: str = Form("garment"),
+                        label: str = Form(""),
+                        tags: str = Form(""),
+                        url: str = Form(""),
+                        file: UploadFile = File(...)):
+        profile = load_profile(prof)
+        dest = await save_upload(file, profile.assets_dir)
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+        asset = profile.add_asset(
+            file=str(dest.relative_to(profile.root)),
+            label=label or dest.stem,
+            role=role,
+            tags=tag_list,
+            url=url,
+        )
+        profile.save()
+        return asdict(asset)
+
+    @router.delete("/profiles/{prof}/assets/{aid}")
+    def delete_asset(prof: str, aid: str):
+        profile = load_profile(prof)
+        asset = find_or_404(profile.find_asset, aid)
+        asset_path = profile.root / asset.file
+        if asset_path.is_file():
+            asset_path.unlink()
+        profile.assets.remove(asset)
+        profile.save()
+        return {"deleted": aid}
+
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/refs/from-asset/{aid}",
+                 status_code=201)
+    def ref_from_asset(prof: str, slug: str, sid: str, aid: str):
+        import shutil
+        profile = load_profile(prof)
+        asset = find_or_404(profile.find_asset, aid)
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        src = profile.root / asset.file
+        if not src.is_file():
+            raise _err(404, "not_found", f"Asset file missing: {asset.file}")
+        dest_dir = project.scene_refs_dir(scene)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / src.name
+        n = 2
+        while dest.exists():
+            dest = dest_dir / f"{src.stem}-{n}{src.suffix}"
+            n += 1
+        shutil.copy2(src, dest)
+        ref = SceneRef(
+            file=str(dest.relative_to(project.root)),
+            role=asset.role,
+            label=asset.label,
+            url=asset.url or None,
+        )
+        scene.refs.append(ref)
+        project.save()
+        if slug not in asset.projects_used:
+            asset.projects_used.append(slug)
+            profile.save()
+        return asdict(ref)
+
     @router.get("/profiles/{prof}/media/{relpath:path}")
     def profile_media(prof: str, relpath: str):
         root = profile_root(prof)

@@ -1,4 +1,4 @@
-import type { CaptionResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileDoc, ProfileSummary, Project, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
+import type { Asset, CaptionResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileDoc, ProfileSummary, Project, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -101,6 +101,21 @@ export const api = {
     }>(`/profiles/${prof}/stats`),
   addSeed: (prof: string, form: FormData) =>
     request(`/profiles/${prof}/seeds`, { method: "POST", body: form }),
+
+  // assets
+  assets: (prof: string, tag?: string, role?: string) => {
+    const params = new URLSearchParams();
+    if (tag) params.set("tag", tag);
+    if (role) params.set("role", role);
+    const qs = params.toString();
+    return request<Asset[]>(`/profiles/${prof}/assets${qs ? `?${qs}` : ""}`);
+  },
+  addAsset: (prof: string, form: FormData) =>
+    request<Asset>(`/profiles/${prof}/assets`, { method: "POST", body: form }),
+  deleteAsset: (prof: string, aid: string) =>
+    request(`/profiles/${prof}/assets/${aid}`, { method: "DELETE" }),
+  refFromAsset: (prof: string, slug: string, sid: string, aid: string) =>
+    request(`${p(prof, slug)}/scenes/${sid}/refs/from-asset/${aid}`, { method: "POST" }),
 
   // prompts
   prompts: (prof: string, tag?: string) =>

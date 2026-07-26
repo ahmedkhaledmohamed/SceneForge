@@ -89,6 +89,17 @@ export interface ShotListItem {
   prompt: string;
 }
 
+export interface Asset {
+  id: string;
+  file: string;
+  tags: string[];
+  label: string;
+  role: string;
+  url: string;
+  created_at: string;
+  projects_used: string[];
+}
+
 export interface SavedPrompt {
   id: string;
   text: string;
