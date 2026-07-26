@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, profileMedia } from "../api";
 import { DEMO_PROFILE, DEMO_PROJECTS } from "../demo";
@@ -132,6 +132,43 @@ function ProfileHeader({ prof, profile }: { prof: string; profile: ProfileDoc })
   );
 }
 
+function ImportZipButton({ prof, onImport }: { prof: string; onImport: () => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+
+  const handleFile = async (file: File) => {
+    const form = new FormData();
+    form.set("file", file);
+    try {
+      const project = await api.importZip(prof, form);
+      toastOk(`Imported "${project.name}"`);
+      onImport();
+      navigate(`/${prof}/p/${project.slug}`);
+    } catch (e) {
+      toastError(String(e));
+    }
+  };
+
+  return (
+    <>
+      <button className="ghost" onClick={() => fileRef.current?.click()}>
+        Import zip
+      </button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".zip"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.target.value = "";
+        }}
+      />
+    </>
+  );
+}
+
 export default function ProjectList() {
   const { prof = "" } = useParams();
   const isDemo = useIsDemo();
@@ -218,6 +255,14 @@ export default function ProjectList() {
       <div className="row" style={{ justifyContent: "space-between" }}>
         <h2 style={{ margin: 0 }}>Projects</h2>
         <div className="row">
+          {!isDemo && (
+            <>
+              <button className="ghost" onClick={() => api.backupAll(prof).then(() => toastOk("Full backup downloaded")).catch(e => toastError(String(e)))}>
+                Backup all
+              </button>
+              <ImportZipButton prof={prof} onImport={() => client.invalidateQueries({ queryKey: ["projects", prof] })} />
+            </>
+          )}
           <button onClick={() => { setShowTemplates(true); setCreating(false); }}>From template</button>
           <button onClick={() => { setCreating(true); setShowTemplates(false); }}>New project</button>
         </div>

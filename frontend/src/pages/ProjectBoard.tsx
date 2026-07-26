@@ -905,6 +905,7 @@ export default function ProjectBoard() {
           <button className="ghost" onClick={() => setSettingsOpen(true)}>settings</button>
           <button className="ghost" onClick={() => saveAsTemplate.mutate()}>save as template</button>
           <button className="ghost" onClick={() => duplicateProject.mutate()}>duplicate</button>
+          <button className="ghost" onClick={() => api.backupProject(prof, slug).then(() => toastOk("Backup downloaded")).catch(e => toastError(String(e)))}>backup zip</button>
           <button
             className="ghost"
             style={{ color: "var(--red, #c44)" }}
