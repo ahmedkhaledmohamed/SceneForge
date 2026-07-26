@@ -275,6 +275,14 @@ export const api = {
   generateLinksOverlay: (prof: string, slug: string) =>
     downloadFile(`/profiles/${prof}/projects/${slug}/links-overlay`, "POST", `${slug}-links.srt`),
 
+  // backup
+  backupProject: (prof: string, slug: string) =>
+    downloadFile(`/profiles/${prof}/projects/${slug}/backup.zip`, "GET", `${slug}-backup.zip`),
+  importZip: (prof: string, form: FormData) =>
+    request<Project>(`/profiles/${prof}/import-zip`, { method: "POST", body: form }),
+  backupAll: (prof: string) =>
+    downloadFile(`/profiles/${prof}/backup-all.zip`, "GET", `${prof}-full-backup.zip`),
+
   // sequence
   getSequence: (prof: string, slug: string) =>
     request<{ sequence: { id: string; file: string; model: string; duration_s: number | null; kept: boolean; status: string }[]; total_duration: number }>(

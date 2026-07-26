@@ -2301,6 +2301,46 @@ def make_router(home: Path) -> APIRouter:
                      f"attachment; filename={slug}-links.srt"},
         )
 
+    # ------------------------------------------------- backup / import
+
+    @router.get("/profiles/{prof}/projects/{slug}/backup.zip")
+    def backup_project(prof: str, slug: str):
+        from ..backup import export_project_zip
+        project = load_project(prof, slug)
+        data = export_project_zip(project)
+        return Response(
+            data, media_type="application/zip",
+            headers={"Content-Disposition":
+                     f"attachment; filename={slug}-backup.zip"},
+        )
+
+    @router.post("/profiles/{prof}/import-zip", status_code=201)
+    async def import_zip(prof: str, file: UploadFile = File(...)):
+        from ..backup import import_project_zip
+        profile = load_profile(prof)
+        data = await file.read()
+        if len(data) < 10:
+            raise _err(400, "invalid", "File too small to be a valid zip")
+        try:
+            project = import_project_zip(data, profile.projects_dir)
+        except ValueError as exc:
+            raise _err(400, "invalid", str(exc))
+        except Exception as exc:
+            raise _err(500, "import_failed", str(exc))
+        slug = project.root.name
+        return project_doc(project, prof, slug, profile)
+
+    @router.get("/profiles/{prof}/backup-all.zip")
+    def backup_all(prof: str):
+        from ..backup import export_all_projects_zip
+        root = profile_root(prof)
+        data = export_all_projects_zip(root)
+        return Response(
+            data, media_type="application/zip",
+            headers={"Content-Disposition":
+                     f"attachment; filename={prof}-full-backup.zip"},
+        )
+
     # --------------------------------------------------- export / stitch
 
     @router.post("/profiles/{prof}/projects/{slug}/export")
