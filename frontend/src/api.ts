@@ -1,4 +1,4 @@
-import type { CaptionResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileDoc, ProfileSummary, Project, ProjectSummary, ShotListItem, ShotTypeInfo } from "./types";
+import type { CaptionResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileDoc, ProfileSummary, Project, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -101,6 +101,17 @@ export const api = {
     }>(`/profiles/${prof}/stats`),
   addSeed: (prof: string, form: FormData) =>
     request(`/profiles/${prof}/seeds`, { method: "POST", body: form }),
+
+  // prompts
+  prompts: (prof: string, tag?: string) =>
+    request<SavedPrompt[]>(`/profiles/${prof}/prompts${tag ? `?tag=${tag}` : ""}`),
+  savePrompt: (prof: string, body: { text: string; tags: string[]; model: string }) =>
+    request<SavedPrompt>(`/profiles/${prof}/prompts`, json(body)),
+  deletePrompt: (prof: string, pid: string) =>
+    request(`/profiles/${prof}/prompts/${pid}`, { method: "DELETE" }),
+  usePrompt: (prof: string, pid: string) =>
+    request<{ text: string; times_used: number }>(
+      `/profiles/${prof}/prompts/${pid}/use`, { method: "POST" }),
 
   // templates
   templates: (prof: string) =>

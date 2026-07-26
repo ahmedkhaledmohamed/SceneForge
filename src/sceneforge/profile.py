@@ -47,6 +47,16 @@ class Seed:
 
 
 @dataclass
+class SavedPrompt:
+    id: str
+    text: str
+    tags: list[str] = field(default_factory=list)
+    model: str = ""
+    created_at: str = field(default_factory=now_iso)
+    times_used: int = 0
+
+
+@dataclass
 class ProfileStyle:
     anchor: str = ""
     mood: str = ""
@@ -86,6 +96,7 @@ class Profile:
     defaults: ProfileDefaults = field(default_factory=ProfileDefaults)
     characters: list[Character] = field(default_factory=list)
     seeds: list[Seed] = field(default_factory=list)
+    saved_prompts: list[SavedPrompt] = field(default_factory=list)
     keys: ProfileKeys = field(default_factory=ProfileKeys)
     password_hash: str = ""
     password_salt: str = ""
@@ -146,6 +157,22 @@ class Profile:
                 return character
         return self.characters[0] if self.characters else None
 
+    def add_prompt(self, text: str, tags: list[str] | None = None,
+                   model: str = "") -> SavedPrompt:
+        prompt = SavedPrompt(
+            id=f"prompt-{len(self.saved_prompts) + 1}",
+            text=text, tags=tags or [], model=model,
+        )
+        self.saved_prompts.append(prompt)
+        return prompt
+
+    def find_prompt(self, prompt_id: str) -> SavedPrompt:
+        for prompt in self.saved_prompts:
+            if prompt.id == prompt_id:
+                return prompt
+        valid = ", ".join(p.id for p in self.saved_prompts) or "(none)"
+        raise KeyError(f"No prompt '{prompt_id}'. Prompts: {valid}")
+
     def add_seed(self, kind: str, *, file: str | None = None,
                  text: str | None = None, tags: list[str] | None = None) -> Seed:
         seed = Seed(id=f"seed-{len(self.seeds) + 1}", kind=kind,
@@ -174,6 +201,7 @@ class Profile:
             defaults=ProfileDefaults(**data.get("defaults", {})),
             characters=[Character(**c) for c in data.get("characters", [])],
             seeds=[Seed(**s) for s in data.get("seeds", [])],
+            saved_prompts=[SavedPrompt(**p) for p in data.get("saved_prompts", [])],
             keys=ProfileKeys(**data.get("keys", {})),
             password_hash=data.get("password_hash", ""),
             password_salt=data.get("password_salt", ""),

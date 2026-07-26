@@ -8,7 +8,7 @@ import { toastError, toastOk } from "../components/toast";
 import { DEMO_PROJECT } from "../demo";
 import { useIsDemo } from "../DemoContext";
 import { useInvalidateProject, useModels, useProject } from "../hooks";
-import type { Character, Project, Scene, ShotListItem } from "../types";
+import type { Character, Project, SavedPrompt, Scene, ShotListItem } from "../types";
 
 function ModelPicker({ kind, value, onChange }: {
   kind: "image" | "video"; value: string; onChange: (v: string) => void;
@@ -599,6 +599,7 @@ export default function ProjectBoard() {
   const [activeTab, setActiveTab] = useState<"scenes" | "clips" | "sequence">("scenes");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
+  const [promptLibOpen, setPromptLibOpen] = useState(false);
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
   const [shotListResults, setShotListResults] = useState<ShotListItem[] | null>(null);
   const [clipCount, setClipCount] = useState(2);
@@ -1016,7 +1017,14 @@ export default function ProjectBoard() {
             Generate all scenes (~${imgCost.toFixed(2)})
           </button>
         )}
+        <button className="ghost" onClick={() => setPromptLibOpen(!promptLibOpen)}>
+          {promptLibOpen ? "close prompts" : "prompt library"}
+        </button>
       </div>
+
+      {promptLibOpen && (
+        <PromptLibrary prof={prof} />
+      )}
 
       {brainstormResults && (
         <div className="card">
@@ -1565,6 +1573,130 @@ export default function ProjectBoard() {
     </>
   );
 }
+
+function PromptLibrary({ prof }: { prof: string }) {
+  const [filterTag, setFilterTag] = useState("");
+  const [newText, setNewText] = useState("");
+  const [newTags, setNewTags] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const promptsQuery = useQuery({
+    queryKey: ["prompts", prof, filterTag],
+    queryFn: () => api.prompts(prof, filterTag || undefined),
+  });
+  const prompts = promptsQuery.data ?? [];
+
+  const allTags = [...new Set(prompts.flatMap((p) => p.tags))].sort();
+
+  const savePrompt = useMutation({
+    mutationFn: () =>
+      api.savePrompt(prof, {
+        text: newText.trim(),
+        tags: newTags.split(",").map((t) => t.trim()).filter(Boolean),
+        model: "",
+      }),
+    onSuccess: () => {
+      toastOk("Prompt saved");
+      setNewText("");
+      setNewTags("");
+      promptsQuery.refetch();
+    },
+    onError: (e) => toastError(String(e)),
+  });
+
+  const deletePrompt = useMutation({
+    mutationFn: (pid: string) => api.deletePrompt(prof, pid),
+    onSuccess: () => { toastOk("Deleted"); promptsQuery.refetch(); },
+    onError: (e) => toastError(String(e)),
+  });
+
+  const usePrompt = async (pid: string) => {
+    try {
+      const result = await api.usePrompt(prof, pid);
+      await navigator.clipboard.writeText(result.text);
+      setCopied(pid);
+      setTimeout(() => setCopied(null), 2000);
+      toastOk("Copied to clipboard — paste into scene description");
+      promptsQuery.refetch();
+    } catch (e) {
+      toastError(String(e));
+    }
+  };
+
+  return (
+    <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+      <div className="row" style={{ justifyContent: "space-between", marginBottom: 12 }}>
+        <b>Prompt Library</b>
+        {allTags.length > 0 && (
+          <select value={filterTag} onChange={(e) => setFilterTag(e.target.value)}>
+            <option value="">All tags</option>
+            {allTags.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {prompts.length === 0 && (
+        <p className="muted" style={{ fontSize: "0.82rem" }}>
+          No saved prompts yet. Save prompts you want to reuse.
+        </p>
+      )}
+
+      {prompts.map((prompt) => (
+        <div key={prompt.id} className="card" style={{ padding: "8px 12px", marginBottom: 8 }}>
+          <p style={{ margin: "0 0 6px", fontSize: "0.85rem" }}>{prompt.text}</p>
+          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+            {prompt.tags.map((t) => (
+              <span key={t} className="pill" style={{ fontSize: "0.72rem" }}>{t}</span>
+            ))}
+            <span className="mono muted" style={{ fontSize: "0.72rem", marginLeft: "auto" }}>
+              used {prompt.times_used}x
+            </span>
+            <button
+              className="ghost"
+              style={{ fontSize: "0.78rem" }}
+              onClick={() => usePrompt(prompt.id)}
+            >
+              {copied === prompt.id ? "Copied!" : "Use"}
+            </button>
+            <button
+              className="ghost"
+              style={{ fontSize: "0.78rem", color: "var(--danger, #c44)" }}
+              onClick={() => deletePrompt.mutate(prompt.id)}
+            >
+              x
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <div style={{ marginTop: 12, borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+        <input
+          value={newText}
+          onChange={(e) => setNewText(e.target.value)}
+          placeholder="Prompt text..."
+          style={{ width: "100%", marginBottom: 6 }}
+        />
+        <div className="row" style={{ gap: 8 }}>
+          <input
+            value={newTags}
+            onChange={(e) => setNewTags(e.target.value)}
+            placeholder="Tags (comma-separated)"
+            style={{ flex: 1 }}
+          />
+          <button
+            onClick={() => savePrompt.mutate()}
+            disabled={!newText.trim() || savePrompt.isPending}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function SequenceTab({ prof, slug, project, refresh, busy }: {
   prof: string; slug: string; project: Project; refresh: () => void; busy: boolean;
