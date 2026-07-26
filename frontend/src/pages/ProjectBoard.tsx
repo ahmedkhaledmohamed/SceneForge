@@ -227,6 +227,65 @@ function RefineDialog({ prof, slug, scene, project, onClose, refresh }: {
   );
 }
 
+function AssetPicker({ prof, slug, sceneId, onAdd }: {
+  prof: string; slug: string; sceneId: string; onAdd: () => void;
+}) {
+  const [roleFilter, setRoleFilter] = useState("");
+  const assetsQuery = useQuery({
+    queryKey: ["assets", prof, roleFilter],
+    queryFn: () => api.assets(prof, undefined, roleFilter || undefined),
+  });
+  const assets = assetsQuery.data ?? [];
+
+  const addFromAsset = async (aid: string) => {
+    try {
+      await api.refFromAsset(prof, slug, sceneId, aid);
+      toastOk("Added from library");
+      onAdd();
+    } catch (e) {
+      toastError(String(e));
+    }
+  };
+
+  const roles = ["garment", "style", "background", "prop", "other"];
+
+  return (
+    <div style={{ padding: "8px 0", marginBottom: 6 }}>
+      <div className="row" style={{ gap: 6, marginBottom: 8 }}>
+        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} style={{ fontSize: "0.78rem" }}>
+          <option value="">All roles</option>
+          {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+      {assets.length === 0 && (
+        <p className="muted" style={{ fontSize: "0.78rem", margin: 0 }}>
+          No assets in library. Upload assets from the profile page.
+        </p>
+      )}
+      <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+        {assets.map((asset) => (
+          <div
+            key={asset.id}
+            style={{ cursor: "pointer", textAlign: "center" }}
+            onClick={() => addFromAsset(asset.id)}
+            title={`${asset.label} — click to add`}
+          >
+            <img
+              src={`${import.meta.env.VITE_API_BASE ?? "/api"}/profiles/${prof}/media/${asset.file}`}
+              alt={asset.label}
+              style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }}
+            />
+            <div className="mono muted" style={{ fontSize: "0.62rem", maxWidth: 60, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {asset.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast, onMove }: {
   prof: string; slug: string; scene: Scene; project: Project; refresh: () => void; busy: boolean;
   isFirst: boolean; isLast: boolean; onMove: (dir: -1 | 1) => void;
@@ -236,6 +295,7 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
   const [comparing, setComparing] = useState(false);
   const [copiedLinks, setCopiedLinks] = useState(false);
   const [refDropHighlight, setRefDropHighlight] = useState(false);
+  const [showAssetPicker, setShowAssetPicker] = useState(false);
   const imgImportRef = useRef<HTMLInputElement>(null);
 
   const select = useMutation({
@@ -386,7 +446,17 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
                 {copiedLinks ? "copied" : "copy links"}
               </button>
             )}
+            <button
+              className="ghost"
+              style={{ fontSize: "0.72rem" }}
+              onClick={() => setShowAssetPicker(!showAssetPicker)}
+            >
+              {showAssetPicker ? "close library" : "from library"}
+            </button>
           </div>
+        )}
+        {showAssetPicker && (
+          <AssetPicker prof={prof} slug={slug} sceneId={scene.id} onAdd={() => { setShowAssetPicker(false); refresh(); }} />
         )}
         <div
           style={{

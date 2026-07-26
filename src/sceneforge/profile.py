@@ -47,6 +47,18 @@ class Seed:
 
 
 @dataclass
+class Asset:
+    id: str
+    file: str
+    tags: list[str] = field(default_factory=list)
+    label: str = ""
+    role: str = "garment"  # garment | style | background | prop | other
+    url: str = ""
+    created_at: str = field(default_factory=now_iso)
+    projects_used: list[str] = field(default_factory=list)
+
+
+@dataclass
 class SavedPrompt:
     id: str
     text: str
@@ -97,6 +109,7 @@ class Profile:
     characters: list[Character] = field(default_factory=list)
     seeds: list[Seed] = field(default_factory=list)
     saved_prompts: list[SavedPrompt] = field(default_factory=list)
+    assets: list[Asset] = field(default_factory=list)
     keys: ProfileKeys = field(default_factory=ProfileKeys)
     password_hash: str = ""
     password_salt: str = ""
@@ -127,6 +140,10 @@ class Profile:
     @property
     def seeds_dir(self) -> Path:
         return self.root / "seeds"
+
+    @property
+    def assets_dir(self) -> Path:
+        return self.root / "assets"
 
     def character_refs_dir(self, character: Character) -> Path:
         return self.root / "refs" / "characters" / character.id
@@ -173,6 +190,23 @@ class Profile:
         valid = ", ".join(p.id for p in self.saved_prompts) or "(none)"
         raise KeyError(f"No prompt '{prompt_id}'. Prompts: {valid}")
 
+    def add_asset(self, file: str, label: str = "", role: str = "garment",
+                  tags: list[str] | None = None, url: str = "") -> Asset:
+        asset = Asset(
+            id=f"asset-{len(self.assets) + 1}",
+            file=file, label=label, role=role,
+            tags=tags or [], url=url,
+        )
+        self.assets.append(asset)
+        return asset
+
+    def find_asset(self, asset_id: str) -> Asset:
+        for asset in self.assets:
+            if asset.id == asset_id:
+                return asset
+        valid = ", ".join(a.id for a in self.assets) or "(none)"
+        raise KeyError(f"No asset '{asset_id}'. Assets: {valid}")
+
     def add_seed(self, kind: str, *, file: str | None = None,
                  text: str | None = None, tags: list[str] | None = None) -> Seed:
         seed = Seed(id=f"seed-{len(self.seeds) + 1}", kind=kind,
@@ -202,6 +236,7 @@ class Profile:
             characters=[Character(**c) for c in data.get("characters", [])],
             seeds=[Seed(**s) for s in data.get("seeds", [])],
             saved_prompts=[SavedPrompt(**p) for p in data.get("saved_prompts", [])],
+            assets=[Asset(**a) for a in data.get("assets", [])],
             keys=ProfileKeys(**data.get("keys", {})),
             password_hash=data.get("password_hash", ""),
             password_salt=data.get("password_salt", ""),
@@ -220,6 +255,7 @@ def create_profile(name: str, home: Path | None = None) -> Profile:
     profile = Profile(name=name, root=root)
     (root / "projects").mkdir(parents=True)
     (root / "seeds").mkdir()
+    (root / "assets").mkdir()
     (root / "brainstorms").mkdir()
     profile.save()
     return profile
