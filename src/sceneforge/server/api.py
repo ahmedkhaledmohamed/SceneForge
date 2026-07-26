@@ -400,6 +400,46 @@ def make_router(home: Path) -> APIRouter:
         profile.save()
         return asdict(seed)
 
+    # --------------------------------------------------------- prompts
+
+    @router.get("/profiles/{prof}/prompts")
+    def list_prompts(prof: str, tag: str | None = None):
+        profile = load_profile(prof)
+        prompts = profile.saved_prompts
+        if tag:
+            prompts = [p for p in prompts if tag in p.tags]
+        return [asdict(p) for p in prompts]
+
+    @router.post("/profiles/{prof}/prompts", status_code=201)
+    def save_prompt(prof: str, payload: dict):
+        profile = load_profile(prof)
+        text = (payload.get("text") or "").strip()
+        if not text:
+            raise _err(400, "invalid", "Prompt text is required")
+        tags = payload.get("tags", [])
+        if isinstance(tags, str):
+            tags = [t.strip() for t in tags.split(",") if t.strip()]
+        model = payload.get("model", "")
+        prompt = profile.add_prompt(text, tags=tags, model=model)
+        profile.save()
+        return asdict(prompt)
+
+    @router.delete("/profiles/{prof}/prompts/{pid}")
+    def delete_prompt(prof: str, pid: str):
+        profile = load_profile(prof)
+        prompt = find_or_404(profile.find_prompt, pid)
+        profile.saved_prompts.remove(prompt)
+        profile.save()
+        return {"deleted": pid}
+
+    @router.post("/profiles/{prof}/prompts/{pid}/use")
+    def use_prompt(prof: str, pid: str):
+        profile = load_profile(prof)
+        prompt = find_or_404(profile.find_prompt, pid)
+        prompt.times_used += 1
+        profile.save()
+        return {"text": prompt.text, "times_used": prompt.times_used}
+
     @router.get("/profiles/{prof}/media/{relpath:path}")
     def profile_media(prof: str, relpath: str):
         root = profile_root(prof)

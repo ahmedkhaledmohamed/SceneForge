@@ -89,6 +89,15 @@ export interface ShotListItem {
   prompt: string;
 }
 
+export interface SavedPrompt {
+  id: string;
+  text: string;
+  tags: string[];
+  model: string;
+  created_at: string;
+  times_used: number;
+}
+
 export interface CaptionResult {
   caption: string;
   hashtags: string[];
