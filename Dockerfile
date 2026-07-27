@@ -25,6 +25,7 @@ RUN pip install --no-cache-dir -e .
 RUN mkdir -p /data
 
 ENV SCENEFORGE_HOME=/data
+ENV SCENEFORGE_LANDING_DIR=/app/site
 ENV PORT=8000
 EXPOSE 8000
 

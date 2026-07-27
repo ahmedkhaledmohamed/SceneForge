@@ -97,7 +97,12 @@ def create_app(home: Path) -> FastAPI:
         return JSONResponse({"error": detail}, status_code=exc.status_code)
 
     web_dist = Path(__file__).resolve().parent.parent / "web_dist"
-    site_dir = Path(__file__).resolve().parent.parent.parent.parent / "site"
+
+    _landing_env = os.environ.get("SCENEFORGE_LANDING_DIR")
+    if _landing_env:
+        site_dir = Path(_landing_env)
+    else:
+        site_dir = Path(__file__).resolve().parent.parent.parent.parent / "site"
 
     has_landing = site_dir.is_dir() and (site_dir / "index.html").is_file()
 
