@@ -99,9 +99,24 @@ def create_app(home: Path) -> FastAPI:
     web_dist = Path(__file__).resolve().parent.parent / "web_dist"
     site_dir = Path(__file__).resolve().parent.parent.parent.parent / "site"
 
-    if site_dir.is_dir() and (site_dir / "index.html").is_file():
-        from fastapi.staticfiles import StaticFiles as _SF
-        app.mount("/landing", _SF(directory=site_dir, html=True), name="landing")
+    has_landing = site_dir.is_dir() and (site_dir / "index.html").is_file()
+
+    if has_landing:
+        @app.get("/landing", include_in_schema=False)
+        def landing_root():
+            return FileResponse(site_dir / "index.html")
+
+        @app.get("/landing/{path:path}", include_in_schema=False)
+        def landing_files(path: str):
+            candidate = (site_dir / path).resolve()
+            if candidate.is_file() and candidate.is_relative_to(site_dir):
+                return FileResponse(candidate)
+            if not path or path.endswith("/"):
+                return FileResponse(site_dir / "index.html")
+            html = site_dir / (path + ".html")
+            if html.is_file():
+                return FileResponse(html)
+            return FileResponse(site_dir / "index.html")
 
     if (web_dist / "index.html").is_file():
         from fastapi.staticfiles import StaticFiles
@@ -122,7 +137,7 @@ def create_app(home: Path) -> FastAPI:
     else:
         @app.get("/", include_in_schema=False)
         def placeholder():
-            if site_dir.is_dir() and (site_dir / "index.html").is_file():
+            if has_landing:
                 return FileResponse(site_dir / "index.html")
             return JSONResponse({
                 "sceneforge": "API is running at /api",
