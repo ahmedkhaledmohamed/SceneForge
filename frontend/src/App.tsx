@@ -12,10 +12,11 @@ function TopBar() {
   const { prof, slug } = useParams();
   return (
     <header className="topbar">
-      <NavLink className="mark" to="/">
+      <NavLink className="mark" to="/app">
         Scene<span>Forge</span> Studio
       </NavLink>
       <nav>
+        <a href="/landing">Landing</a>
         {prof && (
           <>
             <NavLink to={`/${prof}`} end>
@@ -64,6 +65,7 @@ export default function App() {
       <Route path="/demo/:prof/p/:slug" element={<WithBar><ProjectBoard /></WithBar>} />
       <Route path="/demo/:prof/p/:slug/scenes/:sid/takes" element={<WithBar><TakeCompare /></WithBar>} />
       <Route path="/demo/:prof/p/:slug/history" element={<WithBar><HistoryView /></WithBar>} />
+      <Route path="/app" element={<WithBar><ProfileList /></WithBar>} />
       <Route path="/:prof" element={<WithBar><ProjectList /></WithBar>} />
       <Route path="/:prof/settings" element={<WithBar><Settings /></WithBar>} />
       <Route path="/:prof/analytics" element={<WithBar><Analytics /></WithBar>} />
