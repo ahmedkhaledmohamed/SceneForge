@@ -14,6 +14,7 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY src/ src/
 COPY frontend/ frontend/
+COPY site/ site/
 
 # Build frontend → src/sceneforge/web_dist/
 RUN cd frontend && npm ci --no-audit --no-fund && npm run build
