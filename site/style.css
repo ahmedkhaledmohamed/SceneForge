@@ -77,6 +77,14 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 }
 .site-nav a[aria-current="page"] { color: var(--gold); }
 .site-nav a:hover { color: var(--cream); text-decoration: none; }
+.site-nav .login-link {
+  color: var(--room);
+  background: var(--gold);
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+.site-nav .login-link:hover { background: #f7b055; }
 
 /* ---------- shared building blocks ---------- */
 
