@@ -101,7 +101,7 @@ def create_app(home: Path) -> FastAPI:
 
     if site_dir.is_dir() and (site_dir / "index.html").is_file():
         from fastapi.staticfiles import StaticFiles as _SF
-        app.mount("/site", _SF(directory=site_dir, html=True), name="site")
+        app.mount("/landing", _SF(directory=site_dir, html=True), name="landing")
 
     if (web_dist / "index.html").is_file():
         from fastapi.staticfiles import StaticFiles
