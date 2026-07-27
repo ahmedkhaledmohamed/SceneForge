@@ -13,7 +13,7 @@ import secrets
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from .api import make_router
@@ -30,11 +30,12 @@ class SiteAuthMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if path == "/api/site-login" or path == "/api/site-check":
             return await call_next(request)
+        if path == "/" or path.startswith("/landing"):
+            return await call_next(request)
         if path.startswith("/assets/") or path == "/favicon.ico":
             return await call_next(request)
         if "/media/" in path:
             return await call_next(request)
-        # SPA HTML is always served (the login screen is part of it)
         if not path.startswith("/api/"):
             return await call_next(request)
         token = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
@@ -106,6 +107,17 @@ def create_app(home: Path) -> FastAPI:
 
     has_landing = site_dir.is_dir() and (site_dir / "index.html").is_file()
 
+    # Root → landing page
+    @app.get("/", include_in_schema=False)
+    def root_redirect():
+        if has_landing:
+            return RedirectResponse("/landing/", status_code=302)
+        return JSONResponse({
+            "sceneforge": "API is running at /api",
+            "note": "frontend not built — run `npm run build` in frontend/",
+        })
+
+    # Landing page (no auth)
     if has_landing:
         @app.get("/landing", include_in_schema=False)
         def landing_root():
@@ -123,6 +135,7 @@ def create_app(home: Path) -> FastAPI:
                 return FileResponse(html)
             return FileResponse(site_dir / "index.html")
 
+    # Studio SPA (auth via SPA login screen)
     if (web_dist / "index.html").is_file():
         from fastapi.staticfiles import StaticFiles
 
@@ -139,14 +152,5 @@ def create_app(home: Path) -> FastAPI:
             if path and candidate.is_file() and candidate.is_relative_to(web_dist):
                 return FileResponse(candidate)
             return FileResponse(web_dist / "index.html")
-    else:
-        @app.get("/", include_in_schema=False)
-        def placeholder():
-            if has_landing:
-                return FileResponse(site_dir / "index.html")
-            return JSONResponse({
-                "sceneforge": "API is running at /api",
-                "note": "frontend not built — run `npm run build` in frontend/",
-            })
 
     return app
