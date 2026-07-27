@@ -118,7 +118,14 @@ def test_profile_analytics(tmp_path):
 
 
 def make_client(tmp_path):
-    return TestClient(create_app(tmp_path))
+    client = TestClient(create_app(tmp_path))
+    r = client.post("/api/auth/signup", json={
+        "email": "test@sceneforge.dev",
+        "password": "test-password-123",
+        "name": "Test User",
+    })
+    client.headers["Authorization"] = f"Bearer {r.json()['token']}"
+    return client
 
 
 def create_test_profile(client, name="Test Brand"):

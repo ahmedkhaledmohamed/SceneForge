@@ -111,6 +111,7 @@ class Profile:
     saved_prompts: list[SavedPrompt] = field(default_factory=list)
     assets: list[Asset] = field(default_factory=list)
     keys: ProfileKeys = field(default_factory=ProfileKeys)
+    owner_id: str = ""
     password_hash: str = ""
     password_salt: str = ""
     schema_version: int = PROFILE_SCHEMA_VERSION
@@ -238,6 +239,7 @@ class Profile:
             saved_prompts=[SavedPrompt(**p) for p in data.get("saved_prompts", [])],
             assets=[Asset(**a) for a in data.get("assets", [])],
             keys=ProfileKeys(**data.get("keys", {})),
+            owner_id=data.get("owner_id", ""),
             password_hash=data.get("password_hash", ""),
             password_salt=data.get("password_salt", ""),
             schema_version=PROFILE_SCHEMA_VERSION,

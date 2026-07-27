@@ -151,7 +151,14 @@ def test_generate_caption_retries_on_bad_json():
 
 
 def make_client(tmp_path):
-    return TestClient(create_app(tmp_path))
+    client = TestClient(create_app(tmp_path))
+    r = client.post("/api/auth/signup", json={
+        "email": "test@sceneforge.dev",
+        "password": "test-password-123",
+        "name": "Test User",
+    })
+    client.headers["Authorization"] = f"Bearer {r.json()['token']}"
+    return client
 
 
 def create_profile(client, name="Test Brand"):
