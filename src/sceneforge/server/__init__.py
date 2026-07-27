@@ -97,6 +97,11 @@ def create_app(home: Path) -> FastAPI:
         return JSONResponse({"error": detail}, status_code=exc.status_code)
 
     web_dist = Path(__file__).resolve().parent.parent / "web_dist"
+    site_dir = Path(__file__).resolve().parent.parent.parent.parent / "site"
+
+    if site_dir.is_dir() and (site_dir / "index.html").is_file():
+        from fastapi.staticfiles import StaticFiles as _SF
+        app.mount("/site", _SF(directory=site_dir, html=True), name="site")
 
     if (web_dist / "index.html").is_file():
         from fastapi.staticfiles import StaticFiles
@@ -117,6 +122,8 @@ def create_app(home: Path) -> FastAPI:
     else:
         @app.get("/", include_in_schema=False)
         def placeholder():
+            if site_dir.is_dir() and (site_dir / "index.html").is_file():
+                return FileResponse(site_dir / "index.html")
             return JSONResponse({
                 "sceneforge": "API is running at /api",
                 "note": "frontend not built — run `npm run build` in frontend/",
