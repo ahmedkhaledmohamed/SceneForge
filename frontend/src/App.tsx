@@ -1,22 +1,31 @@
-import { NavLink, Route, Routes, useParams } from "react-router-dom";
+import { Navigate, NavLink, Route, Routes, useParams } from "react-router-dom";
+import { useAuth } from "./AuthProvider";
 import { Toaster } from "./components/toast";
 import Analytics from "./pages/Analytics";
 import HistoryView from "./pages/HistoryView";
+import Login from "./pages/Login";
 import ProfileList from "./pages/ProfileList";
 import ProjectBoard from "./pages/ProjectBoard";
 import ProjectList from "./pages/ProjectList";
 import Settings from "./pages/Settings";
 import TakeCompare from "./pages/TakeCompare";
 
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="shell"><p className="muted">Loading...</p></div>;
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
 function TopBar() {
   const { prof, slug } = useParams();
+  const { user, logout } = useAuth();
   return (
     <header className="topbar">
       <NavLink className="mark" to="/app">
         Scene<span>Forge</span> Studio
       </NavLink>
       <nav>
-        <a href="/landing">Landing</a>
         {prof && (
           <>
             <NavLink to={`/${prof}`} end>
@@ -30,9 +39,6 @@ function TopBar() {
             </NavLink>
           </>
         )}
-        <a href="/docs" target="_blank" rel="noreferrer" style={{ opacity: 0.5 }}>
-          API
-        </a>
         {prof && slug && (
           <>
             <NavLink to={`/${prof}/p/${slug}`} end>
@@ -40,6 +46,15 @@ function TopBar() {
             </NavLink>
             <NavLink to={`/${prof}/p/${slug}/history`}>History</NavLink>
           </>
+        )}
+        {user && (
+          <button
+            onClick={logout}
+            className="ghost"
+            style={{ padding: "2px 8px", fontSize: "0.78rem" }}
+          >
+            {user.name || user.email} · logout
+          </button>
         )}
       </nav>
     </header>
@@ -56,22 +71,31 @@ function WithBar({ children }: { children: React.ReactNode }) {
   );
 }
 
+function AuthRoute({ children }: { children: React.ReactNode }) {
+  return (
+    <RequireAuth>
+      <WithBar>{children}</WithBar>
+    </RequireAuth>
+  );
+}
+
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<WithBar><ProfileList /></WithBar>} />
+      <Route path="/login" element={<Login />} />
       <Route path="/demo" element={<WithBar><ProfileList /></WithBar>} />
       <Route path="/demo/:prof" element={<WithBar><ProjectList /></WithBar>} />
       <Route path="/demo/:prof/p/:slug" element={<WithBar><ProjectBoard /></WithBar>} />
       <Route path="/demo/:prof/p/:slug/scenes/:sid/takes" element={<WithBar><TakeCompare /></WithBar>} />
       <Route path="/demo/:prof/p/:slug/history" element={<WithBar><HistoryView /></WithBar>} />
-      <Route path="/app" element={<WithBar><ProfileList /></WithBar>} />
-      <Route path="/:prof" element={<WithBar><ProjectList /></WithBar>} />
-      <Route path="/:prof/settings" element={<WithBar><Settings /></WithBar>} />
-      <Route path="/:prof/analytics" element={<WithBar><Analytics /></WithBar>} />
-      <Route path="/:prof/p/:slug" element={<WithBar><ProjectBoard /></WithBar>} />
-      <Route path="/:prof/p/:slug/scenes/:sid/takes" element={<WithBar><TakeCompare /></WithBar>} />
-      <Route path="/:prof/p/:slug/history" element={<WithBar><HistoryView /></WithBar>} />
+      <Route path="/" element={<AuthRoute><ProfileList /></AuthRoute>} />
+      <Route path="/app" element={<AuthRoute><ProfileList /></AuthRoute>} />
+      <Route path="/:prof" element={<AuthRoute><ProjectList /></AuthRoute>} />
+      <Route path="/:prof/settings" element={<AuthRoute><Settings /></AuthRoute>} />
+      <Route path="/:prof/analytics" element={<AuthRoute><Analytics /></AuthRoute>} />
+      <Route path="/:prof/p/:slug" element={<AuthRoute><ProjectBoard /></AuthRoute>} />
+      <Route path="/:prof/p/:slug/scenes/:sid/takes" element={<AuthRoute><TakeCompare /></AuthRoute>} />
+      <Route path="/:prof/p/:slug/history" element={<AuthRoute><HistoryView /></AuthRoute>} />
     </Routes>
   );
 }

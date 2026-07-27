@@ -3,8 +3,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
+import AuthProvider from "./AuthProvider";
 import { DemoProvider } from "./DemoContext";
-import SiteAuth from "./SiteAuth";
 import "./styles.css";
 
 const queryClient = new QueryClient({
@@ -47,13 +47,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <SiteAuth>
-          <BrowserRouter>
+        <BrowserRouter>
+          <AuthProvider>
             <DemoProvider>
               <App />
             </DemoProvider>
-          </BrowserRouter>
-        </SiteAuth>
+          </AuthProvider>
+        </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>
   </React.StrictMode>,

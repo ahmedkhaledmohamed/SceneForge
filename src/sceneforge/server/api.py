@@ -17,8 +17,6 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 
-import secrets
-
 from .. import config, ops
 from ..profile import PROFILE_FILE, Profile, create_profile
 from ..project import PROJECT_FILE, Project, SceneRef
@@ -86,19 +84,21 @@ def make_router(home: Path) -> APIRouter:
             raise _err(404, "not_found", f"No profile '{prof}'")
         return root
 
-    # sessions: {token: profile_slug}
-    _sessions: dict[str, str] = {}
-
     def load_profile(prof: str) -> Profile:
         return Profile.load(profile_root(prof))
 
-    def require_auth(request: Request, prof: str) -> None:
+    def get_user(request: Request) -> dict:
+        user = getattr(request.state, "user", None)
+        if not user:
+            raise _err(401, "unauthorized", "Login required")
+        return user
+
+    def require_owner(request: Request, prof: str) -> dict:
+        user = get_user(request)
         profile = load_profile(prof)
-        if not profile.has_password:
-            return
-        token = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
-        if not token or _sessions.get(token) != prof:
-            raise _err(401, "unauthorized", "Login required for this profile")
+        if profile.owner_id and profile.owner_id != user["id"]:
+            raise _err(403, "forbidden", "You don't own this profile")
+        return user
 
     def project_root(prof: str, slug: str) -> Path:
         base = profile_root(prof) / "projects"
@@ -174,21 +174,27 @@ def make_router(home: Path) -> APIRouter:
     # --------------------------------------------------------- profiles
 
     @router.get("/profiles")
-    def list_profiles():
+    def list_profiles(request: Request):
+        user = get_user(request)
         out = []
         for pf in sorted(home.glob(f"*/{PROFILE_FILE}")):
             profile = Profile.load(pf.parent)
+            if profile.owner_id and profile.owner_id != user["id"]:
+                continue
             out.append({
                 "slug": pf.parent.name,
                 "name": profile.name,
                 "characters": len(profile.characters),
                 "seeds": len(profile.seeds),
                 "projects": len(list(profile.projects_dir.glob(f"*/{PROJECT_FILE}"))),
+                "owned": profile.owner_id == user["id"],
+                "unclaimed": not profile.owner_id,
             })
         return out
 
     @router.post("/profiles", status_code=201)
-    def new_profile(payload: dict):
+    def new_profile(request: Request, payload: dict):
+        user = get_user(request)
         name = (payload.get("name") or "").strip()
         if not name:
             raise _err(400, "invalid", "Profile name is required")
@@ -196,6 +202,8 @@ def make_router(home: Path) -> APIRouter:
             profile = create_profile(name, home)
         except (ValueError, FileExistsError) as exc:
             raise _err(400, "invalid", str(exc))
+        profile.owner_id = user["id"]
+        profile.save()
         return {"slug": profile.root.name, "name": profile.name}
 
     @router.get("/profiles/{prof}")
@@ -214,44 +222,24 @@ def make_router(home: Path) -> APIRouter:
     @router.delete("/profiles/{prof}")
     def delete_profile(prof: str, request: Request):
         import shutil
-        require_auth(request, prof)
+        require_owner(request, prof)
         root = profile_root(prof)
         shutil.rmtree(root)
         return {"deleted": prof}
 
-    @router.post("/profiles/{prof}/login")
-    def login(prof: str, payload: dict):
+    @router.post("/profiles/{prof}/claim")
+    def claim_profile(prof: str, request: Request):
+        user = get_user(request)
         profile = load_profile(prof)
-        password = payload.get("password", "")
-        if not profile.check_password(password):
-            raise _err(401, "unauthorized", "Wrong password")
-        token = secrets.token_urlsafe(32)
-        _sessions[token] = prof
-        return {"token": token}
-
-    @router.post("/profiles/{prof}/logout")
-    def logout(request: Request):
-        token = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
-        _sessions.pop(token, None)
-        return {"ok": True}
-
-    @router.post("/profiles/{prof}/set-password")
-    def set_password(prof: str, request: Request, payload: dict):
-        profile = load_profile(prof)
-        if profile.has_password:
-            require_auth(request, prof)
-        password = (payload.get("password") or "").strip()
-        if not password:
-            raise _err(400, "invalid", "Password is required")
-        profile.set_password(password)
+        if profile.owner_id:
+            raise _err(400, "invalid", "Profile is already claimed")
+        profile.owner_id = user["id"]
         profile.save()
-        token = secrets.token_urlsafe(32)
-        _sessions[token] = prof
-        return {"token": token}
+        return {"claimed": prof, "owner_id": user["id"]}
 
     @router.get("/profiles/{prof}/settings")
     def get_settings(prof: str, request: Request):
-        require_auth(request, prof)
+        require_owner(request, prof)
         profile = load_profile(prof)
 
         def mask(s: str) -> str:
@@ -273,7 +261,7 @@ def make_router(home: Path) -> APIRouter:
 
     @router.get("/profiles/{prof}/balance")
     def get_balance(prof: str, request: Request):
-        require_auth(request, prof)
+        require_owner(request, prof)
         profile = load_profile(prof)
         result: dict = {}
 
@@ -323,7 +311,7 @@ def make_router(home: Path) -> APIRouter:
 
     @router.patch("/profiles/{prof}/settings")
     def patch_settings(prof: str, request: Request, payload: dict):
-        require_auth(request, prof)
+        require_owner(request, prof)
         profile = load_profile(prof)
         keys = payload.get("keys", {})
         if "together" in keys:
