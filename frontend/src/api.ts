@@ -73,12 +73,6 @@ export const api = {
   profile: (prof: string) => request<ProfileDoc>(`/profiles/${prof}`),
   patchProfile: (prof: string, body: unknown) => request<ProfileDoc>(`/profiles/${prof}`, patch(body)),
   deleteProfile: (prof: string) => request(`/profiles/${prof}`, { method: "DELETE" }),
-  login: (prof: string, password: string) =>
-    request<{ token: string }>(`/profiles/${prof}/login`, json({ password })),
-  logout: (prof: string) =>
-    request(`/profiles/${prof}/logout`, { method: "POST" }),
-  setPassword: (prof: string, password: string) =>
-    request<{ token: string }>(`/profiles/${prof}/set-password`, json({ password })),
   getBalance: (prof: string) =>
     request<{
       together: { status: string; dashboard?: string };
