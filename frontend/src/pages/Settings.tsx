@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, getAuthToken, setAuthToken } from "../api";
+import { api } from "../api";
+import { useAuth } from "../AuthProvider";
 import { useIsDemo } from "../DemoContext";
 import { toastError, toastOk } from "../components/toast";
 
@@ -10,7 +11,7 @@ export default function Settings() {
   const isDemo = useIsDemo();
   const client = useQueryClient();
   const navigate = useNavigate();
-  const token = getAuthToken();
+  const { user } = useAuth();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", prof],
@@ -18,22 +19,20 @@ export default function Settings() {
     enabled: !isDemo,
   });
 
-  const { data: settings, error: settingsError } = useQuery({
-    queryKey: ["settings", prof, token],
+  const { data: settings } = useQuery({
+    queryKey: ["settings", prof],
     queryFn: () => api.getSettings(prof),
     enabled: !isDemo && !!profile,
     retry: false,
   });
 
-  const [password, setPassword] = useState("");
-  const [loginPw, setLoginPw] = useState("");
   const [togetherKey, setTogetherKey] = useState("");
   const [openrouterKey, setOpenrouterKey] = useState("");
   const [runpodApi, setRunpodApi] = useState("");
   const [runpodEndpoint, setRunpodEndpoint] = useState("");
 
   const { data: balance } = useQuery({
-    queryKey: ["balance", prof, token],
+    queryKey: ["balance", prof],
     queryFn: () => api.getBalance(prof),
     enabled: !isDemo && !!settings,
     retry: false,
@@ -42,37 +41,7 @@ export default function Settings() {
 
   const deleteProf = useMutation({
     mutationFn: () => api.deleteProfile(prof),
-    onSuccess: () => navigate("/"),
-    onError: (e) => toastError(String(e)),
-  });
-  const doLogout = useMutation({
-    mutationFn: () => api.logout(prof),
-    onSuccess: () => {
-      setAuthToken(null);
-      toastOk("logged out");
-      client.invalidateQueries({ queryKey: ["settings", prof] });
-    },
-  });
-
-  const login = useMutation({
-    mutationFn: () => api.login(prof, loginPw),
-    onSuccess: (r) => {
-      setAuthToken(r.token);
-      setLoginPw("");
-      toastOk("logged in");
-      client.invalidateQueries({ queryKey: ["settings", prof] });
-    },
-    onError: (e) => toastError(String(e)),
-  });
-
-  const setPw = useMutation({
-    mutationFn: () => api.setPassword(prof, password),
-    onSuccess: (r) => {
-      setAuthToken(r.token);
-      setPassword("");
-      toastOk("password set");
-      client.invalidateQueries({ queryKey: ["profile", prof] });
-    },
+    onSuccess: () => navigate("/app"),
     onError: (e) => toastError(String(e)),
   });
 
@@ -87,6 +56,7 @@ export default function Settings() {
     },
     onSuccess: () => {
       setTogetherKey("");
+      setOpenrouterKey("");
       setRunpodApi("");
       setRunpodEndpoint("");
       toastOk("keys saved");
@@ -105,45 +75,27 @@ export default function Settings() {
     );
   }
 
-  const needsLogin = profile?.has_password && settingsError;
-
   return (
     <>
       <p><Link to={`/${prof}`}>← {prof}</Link></p>
       <h1>Settings</h1>
 
-      {/* Password section */}
-      <div className="card">
-        <h2 style={{ marginTop: 0 }}>Password</h2>
-        {profile?.has_password ? (
-          <>
-            <p className="muted">This profile is password-protected.</p>
-            {needsLogin ? (
-              <form className="row" onSubmit={(e) => { e.preventDefault(); login.mutate(); }}>
-                <input type="password" value={loginPw}
-                       onChange={(e) => setLoginPw(e.target.value)}
-                       placeholder="enter password" style={{ width: 200 }} />
-                <button type="submit" disabled={login.isPending}>unlock</button>
-              </form>
-            ) : (
-              <div className="row">
-                <span className="mono muted">authenticated</span>
-                <button className="ghost" onClick={() => doLogout.mutate()}>log out</button>
-              </div>
+      {/* Account info */}
+      {user && (
+        <div className="card">
+          <h2 style={{ marginTop: 0 }}>Account</h2>
+          <div className="row" style={{ gap: 12 }}>
+            {user.avatar_url && (
+              <img src={user.avatar_url} alt="" style={{ width: 36, height: 36, borderRadius: "50%" }} />
             )}
-          </>
-        ) : (
-          <>
-            <p className="muted">No password set. Anyone with access to this machine can use this profile.</p>
-            <form className="row" onSubmit={(e) => { e.preventDefault(); setPw.mutate(); }}>
-              <input type="password" value={password}
-                     onChange={(e) => setPassword(e.target.value)}
-                     placeholder="set a password" style={{ width: 200 }} />
-              <button type="submit" disabled={setPw.isPending || !password}>set password</button>
-            </form>
-          </>
-        )}
-      </div>
+            <div>
+              <div><b>{user.name}</b></div>
+              <div className="mono muted" style={{ fontSize: "0.78rem" }}>{user.email}</div>
+            </div>
+            <span className="pill" style={{ marginLeft: "auto" }}>{user.provider}</span>
+          </div>
+        </div>
+      )}
 
       {/* Account balance */}
       {balance && (
@@ -245,9 +197,7 @@ export default function Settings() {
         </div>
       )}
 
-      {!settings && !needsLogin && (
-        <p className="muted">Loading settings…</p>
-      )}
+      {!settings && <p className="muted">Loading settings…</p>}
 
       {/* Danger zone */}
       <div className="card" style={{ borderColor: "var(--danger, #c44)", marginTop: 24 }}>
