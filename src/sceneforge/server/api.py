@@ -213,9 +213,9 @@ def make_router(home: Path) -> APIRouter:
         doc.pop("root")
         doc.pop("password_hash", None)
         doc.pop("password_salt", None)
+        doc.pop("owner_id", None)
         doc.pop("keys", None)
         doc["slug"] = prof
-        doc["has_password"] = profile.has_password
         doc["has_keys"] = bool(profile.keys.together)
         return doc
 
