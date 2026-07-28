@@ -1,4 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { Navigate, NavLink, Route, Routes, useParams } from "react-router-dom";
+import { api } from "./api";
 import { useAuth } from "./AuthProvider";
 import { Toaster } from "./components/toast";
 import Analytics from "./pages/Analytics";
@@ -17,6 +19,42 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ProfileSwitcher({ currentProf }: { currentProf?: string }) {
+  const { user } = useAuth();
+  const { data: profiles } = useQuery({
+    queryKey: ["profiles"],
+    queryFn: api.profiles,
+    enabled: !!user,
+    staleTime: 30000,
+  });
+
+  if (!profiles || profiles.length <= 1) return null;
+
+  return (
+    <select
+      value={currentProf || ""}
+      onChange={(e) => {
+        if (e.target.value) window.location.href = `/${e.target.value}`;
+        else window.location.href = "/app";
+      }}
+      style={{
+        background: "var(--surface-2, #2b241d)",
+        color: "var(--cream)",
+        border: "1px solid var(--line)",
+        borderRadius: 6,
+        padding: "3px 8px",
+        fontSize: "0.78rem",
+        fontFamily: "var(--font-mono)",
+      }}
+    >
+      <option value="">All profiles</option>
+      {profiles.map((p) => (
+        <option key={p.slug} value={p.slug}>{p.name}</option>
+      ))}
+    </select>
+  );
+}
+
 function TopBar() {
   const { prof, slug } = useParams();
   const { user, logout } = useAuth();
@@ -26,11 +64,9 @@ function TopBar() {
         Scene<span>Forge</span> Studio
       </NavLink>
       <nav>
+        <ProfileSwitcher currentProf={prof} />
         {prof && (
           <>
-            <NavLink to={`/${prof}`} end>
-              {prof}
-            </NavLink>
             <NavLink to={`/${prof}/settings`}>
               settings
             </NavLink>
