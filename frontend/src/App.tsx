@@ -28,7 +28,7 @@ function ProfileSwitcher({ currentProf }: { currentProf?: string }) {
     staleTime: 30000,
   });
 
-  if (!profiles || profiles.length <= 1) return null;
+  if (!profiles || profiles.length === 0) return null;
 
   return (
     <select
