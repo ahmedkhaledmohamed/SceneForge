@@ -185,7 +185,6 @@ export interface ProfileDoc {
   };
   characters: Character[];
   seeds: Seed[];
-  has_password: boolean;
   has_keys: boolean;
 }
 
