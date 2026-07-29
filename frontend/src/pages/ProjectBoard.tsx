@@ -1082,24 +1082,21 @@ export default function ProjectBoard() {
         />
       )}
 
-      <div className="row" style={{ gap: 0, borderBottom: "1px solid var(--line)", marginBottom: 14 }}>
+      <div className="tab-bar">
         <button
-          className={activeTab === "scenes" ? "btn" : "ghost"}
-          style={{ borderRadius: "7px 7px 0 0", borderBottom: "none" }}
+          className={activeTab === "scenes" ? "active" : ""}
           onClick={() => setActiveTab("scenes")}
         >
           Scenes ({proj.scenes.length})
         </button>
         <button
-          className={activeTab === "clips" ? "btn" : "ghost"}
-          style={{ borderRadius: "7px 7px 0 0", borderBottom: "none" }}
+          className={activeTab === "clips" ? "active" : ""}
           onClick={() => setActiveTab("clips")}
         >
           Clips ({proj.clips.length})
         </button>
         <button
-          className={activeTab === "sequence" ? "btn" : "ghost"}
-          style={{ borderRadius: "7px 7px 0 0", borderBottom: "none" }}
+          className={activeTab === "sequence" ? "active" : ""}
           onClick={() => setActiveTab("sequence")}
         >
           Sequence ({proj.sequence.length})
