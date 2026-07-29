@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Features Guide — SceneForge</title>
+<meta name="description" content="Complete guide to every SceneForge feature — from creating your first profile to exporting platform-ready content with AI-generated captions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=Fragment+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap steps-page">
+
+<header class="site-header">
+  <a class="wordmark" href="index.html">Scene<span class="spark">Forge</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="architecture.html">Architecture</a>
+    <a href="getting-started.html">Getting started</a>
+    <a href="features.html" aria-current="page">Features</a>
+    <a href="pricing.html">Pricing</a>
+    <a href="https://github.com/ahmedkhaledmohamed/SceneForge">GitHub</a>
+    <a href="/login" class="login-link">Login</a>
+  </nav>
+</header>
+
+<main>
+
+<section class="no-rule" style="padding-top: 40px; padding-bottom: 24px">
+  <p class="eyebrow">Features guide</p>
+  <h1>Everything<br>SceneForge does.</h1>
+  <p class="lede">A complete walkthrough of every feature — how it works, where to find it, and
+  when to use it. Written for content creators, not developers.</p>
+
+  <nav style="margin-top: 30px; columns: 2; column-gap: 40px; font-size: 0.9rem; line-height: 2">
+    <a href="#accounts">1. Accounts &amp; Login</a><br>
+    <a href="#profiles">2. Profiles</a><br>
+    <a href="#characters">3. Characters</a><br>
+    <a href="#projects">4. Projects</a><br>
+    <a href="#scenes">5. Scenes &amp; References</a><br>
+    <a href="#generating-images">6. Generating Images</a><br>
+    <a href="#prompt-enhance">7. Prompt Enhancement</a><br>
+    <a href="#selecting">8. Selecting &amp; Comparing</a><br>
+    <a href="#upgrade">9. Draft to Premium Upgrade</a><br>
+    <a href="#clips">10. Video Clips</a><br>
+    <a href="#shot-types">11. Shot Types &amp; Smart Routing</a><br>
+    <a href="#batch">12. Batch Generation</a><br>
+    <a href="#ai-director">13. AI Director</a><br>
+    <a href="#sequence">14. Sequence Builder</a><br>
+    <a href="#audio">15. Audio Layer</a><br>
+    <a href="#platform-export">16. Platform Export</a><br>
+    <a href="#captions">17. Captions &amp; Hashtags</a><br>
+    <a href="#shop-links">18. Shop Link Cards</a><br>
+    <a href="#prompt-library">19. Prompt Library</a><br>
+    <a href="#asset-library">20. Asset Library</a><br>
+    <a href="#templates">21. Project Templates</a><br>
+    <a href="#analytics">22. Analytics</a><br>
+    <a href="#consistency">23. Style Consistency</a><br>
+    <a href="#backup">24. Backup &amp; Export</a><br>
+    <a href="#settings">25. Settings &amp; API Keys</a><br>
+  </nav>
+</section>
+
+
+<!-- ============================================================ -->
+
+<h2 id="accounts"><span class="n">1</span>Accounts &amp; Login</h2>
+
+<p>SceneForge supports three ways to sign in:</p>
+<ul>
+  <li><b>Google</b> — click "Continue with Google" on the login page. Uses your Google name and avatar.</li>
+  <li><b>GitHub</b> — click "Continue with GitHub". Uses your GitHub name and avatar.</li>
+  <li><b>Email + password</b> — create an account with any email and a password (at least 8 characters).</li>
+</ul>
+<p>Each sign-in method creates a separate account. If you sign in with Google and then with GitHub using a different email, those are two different accounts with separate profiles.</p>
+<p>After logging in, you land on the <b>profile list</b> — all your profiles (brands/workspaces). You can switch between profiles using the dropdown in the top navigation bar.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="profiles"><span class="n">2</span>Profiles</h2>
+
+<p>A <b>profile</b> is your brand or workspace. Think of it as a container for everything related to one content identity:</p>
+<ul>
+  <li><b>Characters</b> — your recurring subjects (a doll, a model, a mascot) with reference photos</li>
+  <li><b>Style defaults</b> — the visual look that gets applied to every image (lighting, colors, mood)</li>
+  <li><b>API keys</b> — your Together AI and OpenRouter keys for AI generation</li>
+  <li><b>Projects</b> — individual posts or videos, each with their own scenes and clips</li>
+  <li><b>Prompt library</b> — saved prompts you can reuse</li>
+  <li><b>Asset library</b> — garment photos, backgrounds, and props you use across projects</li>
+</ul>
+<p><b>Creating a profile:</b> Click "New profile" on the profile list page. Give it a name (e.g. "GenerationStyled"). The name becomes the URL slug.</p>
+<p><b>Style anchor:</b> At the top of the profile page, set your style — this text gets automatically added to every image generation prompt. Example: <em>"soft golden hour light, muted earth tones, clean background"</em>. You set it once; every project inherits it.</p>
+<p><b>Why multiple profiles?</b> If you run different content brands with different characters and styles, each gets its own profile. Most people need just one.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="characters"><span class="n">3</span>Characters</h2>
+
+<p>A <b>character</b> is a recurring subject in your content — typically a doll, figurine, or model that appears across all your posts. Characters live at the profile level, so every project can use them.</p>
+
+<h3>Adding a character</h3>
+<p>On your profile page, use the form at the top: enter a name and upload one or more reference photos. These photos teach the AI what your character looks like.</p>
+
+<h3>Reference photos — what works best</h3>
+<ul>
+  <li>Upload <b>3-5 clear photos</b> of the character from different angles</li>
+  <li>Well-lit, clean background, the character should fill most of the frame</li>
+  <li>Include at least one full-body shot and one close-up</li>
+  <li>You can add more reference photos later by clicking "+ref" next to the character name</li>
+</ul>
+
+<h3>Main character</h3>
+<p>The first character you add becomes the <b>main character</b> (marked with a star). When you create scenes without specifying a character, the main character is used automatically.</p>
+
+<h3>How characters work in generation</h3>
+<p>When you generate an image for a scene, the AI receives your character's reference photos along with the scene description, garment references, and style anchor. This is what keeps your character looking consistent across all your content — the AI is always looking at the same reference photos.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="projects"><span class="n">4</span>Projects</h2>
+
+<p>A <b>project</b> is one piece of content — typically one post, one video, or one look. Inside a project you have scenes (visual moments), generated images, video clips, and export settings.</p>
+
+<h3>Creating a project</h3>
+<p>Three ways to start:</p>
+<ul>
+  <li><b>New project</b> — blank project. Give it a name and a concept (e.g. "spring pastel outfit for toddler boy").</li>
+  <li><b>From template</b> — start with a pre-built structure. Three built-in templates:
+    <ul>
+      <li><em>Product lookbook</em> — 8 scenes: hero shot, detail close-ups, outfit shots, flat lay, lifestyle</li>
+      <li><em>Day in the life</em> — 6 scenes: morning to evening progression</li>
+      <li><em>Character series</em> — 6 scenes: character in different contexts and poses</li>
+    </ul>
+  </li>
+  <li><b>Import from zip</b> — restore a previously exported project backup</li>
+</ul>
+
+<h3>Project concept</h3>
+<p>The <b>concept</b> is a short description of what this post is about. It's used by the AI Director, shot list generator, and caption generator. Example: <em>"toddler boy spring outfit — pastel blue polo, khaki shorts, white sneakers"</em>.</p>
+
+<h3>Budget</h3>
+<p>You can set a USD budget for the project in settings. When set, SceneForge will warn you before operations that would exceed the budget, and smart model routing will pick cheaper models as you approach the limit.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="scenes"><span class="n">5</span>Scenes &amp; References</h2>
+
+<p>A <b>scene</b> is one visual moment in your project — one image that will become one or more video clips. Each scene has:</p>
+<ul>
+  <li>A <b>description</b> — what's happening in this scene (e.g. "standing in a sunlit cafe, full outfit visible")</li>
+  <li>A <b>pose</b> (optional) — how the character is positioned (e.g. "standing, facing camera, head to toe")</li>
+  <li>A <b>character</b> — which character appears in this scene</li>
+  <li><b>Reference images</b> — photos of the specific garments, accessories, or props in this scene</li>
+</ul>
+
+<h3>Adding reference images</h3>
+<p>Reference images are the <b>most important part</b> of getting good results. These are the actual product photos — the garment, shoes, accessories — that the AI uses to dress your character.</p>
+<ul>
+  <li><b>Drag and drop</b> product photos directly onto a scene card</li>
+  <li>Or click the file upload area on the scene card</li>
+  <li>Each ref has a <b>role</b>: garment, style, background, prop, or other</li>
+  <li>Each ref can have a <b>label</b> (e.g. "Blue Polo") and a <b>shop URL</b> (for link cards later)</li>
+  <li>You can also add refs <b>from your asset library</b> — click "from library" on the scene card</li>
+</ul>
+
+<h3>How many refs?</h3>
+<p>Each scene can have up to <b>14 reference images</b> (with the nano-banana-pro model) or <b>8</b> (with flux-2-pro). More refs = more specific result. Typical setup: 1 character (from profile) + 3-5 garment/accessory photos per scene.</p>
+
+<h3>Adding scenes</h3>
+<ul>
+  <li><b>Manually</b> — click "+ scene" and describe the moment</li>
+  <li><b>Brainstorm</b> — the AI suggests scene ideas based on your concept</li>
+  <li><b>Shot list</b> — the AI generates a complete list of scenes with compositions and shot types (see <a href="#ai-director">AI Director</a>)</li>
+</ul>
+
+<h3>Reordering scenes</h3>
+<p>Use the up/down arrows on each scene card to reorder them. Scene order determines the sequence of your final video.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="generating-images"><span class="n">6</span>Generating Images</h2>
+
+<p>Once a scene has a description and reference images, click <b>Generate</b> on the scene card. SceneForge composes a prompt from:</p>
+<ol>
+  <li>Your <b>style anchor</b> (from the profile)</li>
+  <li>The <b>character description</b> + reference photos</li>
+  <li>The <b>scene references</b> (garment photos, props)</li>
+  <li>The <b>scene description</b> and pose</li>
+</ol>
+<p>All of this is sent to the AI model together — the model sees the character, the clothing, and the scene description, and generates an image that combines them.</p>
+
+<h3>Image options</h3>
+<p>By default, SceneForge generates <b>2-3 options</b> per scene so you can pick the best one. You can change this number in project settings.</p>
+
+<h3>Choosing a model</h3>
+<p>Each scene card has a model picker. The main image models:</p>
+<table>
+  <thead><tr><th>Model</th><th>Best for</th><th>Max refs</th><th>Price</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">flux-schnell</td><td>Quick drafts</td><td>—</td><td>$0.003</td></tr>
+    <tr><td class="mono">flux-2-pro</td><td>Good quality with refs</td><td>8</td><td>$0.03</td></tr>
+    <tr><td class="mono">nano-banana-pro</td><td>Best quality, most refs</td><td>14</td><td>$0.134</td></tr>
+  </tbody>
+</table>
+<p><b>Tip:</b> Start with <span class="mono">flux-2-pro</span> ($0.03) to test compositions. Once you find a scene you like, upgrade to <span class="mono">nano-banana-pro</span> ($0.134) for the final version.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="prompt-enhance"><span class="n">7</span>Prompt Enhancement</h2>
+
+<p>When you write a short scene description like <em>"standing in a cafe"</em>, SceneForge can automatically <b>enhance</b> it into a detailed generation prompt using an LLM.</p>
+
+<p>The enhanced version might become: <em>"A character standing in a cozy cafe interior, warm natural light streaming through large windows, wooden tables and chairs in the background, a ceramic mug on the counter, shallow depth of field, shot from slightly below eye level"</em>.</p>
+
+<h3>How to use it</h3>
+<ul>
+  <li>Click the <b>Enhance</b> button next to a scene description</li>
+  <li>The enhanced prompt appears in an editable text area — you can accept or discard it</li>
+  <li>Or enable <b>Auto-enhance</b> in project settings to enhance every prompt automatically</li>
+</ul>
+
+<p>Enhancement uses your style anchor, character info, and garment labels to write a prompt that's specific to your content — not generic.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="selecting"><span class="n">8</span>Selecting &amp; Comparing</h2>
+
+<p>After generating multiple image options for a scene, you need to pick the best one.</p>
+
+<h3>How to select</h3>
+<ul>
+  <li>Click on any image to view it full-size in the lightbox</li>
+  <li>Use keyboard shortcuts <b>1, 2, 3</b> to quickly select option 1, 2, or 3</li>
+  <li>The selected image gets a gold border and is used for video clip generation</li>
+  <li><b>Select all</b> button auto-selects the first image in every scene (useful for quick workflows)</li>
+</ul>
+
+<h3>Comparing</h3>
+<p>When you have multiple options, SceneForge shows them side by side on the scene card. Click any image to compare at full size.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="upgrade"><span class="n">9</span>Draft to Premium Upgrade</h2>
+
+<p>Generate cheap drafts first, then upgrade only the ones that work.</p>
+
+<h3>The workflow</h3>
+<ol>
+  <li>Generate images with <span class="mono">flux-schnell</span> or <span class="mono">flux-2-pro</span> (cheap)</li>
+  <li>Pick the composition you like</li>
+  <li>Click <b>Upgrade</b> on that image — it regenerates with <span class="mono">nano-banana-pro</span> (better quality, same composition)</li>
+</ol>
+<p>This saves money: instead of generating 3 options at $0.134 each ($0.40), you generate 3 drafts at $0.03 ($0.09), then upgrade 1 ($0.134) = $0.22 total.</p>
+<p>Upgrade also works on video clips — upgrade a Kling clip to Seedance for better motion quality.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="clips"><span class="n">10</span>Video Clips</h2>
+
+<p>Switch to the <b>Clips</b> tab to create video clips from your selected images.</p>
+
+<h3>Creating a clip</h3>
+<ol>
+  <li>Click <b>+ clip</b></li>
+  <li>Pick a <b>start image</b> from any scene (the first frame of the video)</li>
+  <li>Optionally pick an <b>end image</b> (the AI interpolates between them)</li>
+  <li>Write a <b>motion prompt</b> — what should move? (e.g. "gentle wind blows the dress, character turns slightly")</li>
+  <li>Set <b>duration</b> (3-10 seconds)</li>
+  <li>Pick a <b>model</b> (or use Auto — see <a href="#shot-types">Smart Routing</a>)</li>
+  <li>Click <b>Generate</b></li>
+</ol>
+
+<h3>Video models</h3>
+<table>
+  <thead><tr><th>Model</th><th>Best for</th><th>Price</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">kling-2.1</td><td>Cheapest, good for B-roll</td><td>$0.18/clip</td></tr>
+    <tr><td class="mono">seedance-1.5-pro</td><td>Best value, good motion</td><td>$0.26/clip</td></tr>
+    <tr><td class="mono">seedance-2.0</td><td>Most realistic motion</td><td>$0.52-0.80/clip</td></tr>
+    <tr><td class="mono">veo-3.0-fast</td><td>Mid-price alternative</td><td>$0.40/clip</td></tr>
+  </tbody>
+</table>
+
+<h3>Keep / discard</h3>
+<p>After a clip generates, watch the preview. Click <b>Keep</b> to mark it as a keeper — only kept clips appear in the sequence builder and export. You can generate multiple clips from the same image and keep the best one.</p>
+
+<h3>Multiple clips per scene</h3>
+<p>You'll often want <b>several clips from the same image</b> with different motion prompts. For example, from a standing outfit shot: one clip with the character turning, one with wind blowing the outfit, one with a slight camera pan. Create a separate clip for each.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="shot-types"><span class="n">11</span>Shot Types &amp; Smart Routing</h2>
+
+<p><b>Shot types</b> categorize your clips by their role in the final video:</p>
+<ul>
+  <li><b>Hero</b> — the main money shot, your best angle. Uses premium models.</li>
+  <li><b>Detail</b> — close-up on texture, label, or stitching</li>
+  <li><b>B-roll</b> — supplementary footage, lifestyle context. Uses cheaper models.</li>
+  <li><b>Transition</b> — connecting shots between scenes</li>
+  <li><b>Wide</b> — full-body or environment establishing shot</li>
+  <li><b>Overhead</b> — top-down flat lay angle</li>
+</ul>
+
+<h3>Smart routing (Auto mode)</h3>
+<p>When you set a clip's model to <b>Auto</b>, SceneForge picks the best model based on the shot type and your remaining budget:</p>
+<ul>
+  <li>Hero shots → <span class="mono">seedance-2.0</span> (best quality)</li>
+  <li>B-roll → <span class="mono">kling-2.1</span> (cheapest)</li>
+  <li>Detail → <span class="mono">seedance-1.5-pro</span> (good value)</li>
+  <li>If your budget is running low, it automatically downgrades to cheaper models</li>
+</ul>
+<p>Set the shot type on each clip card using the dropdown, then use Auto for the model.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="batch"><span class="n">12</span>Batch Generation</h2>
+
+<p>Instead of generating one scene or one clip at a time, you can batch everything:</p>
+
+<h3>Generate all scenes</h3>
+<p>In the Scenes tab, click <b>"Generate all scenes"</b>. This generates images for every scene that doesn't have them yet, running in parallel. You see a progress bar and cost estimate before starting.</p>
+
+<h3>Generate all clips</h3>
+<p>In the Clips tab, click <b>"Generate all clips"</b>. This creates and generates clips for all scenes with selected images. Uses smart routing if set to Auto.</p>
+
+<h3>Produce (full pipeline)</h3>
+<p>The <b>Produce</b> button at the top runs the entire pipeline in one click:</p>
+<ol>
+  <li>Generate images for all scenes missing them</li>
+  <li>Auto-select the best image per scene</li>
+  <li>Create and generate clips for each scene</li>
+</ol>
+<p>Shows a cost estimate before starting and progress through each stage.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="ai-director"><span class="n">13</span>AI Director</h2>
+
+<p>The <b>AI Director</b> is the one-button experience. You give it a concept, and it does everything:</p>
+<ol>
+  <li><b>Plans</b> a shot list — the AI decides what scenes to create, with descriptions, compositions, and shot types</li>
+  <li><b>Generates images</b> for every scene</li>
+  <li><b>Selects</b> the best image per scene</li>
+  <li><b>Creates clips</b> from the selected images</li>
+</ol>
+
+<h3>How to use it</h3>
+<ol>
+  <li>Create a new project with a clear concept</li>
+  <li>Click <b>Direct</b> at the top of the project page</li>
+  <li>Adjust the number of scenes (default 8) and clip duration</li>
+  <li>Click "Action" — then wait for the pipeline to complete</li>
+</ol>
+
+<p>The AI Director is great for quick content when you don't need precise control over each scene. You can always edit the results afterward — change descriptions, regenerate specific scenes, or adjust clips.</p>
+
+<h3>Shot list generator (manual alternative)</h3>
+<p>If you want to review the plan before generating, use <b>"Shot list"</b> instead. The AI creates a list of scenes with descriptions, compositions, and shot types. You can edit, remove, or reorder scenes before applying them.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="sequence"><span class="n">14</span>Sequence Builder</h2>
+
+<p>Switch to the <b>Sequence</b> tab to arrange your kept clips into the final video order.</p>
+
+<h3>Building a sequence</h3>
+<ul>
+  <li>Completed clips appear in the "Available clips" section at the bottom</li>
+  <li>Click <b>+ add</b> to add a clip to the sequence</li>
+  <li>Use the <b>up/down arrows</b> to reorder clips in the sequence</li>
+  <li>Click <b>x</b> to remove a clip from the sequence (doesn't delete the clip)</li>
+</ul>
+<p>The sequence shows total duration and each clip's duration.</p>
+
+<h3>Rendering</h3>
+<p>Click <b>Render sequence</b> to stitch all clips into one continuous video. SceneForge normalizes resolution, applies crossfade transitions, and outputs a single MP4 file.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="audio"><span class="n">15</span>Audio Layer</h2>
+
+<p>Add audio to individual clips before or after rendering.</p>
+
+<h3>How to use</h3>
+<ul>
+  <li>On each completed clip card, you'll see an audio section</li>
+  <li>Choose an audio type: <b>Ambient</b> (background sounds), <b>Music</b> (background beat), or <b>Voiceover</b></li>
+  <li>Click <b>Add audio</b> and upload an audio file (MP3, WAV, M4A, or MP4)</li>
+  <li>The audio file attaches to the clip — you can preview it</li>
+  <li>Click <b>Merge into clip</b> to combine the audio with the video permanently</li>
+  <li>Click <b>Remove audio</b> to detach it</li>
+</ul>
+<p><b>Note:</b> For most social media content, you'll want to add music directly on TikTok/Instagram after uploading (better trending audio selection). The audio layer is most useful for ambient sounds or voiceover narration.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="platform-export"><span class="n">16</span>Platform Export</h2>
+
+<p>Export your rendered sequence formatted for specific platforms:</p>
+
+<table>
+  <thead><tr><th>Platform</th><th>Aspect</th><th>Max duration</th><th>Resolution</th></tr></thead>
+  <tbody>
+    <tr><td>TikTok</td><td>9:16</td><td>60s</td><td>1080 x 1920</td></tr>
+    <tr><td>Reels (Instagram)</td><td>9:16</td><td>90s</td><td>1080 x 1920</td></tr>
+    <tr><td>Shorts (YouTube)</td><td>9:16</td><td>60s</td><td>1080 x 1920</td></tr>
+    <tr><td>Pinterest</td><td>2:3</td><td>60s</td><td>1000 x 1500</td></tr>
+  </tbody>
+</table>
+
+<h3>How to export</h3>
+<p>In the Sequence tab, use the <b>"Export for..."</b> dropdown. Select a platform — SceneForge re-encodes the video to match the platform's specs (resolution, aspect ratio, codec, duration limit). The file downloads to your device ready to upload.</p>
+<p>For Pinterest, you also get a thumbnail image automatically extracted from the video.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="captions"><span class="n">17</span>Captions &amp; Hashtags</h2>
+
+<p>SceneForge uses AI to generate social media captions with hashtags and a call-to-action for each platform.</p>
+
+<h3>Generating a caption</h3>
+<ol>
+  <li>Scroll down in the Sequence tab to the <b>Caption</b> section</li>
+  <li>Pick a <b>platform</b> (Instagram, TikTok, YouTube, Pinterest)</li>
+  <li>Pick a <b>tone</b> (Playful, Professional, Casual, Minimal)</li>
+  <li>Click <b>Generate caption</b></li>
+</ol>
+
+<p>The AI writes a caption using your project concept, scene descriptions, and product references (including shop URLs if you added them). It generates:</p>
+<ul>
+  <li><b>Caption text</b> — editable in a text area</li>
+  <li><b>Hashtags</b> — shown as pills, click to remove any you don't want</li>
+  <li><b>CTA</b> (call to action) — like "Shop the look: link in bio"</li>
+</ul>
+
+<p>Click <b>Copy to clipboard</b> to copy the full caption + hashtags ready to paste into your post.</p>
+<p>You can generate captions for multiple platforms — each is saved separately.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="shop-links"><span class="n">18</span>Shop Link Cards</h2>
+
+<p>If your scenes have product references with shop URLs, SceneForge can generate visual product cards and link lists for your posts.</p>
+
+<h3>Setting up shop links</h3>
+<p>When adding a reference image to a scene, fill in the <b>URL</b> field with the product's shop link. Also add a <b>label</b> (e.g. "Blue Polo Shirt").</p>
+
+<h3>Features</h3>
+<ul>
+  <li><b>Generate link card</b> — creates a "Shop the Look" PNG image showing all products with thumbnails and short URLs. Download and include in your carousel or story.</li>
+  <li><b>Copy link list</b> — copies a numbered list of product names and URLs to your clipboard. Paste into your post caption or link-in-bio.</li>
+  <li><b>Download overlay (.srt)</b> — generates a subtitle file that times product names to appear during their scene in the video. Import into your video editor for timed product callouts.</li>
+</ul>
+<p>The Shop Links section only appears when you have scene references with URLs.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="prompt-library"><span class="n">19</span>Prompt Library</h2>
+
+<p>Save prompts that produced good results so you can reuse them across projects.</p>
+
+<h3>How to use</h3>
+<ul>
+  <li>In the Scenes tab, click <b>Prompt library</b> in the toolbar</li>
+  <li>The library panel slides open showing your saved prompts</li>
+  <li><b>Save a prompt:</b> type the prompt text, add comma-separated tags (e.g. "fashion, golden-hour, cafe"), click Save</li>
+  <li><b>Use a prompt:</b> click "Use" — it copies the text to your clipboard. Paste it into a scene description.</li>
+  <li><b>Filter by tag:</b> use the dropdown to filter prompts by tag</li>
+  <li><b>Usage tracking:</b> each prompt shows how many times it's been used</li>
+</ul>
+<p>Prompts are saved at the <b>profile level</b>, so they're available in every project under that profile.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="asset-library"><span class="n">20</span>Asset Library</h2>
+
+<p>Upload garment photos, backgrounds, and props once and reuse them across all your projects.</p>
+
+<h3>Uploading assets</h3>
+<p>Assets are uploaded at the profile level. Each asset has:</p>
+<ul>
+  <li>An <b>image file</b></li>
+  <li>A <b>label</b> (e.g. "White Sneakers")</li>
+  <li>A <b>role</b> — garment, style, background, prop, or other</li>
+  <li><b>Tags</b> for filtering</li>
+  <li>An optional <b>URL</b> (shop link)</li>
+</ul>
+
+<h3>Using assets in scenes</h3>
+<p>On any scene card, click <b>"from library"</b>. A picker appears showing your assets filtered by role. Click any asset to add it as a reference to that scene — the file is copied into the project so the project stays self-contained.</p>
+
+<p>The asset library tracks which projects have used each asset.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="templates"><span class="n">21</span>Project Templates</h2>
+
+<p>Save a project's structure (scenes, shot types, descriptions) as a reusable template — without the generated media.</p>
+
+<h3>Built-in templates</h3>
+<ul>
+  <li><b>Product lookbook</b> (8 scenes) — hero, detail close-ups, outfit shots, flat lay, lifestyle, BTS</li>
+  <li><b>Day in the life</b> (6 scenes) — morning routine through evening wind-down</li>
+  <li><b>Character series</b> (6 scenes) — character in multiple contexts and poses</li>
+</ul>
+
+<h3>Custom templates</h3>
+<p>After you've set up a project with scenes you like, go to the project header and click <b>"Save as template"</b>. Give it a name. Next time you create a project, choose "From template" and select yours.</p>
+
+<p>Templates save: scene descriptions, shot types, and style settings. They don't save generated images or clips — those are regenerated for each new project.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="analytics"><span class="n">22</span>Analytics</h2>
+
+<p>Click <b>Analytics</b> in the top navigation to see generation stats across all your projects.</p>
+
+<h3>What you see</h3>
+<ul>
+  <li><b>Total spend</b> — how much you've spent on AI generation</li>
+  <li><b>Average cost per kept clip</b> — the real ROI metric. If you generate 5 clips and keep 1, this is your true cost per usable clip.</li>
+  <li><b>Best value model</b> — which model gives you the lowest cost per kept clip</li>
+  <li><b>Spend trend</b> — bar chart of weekly spending</li>
+  <li><b>Model performance table</b> — for each model: images generated, clips generated, keep rate, success rate, total spend, and cost per kept clip</li>
+</ul>
+<p>Use this to optimize your model choices. If Kling has a 80% keep rate at $0.18/clip and Seedance has a 60% keep rate at $0.52/clip, Kling is giving you better value — $0.23/kept vs $0.87/kept.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="consistency"><span class="n">23</span>Style Consistency Scoring</h2>
+
+<p>Before rendering your final video, check that all your scenes have a consistent visual style.</p>
+
+<h3>How it works</h3>
+<p>Click <b>"Check consistency"</b> in the project header (appears when you have 2+ scenes with selected images). SceneForge uses AI (CLIP embeddings) to measure how visually similar your scenes are to each other.</p>
+
+<h3>Reading the results</h3>
+<ul>
+  <li><b>Green (80%+)</b> — your scenes look cohesive, good to render</li>
+  <li><b>Yellow (60-80%)</b> — some scenes drift from the group. Check the flagged outliers.</li>
+  <li><b>Red (below 60%)</b> — significant visual inconsistency. Consider regenerating outlier scenes with the same style anchor.</li>
+</ul>
+<p>Outlier scenes are flagged with their similarity score. You can regenerate those scenes or adjust their style override to match the rest.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="backup"><span class="n">24</span>Backup &amp; Export</h2>
+
+<p>Export your projects as zip files for backup or to share with someone.</p>
+
+<h3>Project backup</h3>
+<p>In the project header, click <b>"backup zip"</b>. Downloads a zip containing:</p>
+<ul>
+  <li>The project data (scenes, clips, settings)</li>
+  <li>All reference images</li>
+  <li>Selected/kept images and clips</li>
+  <li>A manifest with project stats</li>
+</ul>
+
+<h3>Full profile backup</h3>
+<p>On the profile list page, click <b>"Backup all"</b>. Downloads a single zip with all your projects.</p>
+
+<h3>Importing</h3>
+<p>On the profile list page, click <b>"Import zip"</b> and select a previously exported backup zip. It creates a new project with all the data restored.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="settings"><span class="n">25</span>Settings &amp; API Keys</h2>
+
+<p>Click <b>Settings</b> in the top navigation to manage your profile settings.</p>
+
+<h3>API keys</h3>
+<p>SceneForge uses external AI services for generation. You need at least one key:</p>
+<ul>
+  <li><b>Together AI</b> — required for image generation (FLUX models) and some video models. Get a key at <a href="https://api.together.ai">api.together.ai</a></li>
+  <li><b>OpenRouter</b> — optional, for cheaper Seedance video clips. Get a key at <a href="https://openrouter.ai/keys">openrouter.ai/keys</a></li>
+  <li><b>RunPod</b> — optional, for self-hosted GPU generation (advanced)</li>
+</ul>
+<p>Keys are stored in your profile directory on the server. They override any server-level keys.</p>
+
+<h3>Account status</h3>
+<p>Settings shows your API account status — whether your Together AI and RunPod keys are valid and your current credit balance.</p>
+
+<h3>Account info</h3>
+<p>Shows your login method (Google, GitHub, or email), name, and email address.</p>
+
+</main>
+
+<footer class="footer">
+  <span>Questions? Check the <a href="getting-started.html">getting started</a> guide or the <a href="architecture.html">architecture page</a>.</span>
+  <span><a href="https://github.com/ahmedkhaledmohamed/SceneForge">source on GitHub</a></span>
+</footer>
+
+</div>
+</body>
+</html>
