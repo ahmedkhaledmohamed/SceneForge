@@ -16,6 +16,8 @@ COPY src/ src/
 COPY frontend/ frontend/
 COPY site/ site/
 
+# Cache-bust: any change to frontend or site triggers rebuild
+ARG CACHEBUST=1
 # Build frontend → src/sceneforge/web_dist/
 RUN cd frontend && npm ci --no-audit --no-fund && npm run build
 
