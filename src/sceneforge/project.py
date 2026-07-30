@@ -20,7 +20,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 5  # v5: clips as project-level entities
+SCHEMA_VERSION = 6  # v6: created_at + updated_at timestamps
 
 PROJECT_FILE = "project.json"
 
@@ -170,6 +170,8 @@ class Project:
     captions: dict = field(default_factory=dict)
     notes: str = ""
     budget_usd: float = 0.0
+    created_at: str = field(default_factory=now_iso)
+    updated_at: str = field(default_factory=now_iso)
     schema_version: int = SCHEMA_VERSION
     root: Path = field(default=Path("."), compare=False)
 
@@ -245,6 +247,7 @@ class Project:
     # --- persistence ---
 
     def save(self) -> None:
+        self.updated_at = now_iso()
         data = asdict(self)
         data.pop("root")
         tmp = self.path.with_suffix(".json.tmp")
@@ -329,6 +332,9 @@ class Project:
             sequence=data.get("sequence", []),
             captions=data.get("captions", {}),
             notes=data.get("notes", ""),
+            budget_usd=data.get("budget_usd", 0.0),
+            created_at=data.get("created_at", now_iso()),
+            updated_at=data.get("updated_at", now_iso()),
             schema_version=SCHEMA_VERSION,
             root=root,
         )

@@ -528,6 +528,8 @@ def make_router(home: Path) -> APIRouter:
                 "refs": sum(len(sc.refs) for sc in p.scenes),
                 "clips": sum(1 for c in p.clips if c.status == "completed"),
                 "kept": sum(1 for c in p.clips if c.kept),
+                "created_at": p.created_at,
+                "updated_at": p.updated_at,
             })
         return out
 
