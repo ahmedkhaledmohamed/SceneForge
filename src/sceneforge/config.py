@@ -154,6 +154,16 @@ MODELS = {
         "fallback": "seedance-1.5-pro",
         "notes": "self-hosted Wan2.2 on RunPod 4090, 720p 24fps",
     },
+    # --- inpainting ---
+    "flux-fill": {
+        "kind": "inpaint",
+        "backend": "together",
+        "id": "black-forest-labs/FLUX.1-Fill-dev",
+        "price": 0.05,
+        "resolutions": ["720x1280", "1280x720"],
+        "params": [],
+        "notes": "inpainting — edit regions of an image",
+    },
     # --- test ---
     "fake-image": {
         "kind": "image",

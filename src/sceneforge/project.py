@@ -89,6 +89,7 @@ class ImageArtifact:
     generation_id: str = ""
     enhanced_prompt: str = ""
     upgraded_from: str = ""
+    inpainted_from: str = ""
 
 
 @dataclass

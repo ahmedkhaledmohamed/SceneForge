@@ -14,6 +14,7 @@ export interface ImageArtifact {
   generation_id?: string;
   enhanced_prompt?: string;
   upgraded_from?: string;
+  inpainted_from?: string;
 }
 
 export interface ClipArtifact {
