@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, profileMedia } from "../api";
+import { api, media, profileMedia } from "../api";
 import { useAuth } from "../AuthProvider";
 import { SkeletonGrid } from "../components/Skeleton";
 import { useProfileScope } from "../hooks";
@@ -355,19 +355,30 @@ export default function ProjectList() {
       {isLoading && !isDemo && <SkeletonGrid count={4} />}
       <div className="grid-cards">
         {effectiveProjects?.map((p) => (
-          <Link key={p.slug} to={`/${prof}/p/${p.slug}`} className="card" style={{ display: "block" }}>
-            <b>{p.name}</b>
-            <div className="muted" style={{ fontSize: "0.85rem" }}>{p.concept || "no concept yet"}</div>
-            <div className="row" style={{ marginTop: 10 }}>
-              <span className="pill">{p.scenes} scenes</span>
-              <span className="pill">{p.clips} clips</span>
-              {p.kept > 0 && <span className="pill gold">{p.kept} kept</span>}
-            </div>
-            {p.updated_at && (
-              <div className="mono muted" style={{ fontSize: "0.68rem", marginTop: 8 }}>
-                updated {timeAgo(p.updated_at)}
-              </div>
+          <Link key={p.slug} to={`/${prof}/p/${p.slug}`} className="card" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+            {p.thumbnail && (
+              <img
+                src={media(prof, p.slug, p.thumbnail)}
+                alt=""
+                style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid var(--glass-border)" }}
+                loading="lazy"
+              />
             )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <b>{p.name}</b>
+              <div className="muted" style={{ fontSize: "0.85rem" }}>{p.concept || "no concept yet"}</div>
+              <div className="row" style={{ marginTop: 8 }}>
+                <span className="pill">{p.scenes} scenes</span>
+                <span className="pill">{p.clips} clips</span>
+                {p.kept > 0 && <span className="pill gold">{p.kept} kept</span>}
+                {(p.spent_usd ?? 0) > 0 && <span className="pill">${p.spent_usd!.toFixed(2)}</span>}
+              </div>
+              {p.updated_at && (
+                <div className="mono muted" style={{ fontSize: "0.68rem", marginTop: 6 }}>
+                  updated {timeAgo(p.updated_at)}
+                </div>
+              )}
+            </div>
           </Link>
         ))}
       </div>

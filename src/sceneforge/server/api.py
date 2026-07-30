@@ -534,6 +534,22 @@ def make_router(home: Path) -> APIRouter:
         for pj in sorted(profile.projects_dir.glob(f"*/{PROJECT_FILE}")):
             slug = pj.parent.name
             p = Project.load(pj.parent)
+            # Find thumbnail: first selected image, or first image
+            thumbnail = None
+            for sc in p.scenes:
+                if sc.selected_image is not None and sc.selected_image < len(sc.images):
+                    thumbnail = sc.images[sc.selected_image].file
+                    break
+            if not thumbnail:
+                for sc in p.scenes:
+                    if sc.images:
+                        thumbnail = sc.images[0].file
+                        break
+
+            spent = sum(img.meta.get("cost_usd", 0.0) or 0.0
+                        for sc in p.scenes for img in sc.images) \
+                  + sum(c.meta.get("cost_usd", 0.0) or 0.0 for c in p.clips)
+
             out.append({
                 "slug": slug,
                 "name": p.name,
@@ -542,6 +558,8 @@ def make_router(home: Path) -> APIRouter:
                 "refs": sum(len(sc.refs) for sc in p.scenes),
                 "clips": sum(1 for c in p.clips if c.status == "completed"),
                 "kept": sum(1 for c in p.clips if c.kept),
+                "thumbnail": thumbnail,
+                "spent_usd": round(spent, 4),
                 "created_at": p.created_at,
                 "updated_at": p.updated_at,
             })
