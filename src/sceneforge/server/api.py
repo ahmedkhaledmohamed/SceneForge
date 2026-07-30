@@ -181,6 +181,18 @@ def make_router(home: Path) -> APIRouter:
             profile = Profile.load(pf.parent)
             if profile.owner_id and profile.owner_id != user["id"]:
                 continue
+            spent = 0.0
+            latest_mtime = ""
+            for pj in profile.projects_dir.glob(f"*/{PROJECT_FILE}"):
+                p = Project.load(pj.parent)
+                for sc in p.scenes:
+                    for img in sc.images:
+                        spent += img.meta.get("cost_usd", 0.0) or 0.0
+                for c in p.clips:
+                    spent += c.meta.get("cost_usd", 0.0) or 0.0
+                if p.updated_at and p.updated_at > latest_mtime:
+                    latest_mtime = p.updated_at
+
             out.append({
                 "slug": pf.parent.name,
                 "name": profile.name,
@@ -189,6 +201,8 @@ def make_router(home: Path) -> APIRouter:
                 "projects": len(list(profile.projects_dir.glob(f"*/{PROJECT_FILE}"))),
                 "owned": profile.owner_id == user["id"],
                 "unclaimed": not profile.owner_id,
+                "spent_usd": round(spent, 4),
+                "updated_at": latest_mtime or None,
             })
         return out
 
