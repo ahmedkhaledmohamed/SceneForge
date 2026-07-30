@@ -42,9 +42,64 @@ export default function ProfileList() {
     },
   });
 
+  const dashQuery = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: api.dashboard,
+    enabled: !isDemo,
+    staleTime: 30000,
+  });
+  const dash = dashQuery.data;
+
   return (
     <>
       <h1>Profiles</h1>
+
+      {dash && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
+          <div className="card" style={{ padding: 14, textAlign: "center", marginBottom: 0 }}>
+            <div className="mono" style={{ fontSize: "1.3rem" }}>{dash.profiles}</div>
+            <div className="muted" style={{ fontSize: "0.72rem" }}>Profiles</div>
+          </div>
+          <div className="card" style={{ padding: 14, textAlign: "center", marginBottom: 0 }}>
+            <div className="mono" style={{ fontSize: "1.3rem" }}>{dash.projects}</div>
+            <div className="muted" style={{ fontSize: "0.72rem" }}>Projects</div>
+          </div>
+          <div className="card" style={{ padding: 14, textAlign: "center", marginBottom: 0 }}>
+            <div className="mono" style={{ fontSize: "1.3rem", color: "var(--gold)" }}>${dash.total_spend_usd.toFixed(2)}</div>
+            <div className="muted" style={{ fontSize: "0.72rem" }}>Total spend</div>
+          </div>
+        </div>
+      )}
+
+      {dash && dash.recent_projects.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <h2 style={{ margin: "0 0 10px" }}>Recent projects</h2>
+          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 6 }}>
+            {dash.recent_projects.map((rp) => (
+              <Link
+                key={`${rp.profile}/${rp.slug}`}
+                to={`/${rp.profile}/p/${rp.slug}`}
+                className="card"
+                style={{ flex: "0 0 200px", padding: 12, marginBottom: 0 }}
+              >
+                {rp.thumbnail && (
+                  <img
+                    src={`${import.meta.env.VITE_API_BASE ?? "/api"}/profiles/${rp.profile}/projects/${rp.slug}/media/${rp.thumbnail}`}
+                    alt=""
+                    style={{ width: "100%", height: 80, objectFit: "cover", borderRadius: 6, marginBottom: 8, border: "1px solid var(--glass-border)" }}
+                    loading="lazy"
+                  />
+                )}
+                <b style={{ fontSize: "0.85rem" }}>{rp.name}</b>
+                <div className="mono muted" style={{ fontSize: "0.62rem", marginTop: 4 }}>
+                  {rp.profile} · {timeAgo(rp.updated_at)}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       <p className="muted">
         A profile is a brand or workspace — its characters, style defaults, and seed
         assets are shared across all projects within it.

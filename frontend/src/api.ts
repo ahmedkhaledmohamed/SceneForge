@@ -1,4 +1,4 @@
-import type { Asset, AudioTypeInfo, CaptionResult, ConsistencyResult, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileAnalytics, ProfileDoc, ProfileSummary, Project, ProjectAnalytics, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
+import type { Asset, AudioTypeInfo, CaptionResult, ConsistencyResult, DashboardData, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileAnalytics, ProfileDoc, ProfileSummary, Project, ProjectAnalytics, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -58,6 +58,9 @@ export const api = {
   shotTypes: () => request<Record<string, ShotTypeInfo>>("/shot-types"),
   platforms: () => request<Record<string, PlatformSpec>>("/platforms"),
   audioTypes: () => request<Record<string, AudioTypeInfo>>("/audio-types"),
+
+  // dashboard
+  dashboard: () => request<DashboardData>("/dashboard"),
 
   // profiles
   profiles: () => request<ProfileSummary[]>("/profiles"),

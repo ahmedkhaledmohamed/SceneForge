@@ -261,6 +261,21 @@ export interface ProjectAnalytics {
   models: Record<string, ModelStats>;
 }
 
+export interface DashboardData {
+  profiles: number;
+  projects: number;
+  total_spend_usd: number;
+  recent_projects: {
+    profile: string;
+    slug: string;
+    name: string;
+    concept: string;
+    thumbnail: string | null;
+    updated_at: string;
+    spent_usd: number;
+  }[];
+}
+
 export interface HistoryRow {
   type: "image" | "clip";
   scene_id: string;
