@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, exportForPlatform, media } from "../api";
@@ -735,9 +735,14 @@ export default function ProjectBoard() {
     onSuccess: () => { toastOk("stitching started"); refresh(); },
     onError: (e) => toastError(String(e)),
   });
+  const queryClient = useQueryClient();
   const deleteProject = useMutation({
     mutationFn: () => api.deleteProject(prof, slug),
-    onSuccess: () => navigate(`/${prof}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stats", prof] });
+      queryClient.invalidateQueries({ queryKey: ["projects", prof] });
+      navigate(`/${prof}`);
+    },
     onError: (e) => toastError(String(e)),
   });
   const duplicateProject = useMutation({
