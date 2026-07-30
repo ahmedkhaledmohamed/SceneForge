@@ -38,6 +38,14 @@ CREATE TABLE IF NOT EXISTS oauth_states (
     provider TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (user_id, key),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 """
 
 
@@ -168,6 +176,23 @@ class AuthDB:
             self.conn.commit()
             return dict(row)
         return None
+
+    def get_preferences(self, user_id: str) -> dict:
+        rows = self.conn.execute(
+            "SELECT key, value FROM user_preferences WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+        return {row["key"]: row["value"] for row in rows}
+
+    def set_preferences(self, user_id: str, prefs: dict) -> dict:
+        for key, value in prefs.items():
+            self.conn.execute(
+                "INSERT INTO user_preferences (user_id, key, value) "
+                "VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = ?",
+                (user_id, key, str(value), str(value)),
+            )
+        self.conn.commit()
+        return self.get_preferences(user_id)
 
     def close(self):
         self.conn.close()

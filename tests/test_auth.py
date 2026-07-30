@@ -230,3 +230,79 @@ def test_providers_endpoint(tmp_path):
     assert data["email"] is True
     assert "google" in data
     assert "github" in data
+
+
+# ------------------------------------------------- preferences tests
+
+
+def test_preferences_db_crud(tmp_path):
+    db = AuthDB(tmp_path / "auth.db")
+    user = db.create_user("test@example.com", "Test", password="pass1234")
+    prefs = db.get_preferences(user["id"])
+    assert prefs == {}
+
+    db.set_preferences(user["id"], {"last_profile": "my-brand", "theme": "dark"})
+    prefs = db.get_preferences(user["id"])
+    assert prefs["last_profile"] == "my-brand"
+    assert prefs["theme"] == "dark"
+
+    db.set_preferences(user["id"], {"last_profile": "other-brand"})
+    prefs = db.get_preferences(user["id"])
+    assert prefs["last_profile"] == "other-brand"
+    assert prefs["theme"] == "dark"
+    db.close()
+
+
+def test_auth_me_includes_preferences(tmp_path):
+    client = make_client(tmp_path)
+    token = signup(client)
+
+    r = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    data = r.json()
+    assert "preferences" in data
+    assert data["preferences"] == {}
+
+
+def test_get_preferences_endpoint(tmp_path):
+    client = make_client(tmp_path)
+    token = signup(client)
+
+    r = client.get("/api/auth/preferences",
+                   headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert r.json() == {}
+
+
+def test_patch_preferences_endpoint(tmp_path):
+    client = make_client(tmp_path)
+    token = signup(client)
+
+    r = client.patch("/api/auth/preferences",
+                     json={"last_profile": "my-brand", "theme": "dark"},
+                     headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert r.json()["last_profile"] == "my-brand"
+    assert r.json()["theme"] == "dark"
+
+    # Verify via GET
+    r = client.get("/api/auth/preferences",
+                   headers={"Authorization": f"Bearer {token}"})
+    assert r.json()["last_profile"] == "my-brand"
+
+
+def test_patch_preferences_filters_unknown_keys(tmp_path):
+    client = make_client(tmp_path)
+    token = signup(client)
+
+    r = client.patch("/api/auth/preferences",
+                     json={"last_profile": "ok", "hacker_key": "bad"},
+                     headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200
+    assert "hacker_key" not in r.json()
+    assert r.json()["last_profile"] == "ok"
+
+
+def test_preferences_require_auth(tmp_path):
+    client = make_client(tmp_path)
+    r = client.get("/api/auth/preferences")
+    assert r.status_code == 401

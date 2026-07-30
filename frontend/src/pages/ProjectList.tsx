@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, profileMedia } from "../api";
+import { useAuth } from "../AuthProvider";
 import { DEMO_PROFILE, DEMO_PROJECTS } from "../demo";
 import { useIsDemo } from "../DemoContext";
 import { setLastProfile } from "./ProfileList";
@@ -173,7 +174,13 @@ export default function ProjectList() {
   const { prof = "" } = useParams();
   const isDemo = useIsDemo();
 
-  useEffect(() => { if (prof && !isDemo) setLastProfile(prof); }, [prof, isDemo]);
+  const { updatePreferences } = useAuth();
+  useEffect(() => {
+    if (prof && !isDemo) {
+      setLastProfile(prof);
+      updatePreferences({ last_profile: prof });
+    }
+  }, [prof, isDemo]);
   const { data: profile } = useQuery({
     queryKey: ["profile", prof],
     queryFn: () => api.profile(prof),
