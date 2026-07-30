@@ -171,6 +171,55 @@ def make_router(home: Path) -> APIRouter:
         model = config.recommend_model(shot_type=shot_type, budget_remaining=budget)
         return {"model": model, "price": config.MODELS.get(model, {}).get("price", 0)}
 
+    # -------------------------------------------------------- dashboard
+
+    @router.get("/dashboard")
+    def dashboard(request: Request):
+        user = get_user(request)
+        total_profiles = 0
+        total_projects = 0
+        total_spend = 0.0
+        recent_projects: list[dict] = []
+
+        for pf in sorted(home.glob(f"*/{PROFILE_FILE}")):
+            profile = Profile.load(pf.parent)
+            if profile.owner_id and profile.owner_id != user["id"]:
+                continue
+            total_profiles += 1
+            prof_slug = pf.parent.name
+            for pj in profile.projects_dir.glob(f"*/{PROJECT_FILE}"):
+                p = Project.load(pj.parent)
+                total_projects += 1
+                spent = sum(img.meta.get("cost_usd", 0.0) or 0.0
+                            for sc in p.scenes for img in sc.images) \
+                      + sum(c.meta.get("cost_usd", 0.0) or 0.0 for c in p.clips)
+                total_spend += spent
+
+                thumbnail = None
+                for sc in p.scenes:
+                    if sc.selected_image is not None and sc.selected_image < len(sc.images):
+                        thumbnail = sc.images[sc.selected_image].file
+                        break
+
+                recent_projects.append({
+                    "profile": prof_slug,
+                    "slug": pj.parent.name,
+                    "name": p.name,
+                    "concept": p.concept,
+                    "thumbnail": thumbnail,
+                    "updated_at": p.updated_at,
+                    "spent_usd": round(spent, 4),
+                })
+
+        recent_projects.sort(key=lambda x: x.get("updated_at") or "", reverse=True)
+
+        return {
+            "profiles": total_profiles,
+            "projects": total_projects,
+            "total_spend_usd": round(total_spend, 4),
+            "recent_projects": recent_projects[:5],
+        }
+
     # --------------------------------------------------------- profiles
 
     @router.get("/profiles")
