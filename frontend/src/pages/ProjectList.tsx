@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, profileMedia } from "../api";
 import { useAuth } from "../AuthProvider";
+import { SkeletonGrid } from "../components/Skeleton";
 import { useProfileScope } from "../hooks";
 import { DEMO_PROFILE, DEMO_PROJECTS } from "../demo";
 import { useIsDemo } from "../DemoContext";
@@ -350,7 +351,7 @@ export default function ProjectList() {
         </div>
       )}
 
-      {isLoading && !isDemo && <p className="muted">Loading…</p>}
+      {isLoading && !isDemo && <SkeletonGrid count={4} />}
       <div className="grid-cards">
         {effectiveProjects?.map((p) => (
           <Link key={p.slug} to={`/${prof}/p/${p.slug}`} className="card" style={{ display: "block" }}>

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../AuthProvider";
+import { SkeletonGrid } from "../components/Skeleton";
 import { DEMO_PROFILES } from "../demo";
 import { useIsDemo } from "../DemoContext";
 
@@ -72,7 +73,7 @@ export default function ProfileList() {
         </form>
       )}
 
-      {isLoading && !isDemo && <p className="muted">Loading…</p>}
+      {isLoading && !isDemo && <SkeletonGrid count={3} />}
       {isDemo && (
         <div className="card" style={{ borderColor: "var(--gold-dim, #b06f24)", marginBottom: 14 }}>
           <b>Demo mode</b> — exploring with sample data.

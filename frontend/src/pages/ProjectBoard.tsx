@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, exportForPlatform, media } from "../api";
 import JobBanner from "../components/JobBanner";
 import Lightbox from "../components/Lightbox";
+import { SkeletonProjectBoard } from "../components/Skeleton";
 import { toastError, toastOk } from "../components/toast";
 import { DEMO_PROJECT } from "../demo";
 import { useIsDemo } from "../DemoContext";
@@ -796,7 +797,7 @@ export default function ProjectBoard() {
     onError: (e) => toastError(String(e)),
   });
 
-  if (isLoading && !isDemo) return <p className="muted">Loading…</p>;
+  if (isLoading && !isDemo) return <SkeletonProjectBoard />;
   if (!project && !isDemo) return <p className="muted">{String(error ?? "not found")}</p>;
   if (!project && isDemo) {
     const dp = DEMO_PROJECT;
