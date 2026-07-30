@@ -305,6 +305,15 @@ export default function ProjectList() {
           <input name="concept" placeholder="what is this post about?" style={{ width: "100%" }} />
           <label>Style anchor (overrides profile default)</label>
           <input name="anchor" placeholder={effectiveProfile?.style.anchor || "soft studio light, muted pastels"} style={{ width: "100%" }} />
+          {effectiveProfile?.defaults && (
+            <div className="muted" style={{ fontSize: "0.72rem", marginTop: 10, lineHeight: 1.8 }}>
+              <span className="mono">from profile:</span>{" "}
+              image model: <b>{effectiveProfile.defaults.image_model}</b> ·{" "}
+              video model: <b>{effectiveProfile.defaults.video_model}</b> ·{" "}
+              aspect: <b>{effectiveProfile.defaults.aspect}</b> ·{" "}
+              options: <b>{effectiveProfile.defaults.image_options}</b>
+            </div>
+          )}
           <div className="row" style={{ marginTop: 12 }}>
             <button type="submit" disabled={create.isPending}>Create</button>
             <button type="button" className="ghost" onClick={() => setCreating(false)}>Cancel</button>

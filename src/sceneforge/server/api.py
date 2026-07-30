@@ -637,7 +637,15 @@ def make_router(home: Path) -> APIRouter:
             project.save()
         except (ValueError, FileExistsError) as exc:
             raise _err(400, "invalid", str(exc))
-        return project_doc(project, prof, project.root.name, profile=profile)
+        doc = project_doc(project, prof, project.root.name, profile=profile)
+        doc["inherited_from"] = {
+            "anchor": profile.style.anchor,
+            "image_model": profile.defaults.image_model,
+            "video_model": profile.defaults.video_model,
+            "aspect": profile.defaults.aspect,
+            "image_options": profile.defaults.image_options,
+        }
+        return doc
 
     @router.get("/profiles/{prof}/projects/{slug}")
     def get_project(prof: str, slug: str):
