@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../AuthProvider";
+import EmptyState from "../components/EmptyState";
 import { SkeletonGrid } from "../components/Skeleton";
 import { timeAgo } from "../util";
 import { DEMO_PROFILES } from "../demo";
@@ -155,7 +156,12 @@ export default function ProfileList() {
         ))}
       </div>
       {!isDemo && profiles?.length === 0 && !creating && (
-        <p className="muted">No profiles yet — create one to get started.</p>
+        <EmptyState
+          title="Create your first brand"
+          description="A profile is your workspace — add characters, set a style, and start creating content."
+          action="New profile"
+          onAction={() => setCreating(true)}
+        />
       )}
     </>
   );
