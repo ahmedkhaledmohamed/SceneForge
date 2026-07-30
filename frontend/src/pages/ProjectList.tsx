@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, media, profileMedia } from "../api";
 import { useAuth } from "../AuthProvider";
+import EmptyState from "../components/EmptyState";
 import { SkeletonGrid } from "../components/Skeleton";
 import { useProfileScope } from "../hooks";
 import { DEMO_PROFILE, DEMO_PROJECTS } from "../demo";
@@ -398,7 +399,12 @@ export default function ProjectList() {
         ))}
       </div>
       {effectiveProjects?.length === 0 && !creating && (
-        <p className="muted">No projects yet — create the first one.</p>
+        <EmptyState
+          title="Start your first project"
+          description="Each project is one piece of content — a post, a video, or a look. Start from scratch, use a template, or let the AI Director plan it."
+          action="New project"
+          onAction={() => setCreating(true)}
+        />
       )}
     </>
   );

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, exportForPlatform, media } from "../api";
+import EmptyState from "../components/EmptyState";
 import JobBanner from "../components/JobBanner";
 import Lightbox from "../components/Lightbox";
 import { SkeletonProjectBoard } from "../components/Skeleton";
@@ -1389,7 +1390,12 @@ export default function ProjectBoard() {
 
       <h2>Scenes</h2>
       {proj.scenes.length === 0 && (
-        <p className="muted">No scenes yet — hit "+ scene" or "brainstorm scenes" to get started.</p>
+        <EmptyState
+          title="Add your first scene"
+          description="Each scene is a visual moment. Add reference images (garment photos, props), write a description, and generate AI images."
+          action="+ scene"
+          onAction={() => setAddingScene(true)}
+        />
       )}
       {proj.scenes.map((scene, idx) => (
         <SceneCard
