@@ -274,6 +274,27 @@ dialog::backdrop { background: rgba(5, 5, 10, 0.8); }
   padding: 10px 12px; margin-top: 8px; white-space: pre-wrap;
 }
 
+/* ---------- skeletons ---------- */
+
+@keyframes skeleton-pulse {
+  0% { opacity: 0.4; }
+  50% { opacity: 0.15; }
+  100% { opacity: 0.4; }
+}
+
+.skeleton {
+  background: rgba(255, 255, 255, 0.08);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-card {
+  pointer-events: none;
+}
+
+.skeleton-card .skeleton {
+  margin-bottom: 8px;
+}
+
 /* ---------- toolbar ---------- */
 
 .toolbar-sections {
