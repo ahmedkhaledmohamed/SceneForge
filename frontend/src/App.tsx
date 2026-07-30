@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { Navigate, NavLink, Route, Routes, useParams } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Navigate, NavLink, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { api } from "./api";
 import { useAuth } from "./AuthProvider";
 import { Toaster } from "./components/toast";
@@ -21,6 +21,8 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function ProfileSwitcher({ currentProf }: { currentProf?: string }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: profiles } = useQuery({
     queryKey: ["profiles"],
     queryFn: api.profiles,
@@ -30,13 +32,28 @@ function ProfileSwitcher({ currentProf }: { currentProf?: string }) {
 
   if (!profiles || profiles.length === 0) return null;
 
+  const switchProfile = (slug: string) => {
+    if (currentProf && currentProf !== slug) {
+      queryClient.removeQueries({ queryKey: ["project", currentProf] });
+      queryClient.removeQueries({ queryKey: ["projects", currentProf] });
+      queryClient.removeQueries({ queryKey: ["profile", currentProf] });
+      queryClient.removeQueries({ queryKey: ["stats", currentProf] });
+      queryClient.removeQueries({ queryKey: ["analytics", currentProf] });
+      queryClient.removeQueries({ queryKey: ["settings", currentProf] });
+      queryClient.removeQueries({ queryKey: ["balance", currentProf] });
+      queryClient.removeQueries({ queryKey: ["templates", currentProf] });
+      queryClient.removeQueries({ queryKey: ["assets", currentProf] });
+      queryClient.removeQueries({ queryKey: ["prompts", currentProf] });
+      queryClient.removeQueries({ queryKey: ["sequence", currentProf] });
+    }
+    if (slug) navigate(`/${slug}`);
+    else navigate("/app");
+  };
+
   return (
     <select
       value={currentProf || ""}
-      onChange={(e) => {
-        if (e.target.value) window.location.href = `/${e.target.value}`;
-        else window.location.href = "/app";
-      }}
+      onChange={(e) => switchProfile(e.target.value)}
       style={{
         background: "var(--surface-2, #2b241d)",
         color: "var(--cream)",

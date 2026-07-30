@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, profileMedia } from "../api";
 import { useAuth } from "../AuthProvider";
+import { useProfileScope } from "../hooks";
 import { DEMO_PROFILE, DEMO_PROJECTS } from "../demo";
 import { useIsDemo } from "../DemoContext";
 import { setLastProfile } from "./ProfileList";
@@ -173,6 +174,7 @@ function ImportZipButton({ prof, onImport }: { prof: string; onImport: () => voi
 export default function ProjectList() {
   const { prof = "" } = useParams();
   const isDemo = useIsDemo();
+  useProfileScope(prof);
 
   const { updatePreferences } = useAuth();
   useEffect(() => {
