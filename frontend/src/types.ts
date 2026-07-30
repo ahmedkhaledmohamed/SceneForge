@@ -162,6 +162,8 @@ export interface ProjectSummary {
   refs: number;
   clips: number;
   kept: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ProfileSummary {
