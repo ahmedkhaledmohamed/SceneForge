@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import ProfileList from "./pages/ProfileList";
 import ProjectBoard from "./pages/ProjectBoard";
 import ProjectList from "./pages/ProjectList";
+import QuickGenerate from "./pages/QuickGenerate";
 import Settings from "./pages/Settings";
 import TakeCompare from "./pages/TakeCompare";
 
@@ -84,6 +85,9 @@ function TopBar() {
         <ProfileSwitcher currentProf={prof} />
         {prof && (
           <>
+            <NavLink to={`/${prof}/generate`}>
+              generate
+            </NavLink>
             <NavLink to={`/${prof}/settings`}>
               settings
             </NavLink>
@@ -144,6 +148,7 @@ export default function App() {
       <Route path="/" element={<AuthRoute><ProfileList /></AuthRoute>} />
       <Route path="/app" element={<AuthRoute><ProfileList /></AuthRoute>} />
       <Route path="/:prof" element={<AuthRoute><ProjectList /></AuthRoute>} />
+      <Route path="/:prof/generate" element={<AuthRoute><QuickGenerate /></AuthRoute>} />
       <Route path="/:prof/settings" element={<AuthRoute><Settings /></AuthRoute>} />
       <Route path="/:prof/analytics" element={<AuthRoute><Analytics /></AuthRoute>} />
       <Route path="/:prof/p/:slug" element={<AuthRoute><ProjectBoard /></AuthRoute>} />
