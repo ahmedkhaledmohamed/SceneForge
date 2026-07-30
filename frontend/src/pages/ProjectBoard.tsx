@@ -672,6 +672,12 @@ export default function ProjectBoard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sceneCharacter, setSceneCharacter] = useState("");
   const [promptLibOpen, setPromptLibOpen] = useState(false);
+  const { data: profileDoc } = useQuery({
+    queryKey: ["profile", prof],
+    queryFn: () => api.profile(prof),
+    enabled: !isDemo && !!prof,
+    staleTime: 60000,
+  });
   const [consistencyScore, setConsistencyScore] = useState<{score: number; outliers: {scene_id: string; similarity: number}[]} | null>(null);
   const [scoringBusy, setScoringBusy] = useState(false);
   const [brainstormResults, setBrainstormResults] = useState<string[] | null>(null);
@@ -927,7 +933,7 @@ export default function ProjectBoard() {
       </div>
       <p className="muted">
         {proj.concept} · <span className="mono">{proj.style.anchor}</span>
-        {proj.spent_usd > 0 && <> · <span className="mono">${proj.spent_usd.toFixed(2)}{proj.budget_usd > 0 ? ` / $${proj.budget_usd.toFixed(0)} budget` : ""}</span></>}
+        {" · "}<span className="mono" style={{ color: "var(--gold)" }}>${proj.spent_usd.toFixed(2)} spent{proj.budget_usd > 0 ? ` / $${proj.budget_usd.toFixed(0)} budget` : ""}</span>
         {consistencyScore && (() => {
           const s = consistencyScore.score;
           const color = s > 0.8 ? "var(--green, #4a4)" : s > 0.6 ? "var(--gold, #daa520)" : "var(--danger, #c44)";
@@ -968,6 +974,20 @@ export default function ProjectBoard() {
         )}
       </div>
       <JobBanner job={proj.job} onRetry={() => generateAll.mutate()} />
+
+      {profileDoc && !profileDoc.has_keys && (
+        <div className="card" style={{ borderColor: "var(--danger)", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <b style={{ color: "var(--danger)" }}>API key required</b>
+            <p className="muted" style={{ margin: "4px 0 0", fontSize: "0.82rem" }}>
+              Add a Together AI key in Settings before generating images or clips.
+            </p>
+          </div>
+          <Link to={`/${prof}/settings`} style={{ flexShrink: 0 }}>
+            <button>Go to Settings</button>
+          </Link>
+        </div>
+      )}
 
       {proj.concept && proj.scenes.length === 0 && (
         <div style={{

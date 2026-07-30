@@ -260,13 +260,41 @@ export default function ProjectList() {
         </div>
       )}
 
-      {effectiveProfile && effectiveProfile.characters.length === 0 && !isDemo && (
-        <div className="card" style={{ borderColor: "var(--gold-dim)", marginBottom: 14 }}>
-          <b>Add your character first</b>
-          <p className="muted" style={{ margin: "4px 0" }}>
-            Upload reference photos of your character doll above — these will be used in
-            every project to keep the character consistent. After that, create your first project.
-          </p>
+      {effectiveProfile && !isDemo && (effectiveProfile.characters.length === 0 || !effectiveProfile.has_keys) && (
+        <div className="card" style={{ borderColor: "var(--gold-dim)", marginBottom: 14, padding: "16px 20px" }}>
+          <b>Setup checklist</b>
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8, fontSize: "0.88rem" }}>
+            <div className="row" style={{ gap: 8 }}>
+              <span style={{ color: effectiveProfile.has_keys ? "var(--gold)" : "var(--taupe)", fontSize: "1.1rem" }}>
+                {effectiveProfile.has_keys ? "✓" : "○"}
+              </span>
+              <span className={effectiveProfile.has_keys ? "muted" : ""}>
+                {effectiveProfile.has_keys ? "API keys configured" : (
+                  <>API keys needed — <Link to={`/${prof}/settings`}>go to Settings</Link></>
+                )}
+              </span>
+            </div>
+            <div className="row" style={{ gap: 8 }}>
+              <span style={{ color: effectiveProfile.characters.length > 0 ? "var(--gold)" : "var(--taupe)", fontSize: "1.1rem" }}>
+                {effectiveProfile.characters.length > 0 ? "✓" : "○"}
+              </span>
+              <span className={effectiveProfile.characters.length > 0 ? "muted" : ""}>
+                {effectiveProfile.characters.length > 0
+                  ? `Character added (${effectiveProfile.characters[0].name})`
+                  : "Add a character — upload reference photos of your subject above"}
+              </span>
+            </div>
+            <div className="row" style={{ gap: 8 }}>
+              <span style={{ color: effectiveProfile.style.anchor ? "var(--gold)" : "var(--taupe)", fontSize: "1.1rem" }}>
+                {effectiveProfile.style.anchor ? "✓" : "○"}
+              </span>
+              <span className={effectiveProfile.style.anchor ? "muted" : ""}>
+                {effectiveProfile.style.anchor
+                  ? `Style anchor set`
+                  : "Set a style anchor — click \"edit style\" above"}
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
