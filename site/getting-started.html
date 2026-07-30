@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Getting started — SceneForge</title>
-<meta name="description" content="Get started with SceneForge: create a profile, add scenes with reference images, generate AI-composed images and video clips.">
+<meta name="description" content="Get started with SceneForge: sign up, create a profile, add scenes with reference images, generate AI-composed images and video clips, export for social media.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900&family=Fragment+Mono&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -30,68 +30,109 @@
 <section class="no-rule" style="padding-top: 40px; padding-bottom: 24px">
   <p class="eyebrow">Getting started</p>
   <h1>First video in<br>ten minutes.</h1>
-  <p class="lede">SceneForge runs as a web app. Deploy on Railway or run locally.
-  You'll need a <a href="https://api.together.ai">Together AI</a> key for images and an
-  <a href="https://openrouter.ai/keys">OpenRouter</a> key for cheap Seedance video clips.
-  See <a href="pricing.html">pricing</a> for a full cost breakdown.</p>
+  <p class="lede">SceneForge is a web app with multi-user accounts. Sign up with Google, GitHub, or email.
+  You'll need a <a href="https://api.together.ai">Together AI</a> key for image generation and optionally an
+  <a href="https://openrouter.ai/keys">OpenRouter</a> key for cheaper Seedance video clips.
+  See <a href="pricing.html">pricing</a> for a full cost breakdown, or check the
+  <a href="features.html">features guide</a> for detailed documentation.</p>
 </section>
 
-<h2 id="deploy"><span class="n">1</span>Deploy</h2>
-<p>Connect the repo to <a href="https://railway.app">Railway</a>, add a volume at <span class="mono">/data</span>,
-set <span class="mono">TOGETHER_API_KEY</span> and <span class="mono">SCENEFORGE_PASSWORD</span> in variables. Done.</p>
-<div class="term"><button class="copy-btn" data-copy>copy</button><pre style="margin:0"><span class="cmt"># Or run locally:</span>
-<span class="ps1">$</span> git clone https://github.com/ahmedkhaledmohamed/SceneForge.git && cd SceneForge
-<span class="ps1">$</span> pip install -e . && brew install ffmpeg
-<span class="ps1">$</span> sceneforge studio</pre></div>
+<h2 id="signup"><span class="n">1</span>Sign up</h2>
+<p>Click <b>Login</b> in the top right. Sign up with Google, GitHub, or an email + password.
+After signing in, you land on your <b>dashboard</b> — it shows your profiles, total spend,
+and recent projects across all your brands.</p>
 
 <h2 id="profile"><span class="n">2</span>Create a profile</h2>
-<p>A profile is your brand — style defaults and recurring characters with reference images.
-Go to Settings to enter your API key. Characters are global: update the refs once, every project uses them.</p>
+<p>Click <b>New profile</b>. A profile is your brand workspace — it holds your characters,
+style defaults, API keys, prompt library, and asset library. Give it a name
+(e.g. "GenerationStyled") and you're in.</p>
+<p>Set your <b>style anchor</b> at the top of the profile page — this text gets
+prepended to every image generation prompt automatically. Example:
+<em>"soft golden hour light, muted earth tones, clean background"</em>.</p>
 
-<h2 id="concepts"><span class="n">3</span>How reference images work</h2>
-<p>Each scene owns its reference images. Profile characters are shared across all scenes.</p>
+<h2 id="keys"><span class="n">3</span>Add your API keys</h2>
+<p>Go to <b>Settings</b> and paste your Together AI key. This is the only required key —
+it powers all image generation and some video models. Optionally add an OpenRouter key
+for cheaper Seedance video clips.</p>
+
+<h2 id="character"><span class="n">4</span>Add a character</h2>
+<p>On the profile page, add a <b>character</b> — your recurring subject (a doll, model, mascot).
+Upload 3-5 clear reference photos from different angles. Characters are global: update the
+refs once, every project uses them.</p>
 <div class="term" role="img"><pre style="margin:0"><b>Profile character</b> (recurring subject) → sent to every scene using that character
        ↓
 <b>Scene refs</b> (product photos, style)    → owned by the scene, dropped onto the card
        ↓
-<b>Project refs</b> (shared background)      → sent to ALL scenes (optional)
+<b>Asset library</b> (reusable garments)     → uploaded once, added to any scene
        ↓
-<b>AI generation</b> = character + scene refs + project refs + scene text → image</pre></div>
+<b>AI generation</b> = character + scene refs + style anchor → composed image</pre></div>
 
-<h2 id="scenes"><span class="n">4</span>Create a project + scenes</h2>
-<p>One project per post or video. Add scenes — each one describes a visual moment.
-Drop reference images directly onto the scene card when creating it, or add them after.</p>
+<h2 id="project"><span class="n">5</span>Create a project</h2>
+<p>Each project is one piece of content — a post, a video, a look. Three ways to start:</p>
+<ul>
+  <li><b>New project</b> — blank canvas. Give it a name and concept.</li>
+  <li><b>From template</b> — use a pre-built structure (Product lookbook, Day in the life, Character series).</li>
+  <li><b>AI Director</b> — describe your concept and AI plans the entire shot list, generates images, and creates clips automatically.</li>
+</ul>
+<p>The project creation form shows which settings are inherited from your profile
+(image model, video model, aspect ratio) so you always know what defaults you're getting.</p>
 
-<h2 id="generate"><span class="n">5</span>Generate images</h2>
-<p>Each scene has its own "Generate images" button with model picker and cost estimate.
-Multi-reference composition uses character refs + scene refs to produce the image.
-Multiple options per scene — click to view full size, then select the best.</p>
+<h2 id="scenes"><span class="n">6</span>Add scenes + reference images</h2>
+<p>Each scene is a visual moment. Describe it (e.g. "standing in a sunlit cafe, full outfit visible")
+and drop reference images onto the scene card — garment photos, props, backgrounds.
+You can also add refs from your <b>asset library</b> with one click.</p>
+<p>Shortcuts: use <b>Brainstorm</b> to get AI-suggested scene ideas, or <b>Shot list</b>
+to generate a complete list of scenes with compositions and shot types.</p>
 
-<h2 id="refine"><span class="n">6</span>Refine</h2>
-<p>Click "refine" on a scene to edit the prompt, pose, or model. Regenerating creates
-a new lane — you see the full history of attempts. Use generated images from one
-scene as references in another for iterative refinement.</p>
+<h2 id="generate"><span class="n">7</span>Generate images</h2>
+<p>Click <b>Generate</b> on a scene card. The AI combines your character refs, scene refs,
+and style anchor into a composed image. You get 2-3 options per scene.
+Use <b>prompt enhancement</b> to auto-expand short descriptions into detailed prompts.</p>
+<p><b>Cost-saving tip:</b> generate drafts with <span class="mono">flux-schnell</span> ($0.003),
+pick the best composition, then one-click <b>upgrade</b> to
+<span class="mono">nano-banana-pro</span> ($0.134) for the final version.</p>
 
-<h2 id="clips"><span class="n">7</span>Create clips</h2>
-<p>Switch to the <b>Clips</b> tab. Click "+ clip" → pick a start image from any scene,
-optionally an end image (the AI interpolates between them). Set duration (3-10s),
-model, and motion prompt. Use <span class="mono">seedance-1.5-pro</span> via OpenRouter
-for the best value ($0.12/clip). Generate, download, import into your editor.</p>
+<h2 id="select"><span class="n">8</span>Select + compare</h2>
+<p>Click images to view full-size in the lightbox. Use keyboard shortcuts <b>1, 2, 3</b>
+to select quickly. Check <b>style consistency</b> (CLIP-based scoring) to verify all your
+scenes have a cohesive look before rendering — green means good, yellow/red flags outliers.</p>
 
-<h2 id="free"><span class="n">8</span>Try for free</h2>
+<h2 id="clips"><span class="n">9</span>Create video clips</h2>
+<p>Switch to the <b>Clips</b> tab. Pick a start image, set a motion prompt, choose a model
+(or use <b>Auto</b> for smart routing based on shot type and budget), and generate.
+You can create multiple clips from the same image with different motions.
+Tag each clip with a <b>shot type</b> (hero, detail, B-roll) for smart model selection.</p>
+
+<h2 id="sequence"><span class="n">10</span>Build the sequence</h2>
+<p>Switch to the <b>Sequence</b> tab. Add kept clips, drag to reorder, preview the timeline.
+Click <b>Render sequence</b> to stitch everything into one video with crossfade transitions.
+Add <b>audio</b> (ambient, music, voiceover) to individual clips before rendering.</p>
+
+<h2 id="export"><span class="n">11</span>Export + publish</h2>
+<p>Use the <b>"Export for..."</b> dropdown to re-encode for TikTok, Reels, Shorts, or Pinterest
+— each platform gets the right aspect ratio, codec, and duration limit.</p>
+<p>Generate <b>AI captions</b> with hashtags per platform (playful, professional, casual, minimal tone).
+Create <b>shop link cards</b> from your product URLs. Copy the caption + links, upload the video, publish.</p>
+
+<h2 id="analytics"><span class="n">12</span>Track your spend</h2>
+<p>The <b>Analytics</b> page shows cost per model, keep rates, cost per kept clip, and spend trends.
+Your <b>dashboard</b> at /app shows total spend across all profiles.
+Every generation button shows the estimated cost before you click.</p>
+
+<h2 id="backup"><span class="n">13</span>Backup + restore</h2>
+<p>Click <b>"backup zip"</b> on any project to download a complete backup (project data + refs + kept media).
+Click <b>"Backup all"</b> on the profile page to back up every project at once.
+Import backups with <b>"Import zip"</b> on the project list page.</p>
+
+<h2 id="free"><span class="n">14</span>Try for free</h2>
 <p>The <span class="mono">fake</span> models run the entire pipeline for $0 — real files, zero API cost.
-Good for testing the workflow before spending.</p>
-
-<h2 id="selfhost"><span class="n">9</span>Optional: self-hosted GPU</h2>
-<p><span class="mono">runpod-wan-i2v</span> runs Wan2.2-TI2V-5B on a rented RTX 4090 —
-~$0.10/clip vs $0.18 hosted. See
-<a href="https://github.com/ahmedkhaledmohamed/SceneForge/tree/main/runpod-worker">runpod-worker/README.md</a>
-for the setup runbook.</p>
+Good for testing the workflow before spending. The demo mode on the landing page also
+lets you explore the Studio without an account.</p>
 
 </main>
 
 <footer class="footer">
-  <span>Stuck? The <a href="architecture.html">architecture page</a> explains every moving part.</span>
+  <span>Need more detail? Check the <a href="features.html">features guide</a> for every feature explained.</span>
   <span><a href="https://github.com/ahmedkhaledmohamed/SceneForge">source on GitHub</a></span>
 </footer>
 
