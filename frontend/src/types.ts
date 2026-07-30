@@ -162,6 +162,8 @@ export interface ProjectSummary {
   refs: number;
   clips: number;
   kept: number;
+  thumbnail?: string | null;
+  spent_usd?: number;
   created_at?: string;
   updated_at?: string;
 }
