@@ -213,10 +213,16 @@ export default function ProjectList() {
     enabled: !isDemo && showTemplates,
   });
 
+  const invalidateAll = () => {
+    client.invalidateQueries({ queryKey: ["projects", prof] });
+    client.invalidateQueries({ queryKey: ["stats", prof] });
+    client.invalidateQueries({ queryKey: ["profiles"] });
+  };
+
   const create = useMutation({
     mutationFn: (body: Record<string, string>) => api.createProject(prof, body),
     onSuccess: (project: { slug: string }) => {
-      client.invalidateQueries({ queryKey: ["projects", prof] });
+      invalidateAll();
       navigate(`/${prof}/p/${project.slug}`);
     },
   });
@@ -224,7 +230,7 @@ export default function ProjectList() {
     mutationFn: ({ template, name }: { template: string; name: string }) =>
       api.createFromTemplate(prof, template, name),
     onSuccess: (project: { slug: string }) => {
-      client.invalidateQueries({ queryKey: ["projects", prof] });
+      invalidateAll();
       navigate(`/${prof}/p/${project.slug}`);
     },
     onError: (e) => toastError(String(e)),
@@ -235,7 +241,7 @@ export default function ProjectList() {
       <h1>{effectiveProfile?.name ?? prof}</h1>
       {effectiveProfile && <ProfileHeader prof={prof} profile={effectiveProfile} />}
 
-      {stats && stats.images > 0 && (
+      {stats && (
         <div className="row" style={{ gap: 16, margin: "0 0 14px", flexWrap: "wrap" }}>
           <span className="mono muted">{stats.projects} projects</span>
           <span className="mono muted">{stats.images} images</span>
@@ -271,7 +277,7 @@ export default function ProjectList() {
               <button className="ghost" onClick={() => api.backupAll(prof).then(() => toastOk("Full backup downloaded")).catch(e => toastError(String(e)))}>
                 Backup all
               </button>
-              <ImportZipButton prof={prof} onImport={() => client.invalidateQueries({ queryKey: ["projects", prof] })} />
+              <ImportZipButton prof={prof} onImport={invalidateAll} />
             </>
           )}
           <button onClick={() => { setShowTemplates(true); setCreating(false); }}>From template</button>
