@@ -130,8 +130,27 @@ def create_app(home: Path) -> FastAPI:
         token = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
         user = auth_db.validate_session(token) if token else None
         if not user:
-            return {"user": None}
-        return {"user": _user_doc(user)}
+            return {"user": None, "preferences": {}}
+        prefs = auth_db.get_preferences(user["id"])
+        return {"user": _user_doc(user), "preferences": prefs}
+
+    @app.get("/api/auth/preferences")
+    def get_preferences(request: Request):
+        token = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        user = auth_db.validate_session(token) if token else None
+        if not user:
+            raise HTTPException(401, detail={"code": "unauthorized", "message": "Login required"})
+        return auth_db.get_preferences(user["id"])
+
+    @app.patch("/api/auth/preferences")
+    def patch_preferences(request: Request, payload: dict):
+        token = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        user = auth_db.validate_session(token) if token else None
+        if not user:
+            raise HTTPException(401, detail={"code": "unauthorized", "message": "Login required"})
+        allowed = {"last_profile", "theme", "onboarding_completed"}
+        filtered = {k: v for k, v in payload.items() if k in allowed}
+        return auth_db.set_preferences(user["id"], filtered)
 
     @app.get("/api/auth/providers")
     def auth_providers():

@@ -11,16 +11,22 @@ export interface AuthUser {
   provider: string;
 }
 
+export type UserPreferences = Record<string, string>;
+
 interface AuthContextType {
   user: AuthUser | null;
+  preferences: UserPreferences;
   loading: boolean;
   logout: () => void;
+  updatePreferences: (prefs: Partial<UserPreferences>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  preferences: {},
   loading: true,
   logout: () => {},
+  updatePreferences: async () => {},
 });
 
 export function useAuth() {
@@ -29,6 +35,7 @@ export function useAuth() {
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [preferences, setPreferences] = useState<UserPreferences>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +59,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       .then((data) => {
         if (data.user) {
           setUser(data.user);
+          setPreferences(data.preferences ?? {});
         } else {
           setAuthToken(null);
         }
@@ -70,11 +78,31 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     }
     setAuthToken(null);
     setUser(null);
+    setPreferences({});
     window.location.href = "/landing/";
   };
 
+  const updatePreferences = async (prefs: Partial<UserPreferences>) => {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const r = await fetch(`${API_BASE}/auth/preferences`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(prefs),
+      });
+      if (r.ok) {
+        const updated = await r.json();
+        setPreferences(updated);
+      }
+    } catch { /* silent */ }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, preferences, loading, logout, updatePreferences }}>
       {children}
     </AuthContext.Provider>
   );
