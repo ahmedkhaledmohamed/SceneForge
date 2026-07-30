@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, PlainTextResponse, Response
 
 from .. import config, ops
 from ..profile import PROFILE_FILE, Profile, create_profile
-from ..project import PROJECT_FILE, Project, SceneRef
+from ..project import PROJECT_FILE, Project, Scene, SceneRef
 from .jobs import JobManager
 from .uploads import save_upload
 
@@ -170,6 +170,149 @@ def make_router(home: Path) -> APIRouter:
     def recommend_model_endpoint(shot_type: str = "", budget: float | None = None):
         model = config.recommend_model(shot_type=shot_type, budget_remaining=budget)
         return {"model": model, "price": config.MODELS.get(model, {}).get("price", 0)}
+
+    # ------------------------------------------------ quick generate
+
+    def _quick_project(prof: str) -> Project:
+        """Get or create the _quick scratch project for standalone generation."""
+        root = profile_root(prof) / "projects" / "_quick"
+        if (root / PROJECT_FILE).is_file():
+            return Project.load(root)
+        root.mkdir(parents=True, exist_ok=True)
+        p = Project(name="_quick", concept="Quick generation scratch", root=root)
+        p.save()
+        return p
+
+    @router.post("/profiles/{prof}/quick-generate", status_code=202)
+    async def quick_generate(prof: str, request: Request,
+                             prompt: str = Form(""),
+                             model: str = Form("flux-schnell"),
+                             mode: str = Form("image"),
+                             file: UploadFile | None = File(None)):
+        profile = load_profile(prof)
+        project = _quick_project(prof)
+
+        if mode == "image":
+            scene_id = f"qg-{len(project.scenes) + 1:04d}"
+            scene = Scene(id=scene_id, description=prompt or "quick generation")
+            if file and file.filename:
+                dest = await save_upload(file, project.scene_refs_dir(scene))
+                scene.refs.append(SceneRef(
+                    file=str(dest.relative_to(project.root)),
+                    role="style", label="reference",
+                ))
+            project.scenes.append(scene)
+            project.save()
+
+            def job(log, _job=None):
+                todo = [(scene, 1)]
+                ops.run_images(project, todo, model, log=log, profile=profile)
+
+            return start_job_or_409(prof, "_quick", "quick generate image", job)
+
+        elif mode == "video":
+            if not file or not file.filename:
+                raise _err(400, "invalid", "Video mode requires a start image")
+            dest_dir = project.root / "uploads"
+            dest = await save_upload(file, dest_dir)
+            src_file = str(dest.relative_to(project.root))
+            clip = project.add_clip(
+                source_images=[src_file],
+                prompt=prompt or "gentle motion",
+                model=model,
+            )
+            project.save()
+
+            def job(log, _job=None):
+                from ..backends import get_video_backend
+                resolved = config.resolve_model(model, "video")
+                backend = get_video_backend(model, log)
+                image = project.root / clip.source_images[0]
+                out = project.clips_dir / f"{clip.id}.mp4"
+                out.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    result = backend.generate_clip(
+                        clip.prompt, out, image=image,
+                        width=project.settings.width,
+                        height=project.settings.height,
+                        seconds=clip.seconds or None,
+                        timeout_s=resolved.get("timeout_s", config.VIDEO_TIMEOUT_S),
+                    )
+                    clip.file = str(out.relative_to(project.root))
+                    clip.status = "completed"
+                    clip.duration_s = result.duration_s
+                    clip.meta = result.meta
+                    if "cost_usd" not in clip.meta:
+                        clip.meta["cost_usd"] = config.MODELS.get(model, {}).get("price", 0)
+                except Exception as exc:
+                    clip.status = "failed"
+                    clip.error = str(exc)
+                project.save()
+
+            return start_job_or_409(prof, "_quick", "quick generate video", job)
+        else:
+            raise _err(400, "invalid", f"Unknown mode '{mode}'. Use 'image' or 'video'.")
+
+    @router.get("/profiles/{prof}/quick-generate/results")
+    def quick_results(prof: str):
+        root = profile_root(prof) / "projects" / "_quick"
+        if not (root / PROJECT_FILE).is_file():
+            return {"images": [], "clips": []}
+        project = Project.load(root)
+        images = []
+        for scene in project.scenes:
+            for i, img in enumerate(scene.images):
+                images.append({
+                    "scene_id": scene.id,
+                    "index": i,
+                    "file": img.file,
+                    "prompt": img.prompt,
+                    "model": img.model,
+                    "cost_usd": img.meta.get("cost_usd", 0),
+                    "created_at": img.created_at,
+                })
+        clips = []
+        for clip in project.clips:
+            if clip.status == "completed" and clip.file:
+                clips.append({
+                    "id": clip.id,
+                    "file": clip.file,
+                    "prompt": clip.prompt,
+                    "model": clip.model,
+                    "duration_s": clip.duration_s,
+                    "cost_usd": clip.meta.get("cost_usd", 0),
+                    "created_at": clip.created_at,
+                })
+        images.sort(key=lambda x: x["created_at"], reverse=True)
+        clips.sort(key=lambda x: x["created_at"], reverse=True)
+        return {"images": images[:20], "clips": clips[:20]}
+
+    @router.post("/profiles/{prof}/quick-generate/save-to-project")
+    def save_quick_to_project(prof: str, payload: dict):
+        import shutil
+        target_slug = payload.get("target_slug", "")
+        file_path = payload.get("file", "")
+        if not target_slug or not file_path:
+            raise _err(400, "invalid", "target_slug and file are required")
+
+        quick_root = profile_root(prof) / "projects" / "_quick"
+        if not (quick_root / PROJECT_FILE).is_file():
+            raise _err(404, "not_found", "No quick-generate results")
+
+        src = (quick_root / file_path).resolve()
+        if not src.is_file() or not src.is_relative_to(quick_root):
+            raise _err(404, "not_found", f"File not found: {file_path}")
+
+        target_project = load_project(prof, target_slug)
+        dest_dir = target_project.root / "imports"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / src.name
+        n = 2
+        while dest.exists():
+            dest = dest_dir / f"{src.stem}-{n}{src.suffix}"
+            n += 1
+        shutil.copy2(src, dest)
+        return {"saved": str(dest.relative_to(target_project.root)), "project": target_slug}
 
     # -------------------------------------------------------- dashboard
 
