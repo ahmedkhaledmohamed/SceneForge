@@ -274,6 +274,11 @@ dialog::backdrop { background: rgba(5, 5, 10, 0.8); }
   padding: 10px 12px; margin-top: 8px; white-space: pre-wrap;
 }
 
+/* ---------- model pills ---------- */
+
+.model-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.model-pills button { border-radius: 20px; }
+
 /* ---------- skeletons ---------- */
 
 @keyframes skeleton-pulse {
