@@ -172,6 +172,8 @@ export interface ProfileSummary {
   characters: number;
   seeds: number;
   projects: number;
+  spent_usd?: number;
+  updated_at?: string | null;
 }
 
 export interface ProfileDoc {

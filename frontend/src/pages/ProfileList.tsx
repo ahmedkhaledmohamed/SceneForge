@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../AuthProvider";
 import { SkeletonGrid } from "../components/Skeleton";
+import { timeAgo } from "../util";
 import { DEMO_PROFILES } from "../demo";
 import { useIsDemo } from "../DemoContext";
 
@@ -88,7 +89,13 @@ export default function ProfileList() {
               <span className="pill">{p.projects} projects</span>
               <span className="pill">{p.characters} characters</span>
               {p.seeds > 0 && <span className="pill">{p.seeds} seeds</span>}
+              {(p.spent_usd ?? 0) > 0 && <span className="pill gold">${p.spent_usd!.toFixed(2)}</span>}
             </div>
+            {p.updated_at && (
+              <div className="mono muted" style={{ fontSize: "0.68rem", marginTop: 8 }}>
+                updated {timeAgo(p.updated_at)}
+              </div>
+            )}
           </Link>
         ))}
       </div>
