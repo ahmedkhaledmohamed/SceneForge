@@ -262,6 +262,26 @@ export interface ProjectAnalytics {
   models: Record<string, ModelStats>;
 }
 
+export interface QuickImage {
+  scene_id: string;
+  index: number;
+  file: string;
+  prompt: string;
+  model: string;
+  cost_usd: number;
+  created_at: string;
+}
+
+export interface QuickClip {
+  id: string;
+  file: string;
+  prompt: string;
+  model: string;
+  duration_s: number | null;
+  cost_usd: number;
+  created_at: string;
+}
+
 export interface DashboardData {
   profiles: number;
   projects: number;

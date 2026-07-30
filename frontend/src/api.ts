@@ -1,4 +1,4 @@
-import type { Asset, AudioTypeInfo, CaptionResult, ConsistencyResult, DashboardData, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileAnalytics, ProfileDoc, ProfileSummary, Project, ProjectAnalytics, ProjectSummary, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
+import type { Asset, AudioTypeInfo, CaptionResult, ConsistencyResult, DashboardData, HistoryRow, Job, ModelInfo, PlatformSpec, ProfileAnalytics, ProfileDoc, ProfileSummary, Project, ProjectAnalytics, ProjectSummary, QuickClip, QuickImage, SavedPrompt, ShotListItem, ShotTypeInfo } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -61,6 +61,15 @@ export const api = {
 
   // dashboard
   dashboard: () => request<DashboardData>("/dashboard"),
+
+  // quick generate
+  quickGenerate: (prof: string, form: FormData) =>
+    request(`/profiles/${prof}/quick-generate`, { method: "POST", body: form }),
+  quickResults: (prof: string) =>
+    request<{ images: QuickImage[]; clips: QuickClip[] }>(`/profiles/${prof}/quick-generate/results`),
+  saveQuickToProject: (prof: string, file: string, targetSlug: string) =>
+    request(`/profiles/${prof}/quick-generate/save-to-project`,
+      json({ file, target_slug: targetSlug })),
 
   // profiles
   profiles: () => request<ProfileSummary[]>("/profiles"),
