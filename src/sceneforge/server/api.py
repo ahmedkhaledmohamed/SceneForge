@@ -1157,6 +1157,68 @@ def make_router(home: Path) -> APIRouter:
         return start_job_or_409(prof, slug,
                                 f"upgrade {sid} img {img_idx} → {upgrade_model}", job)
 
+    @router.post("/profiles/{prof}/projects/{slug}/scenes/{sid}/images/{img_idx}/inpaint",
+                 status_code=201)
+    async def inpaint_image(prof: str, slug: str, sid: str, img_idx: int,
+                            prompt: str = Form(""),
+                            mask: UploadFile = File(...)):
+        import base64
+        profile = load_profile(prof)
+        project = load_project(prof, slug)
+        scene = find_or_404(project.find_scene, sid)
+        if not 0 <= img_idx < len(scene.images):
+            raise _err(404, "not_found", f"No image {img_idx} on {sid}")
+        source = scene.images[img_idx]
+        src_path = project.root / source.file
+        if not src_path.is_file():
+            raise _err(404, "not_found", "Source image file missing")
+
+        mask_data = await mask.read()
+        if len(mask_data) < 100:
+            raise _err(400, "invalid", "Mask image too small")
+
+        try:
+            api_key = config.together_api_key(profile)
+        except RuntimeError as exc:
+            raise _err(400, "no_key", str(exc))
+
+        import openai
+        client = openai.OpenAI(api_key=api_key, base_url=config.TOGETHER_BASE_URL)
+
+        img_b64 = base64.b64encode(src_path.read_bytes()).decode()
+        mask_b64 = base64.b64encode(mask_data).decode()
+
+        try:
+            response = client.images.edit(
+                model="black-forest-labs/FLUX.1-Fill-dev",
+                image=f"data:image/png;base64,{img_b64}",
+                mask=f"data:image/png;base64,{mask_b64}",
+                prompt=prompt or "maintain the existing style and content",
+                n=1,
+            )
+            result_url = response.data[0].url
+        except Exception as exc:
+            raise _err(500, "inpaint_failed", str(exc))
+
+        from ..util import download
+        out_dir = project.images_dir(scene)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        idx = len(scene.images) + 1
+        out_path = out_dir / f"inpaint-{idx}.png"
+        download(result_url, out_path)
+
+        from ..project import ImageArtifact
+        artifact = ImageArtifact(
+            file=str(out_path.relative_to(project.root)),
+            prompt=prompt,
+            model="flux-fill",
+            meta={"cost_usd": 0.05, "inpainted_from_idx": img_idx},
+            inpainted_from=source.file,
+        )
+        scene.images.append(artifact)
+        project.save()
+        return asdict(artifact)
+
     @router.post("/profiles/{prof}/projects/{slug}/clips/{cid}/upgrade",
                  status_code=202)
     def upgrade_clip(prof: str, slug: str, cid: str, payload: dict = {}):

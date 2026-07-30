@@ -201,6 +201,8 @@ export const api = {
 
   upgradeImage: (prof: string, slug: string, sid: string, imgIdx: number, body: unknown) =>
     request(`${p(prof, slug)}/scenes/${sid}/images/${imgIdx}/upgrade`, json(body)),
+  inpaintImage: (prof: string, slug: string, sid: string, imgIdx: number, form: FormData) =>
+    request(`${p(prof, slug)}/scenes/${sid}/images/${imgIdx}/inpaint`, { method: "POST", body: form }),
   upgradeClip: (prof: string, slug: string, cid: string, body: unknown) =>
     request(`${p(prof, slug)}/clips/${cid}/upgrade`, json(body)),
   generateImages: (prof: string, slug: string, body: unknown) =>

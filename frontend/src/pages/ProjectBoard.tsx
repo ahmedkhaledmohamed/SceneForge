@@ -5,6 +5,7 @@ import { api, exportForPlatform, media } from "../api";
 import EmptyState from "../components/EmptyState";
 import JobBanner from "../components/JobBanner";
 import Lightbox from "../components/Lightbox";
+import MaskEditor from "../components/MaskEditor";
 import { SkeletonProjectBoard } from "../components/Skeleton";
 import { toastError, toastOk } from "../components/toast";
 import { DEMO_PROJECT } from "../demo";
@@ -298,6 +299,9 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
   const [copiedLinks, setCopiedLinks] = useState(false);
   const [refDropHighlight, setRefDropHighlight] = useState(false);
   const [showAssetPicker, setShowAssetPicker] = useState(false);
+  const [editingImage, setEditingImage] = useState<number | null>(null);
+  const [editPrompt, setEditPrompt] = useState("");
+  const [editBusy, setEditBusy] = useState(false);
   const imgImportRef = useRef<HTMLInputElement>(null);
 
   const select = useMutation({
@@ -635,14 +639,61 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
                   ↑ upgrade ($0.13)
                 </button>
               )}
+              <button className="ghost" onClick={() => { setEditingImage(viewing); setViewing(null); }}>
+                Edit region ($0.05)
+              </button>
               {viewingImage.upgraded_from && (
                 <span className="pill gold" style={{ fontSize: "0.68rem" }}>
                   upgraded from {viewingImage.upgraded_from}
                 </span>
               )}
+              {viewingImage.inpainted_from && (
+                <span className="pill gold" style={{ fontSize: "0.68rem" }}>
+                  edited
+                </span>
+              )}
             </>
           }
         />
+      )}
+
+      {editingImage !== null && editingImage < scene.images.length && (
+        <div>
+          <MaskEditor
+            imageUrl={media(prof, slug, scene.images[editingImage].file)}
+            busy={editBusy}
+            onCancel={() => { setEditingImage(null); setEditPrompt(""); }}
+            onApply={async (maskBlob) => {
+              setEditBusy(true);
+              try {
+                const form = new FormData();
+                form.set("mask", maskBlob, "mask.png");
+                form.set("prompt", editPrompt || "maintain the existing style");
+                await api.inpaintImage(prof, slug, scene.id, editingImage, form);
+                toastOk("Edit applied — new image added");
+                setEditingImage(null);
+                setEditPrompt("");
+                refresh();
+              } catch (e) {
+                toastError(String(e));
+              } finally {
+                setEditBusy(false);
+              }
+            }}
+          />
+          <div style={{
+            position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)",
+            zIndex: 55, width: "min(500px, 90vw)",
+          }}>
+            <input
+              value={editPrompt}
+              onChange={(e) => setEditPrompt(e.target.value)}
+              placeholder="What should the painted area become? (e.g. white sneakers, blue background)"
+              style={{ width: "100%", fontSize: "0.88rem", padding: "10px 14px" }}
+              autoFocus
+            />
+          </div>
+        </div>
       )}
 
       {refineOpen && (
