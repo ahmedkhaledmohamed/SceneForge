@@ -59,6 +59,9 @@
     <a href="#consistency">23. Style Consistency</a><br>
     <a href="#backup">24. Backup &amp; Export</a><br>
     <a href="#settings">25. Settings &amp; API Keys</a><br>
+    <a href="#dashboard">26. Account Dashboard</a><br>
+    <a href="#activity">27. Activity &amp; Timestamps</a><br>
+    <a href="#preferences">28. Preferences &amp; Memory</a><br>
   </nav>
 </section>
 
@@ -74,7 +77,7 @@
   <li><b>Email + password</b> — create an account with any email and a password (at least 8 characters).</li>
 </ul>
 <p>Each sign-in method creates a separate account. If you sign in with Google and then with GitHub using a different email, those are two different accounts with separate profiles.</p>
-<p>After logging in, you land on the <b>profile list</b> — all your profiles (brands/workspaces). You can switch between profiles using the dropdown in the top navigation bar.</p>
+<p>After logging in, you land on your <b>dashboard</b> — it shows total spend, recent projects across all profiles, and your profile list. SceneForge remembers your last profile and can auto-redirect you there on login. You can switch between profiles using the dropdown in the top navigation bar.</p>
 
 
 <!-- ============================================================ -->
@@ -139,8 +142,13 @@
   <li><b>Import from zip</b> — restore a previously exported project backup</li>
 </ul>
 
+<p>The project creation form shows which settings are inherited from your profile (image model, video model, aspect ratio, image options) with a <b>"from profile"</b> label so defaults are never invisible.</p>
+
 <h3>Project concept</h3>
 <p>The <b>concept</b> is a short description of what this post is about. It's used by the AI Director, shot list generator, and caption generator. Example: <em>"toddler boy spring outfit — pastel blue polo, khaki shorts, white sneakers"</em>.</p>
+
+<h3>Project list</h3>
+<p>The project list shows <b>thumbnails</b> (from your first selected image), <b>spend per project</b>, and <b>"updated 2h ago"</b> relative timestamps. Each project card gives you a visual preview of what's inside without clicking in.</p>
 
 <h3>Budget</h3>
 <p>You can set a USD budget for the project in settings. When set, SceneForge will warn you before operations that would exceed the budget, and smart model routing will pick cheaper models as you approach the limit.</p>
@@ -608,6 +616,48 @@
 
 <h3>Account info</h3>
 <p>Shows your login method (Google, GitHub, or email), name, and email address.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="dashboard"><span class="n">26</span>Account Dashboard</h2>
+
+<p>The <b>/app</b> page is your account-wide dashboard. It shows:</p>
+<ul>
+  <li><b>Summary cards</b> — total profiles, total projects, and total GPU spend across all your brands</li>
+  <li><b>Recent projects</b> — the 5 most recently updated projects across all profiles, with thumbnails, profile name, and relative time. Click to jump directly into any project.</li>
+  <li><b>Profile grid</b> — all your profiles with spend badges and "updated Xh ago" timestamps</li>
+</ul>
+<p>The dashboard gives you a single view of everything you're working on, without needing to open each profile separately.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="activity"><span class="n">27</span>Activity &amp; Timestamps</h2>
+
+<p>Every project tracks <b>created_at</b> and <b>updated_at</b> timestamps. The updated_at timestamp bumps automatically every time you make a change — add a scene, generate an image, keep a clip, etc.</p>
+
+<h3>Where you see timestamps</h3>
+<ul>
+  <li><b>Project list</b> — "updated 2h ago" on each project card</li>
+  <li><b>Profile list</b> — shows the most recent update across all projects in that profile</li>
+  <li><b>Dashboard recent projects</b> — sorted by most recently updated</li>
+</ul>
+<p>Timestamps help you quickly find what you were working on last, especially when you have many projects across profiles.</p>
+
+
+<!-- ============================================================ -->
+
+<h2 id="preferences"><span class="n">28</span>Preferences &amp; Memory</h2>
+
+<p>SceneForge remembers your preferences across sessions:</p>
+<ul>
+  <li><b>Last profile</b> — when you log in, SceneForge auto-redirects to the profile you used last time. Click the wordmark "SceneForge Studio" to go back to the full dashboard.</li>
+  <li><b>Profile switching</b> — the dropdown in the top bar shows all your profiles. When you switch, the app clears the previous profile's cached data so you never see stale content from another brand.</li>
+  <li><b>Loading states</b> — while data loads, you see smooth skeleton placeholders instead of blank pages. Cards, headers, and tabs all have matching placeholder shapes.</li>
+  <li><b>Stats updates</b> — when you create, delete, or generate content, profile stats and project counts update immediately without needing to refresh the page.</li>
+</ul>
+<p>Preferences are stored server-side in your account, so they persist across devices and browsers.</p>
 
 </main>
 
