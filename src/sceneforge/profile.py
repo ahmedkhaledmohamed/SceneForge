@@ -112,6 +112,7 @@ class Profile:
     assets: list[Asset] = field(default_factory=list)
     keys: ProfileKeys = field(default_factory=ProfileKeys)
     owner_id: str = ""
+    shared_with: list[str] = field(default_factory=list)
     password_hash: str = ""
     password_salt: str = ""
     schema_version: int = PROFILE_SCHEMA_VERSION
@@ -240,6 +241,7 @@ class Profile:
             assets=[Asset(**a) for a in data.get("assets", [])],
             keys=ProfileKeys(**data.get("keys", {})),
             owner_id=data.get("owner_id", ""),
+            shared_with=data.get("shared_with", []),
             password_hash=data.get("password_hash", ""),
             password_salt=data.get("password_salt", ""),
             schema_version=PROFILE_SCHEMA_VERSION,
