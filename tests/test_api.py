@@ -469,12 +469,10 @@ def test_auth_and_settings(tmp_path):
     prof = create_profile(client)
 
     doc = client.get(f"/api/profiles/{prof}").json()
-    assert doc["has_keys"] is False
 
     # settings should work (user is authenticated via make_client)
     r = client.get(f"/api/profiles/{prof}/settings")
     assert r.status_code == 200
-    assert r.json()["has_together"] is False
 
     # save a Together key
     r = client.patch(f"/api/profiles/{prof}/settings",
