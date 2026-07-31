@@ -93,11 +93,20 @@ def make_router(home: Path) -> APIRouter:
             raise _err(401, "unauthorized", "Login required")
         return user
 
+    def _can_access(profile, user_id: str) -> bool:
+        if not profile.owner_id:
+            return True
+        if profile.owner_id == user_id:
+            return True
+        if user_id in profile.shared_with:
+            return True
+        return False
+
     def require_owner(request: Request, prof: str) -> dict:
         user = get_user(request)
         profile = load_profile(prof)
-        if profile.owner_id and profile.owner_id != user["id"]:
-            raise _err(403, "forbidden", "You don't own this profile")
+        if not _can_access(profile, user["id"]):
+            raise _err(403, "forbidden", "You don't have access to this profile")
         return user
 
     def project_root(prof: str, slug: str) -> Path:
@@ -194,13 +203,20 @@ def make_router(home: Path) -> APIRouter:
 
         if mode == "image":
             scene_id = f"qg-{len(project.scenes) + 1:04d}"
-            scene = Scene(id=scene_id, description=prompt or "quick generation")
+            # Auto-attach profile's main character for multi-ref composition
+            main_char = profile.main_character
+            char_id = main_char.id if main_char else None
+            scene = Scene(id=scene_id, description=prompt or "quick generation",
+                          character_id=char_id)
             if file and file.filename:
                 dest = await save_upload(file, project.scene_refs_dir(scene))
                 scene.refs.append(SceneRef(
                     file=str(dest.relative_to(project.root)),
-                    role="style", label="reference",
+                    role="garment", label="reference",
                 ))
+            # Sync profile style into project so prompt composition uses it
+            project.style.anchor = profile.style.anchor
+            project.style.suffix = profile.style.suffix
             project.scenes.append(scene)
             project.save()
 
@@ -337,7 +353,7 @@ def make_router(home: Path) -> APIRouter:
 
         for pf in sorted(home.glob(f"*/{PROFILE_FILE}")):
             profile = Profile.load(pf.parent)
-            if profile.owner_id and profile.owner_id != user["id"]:
+            if not _can_access(profile, user["id"]):
                 continue
             total_profiles += 1
             prof_slug = pf.parent.name
@@ -382,7 +398,7 @@ def make_router(home: Path) -> APIRouter:
         out = []
         for pf in sorted(home.glob(f"*/{PROFILE_FILE}")):
             profile = Profile.load(pf.parent)
-            if profile.owner_id and profile.owner_id != user["id"]:
+            if not _can_access(profile, user["id"]):
                 continue
             spent = 0.0
             latest_mtime = ""
@@ -453,6 +469,25 @@ def make_router(home: Path) -> APIRouter:
         profile.owner_id = user["id"]
         profile.save()
         return {"claimed": prof, "owner_id": user["id"]}
+
+    @router.post("/profiles/{prof}/share")
+    def share_profile(prof: str, request: Request, payload: dict):
+        user = get_user(request)
+        profile = load_profile(prof)
+        if profile.owner_id != user["id"]:
+            raise _err(403, "forbidden", "Only the owner can share a profile")
+        email = (payload.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            raise _err(400, "invalid", "Valid email required")
+        auth_db = request.app.state.auth_db
+        target = auth_db.get_user_by_email(email)
+        if not target:
+            raise _err(404, "not_found", f"No user with email '{email}'")
+        if target["id"] in profile.shared_with:
+            return {"shared_with": profile.shared_with, "already": True}
+        profile.shared_with.append(target["id"])
+        profile.save()
+        return {"shared_with": profile.shared_with, "added": email}
 
     @router.get("/profiles/{prof}/settings")
     def get_settings(prof: str, request: Request):
