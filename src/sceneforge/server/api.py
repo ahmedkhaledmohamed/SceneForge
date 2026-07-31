@@ -255,10 +255,21 @@ def make_router(home: Path) -> APIRouter:
 
     @router.get("/profiles/{prof}/quick-generate/results")
     def quick_results(prof: str):
+        from datetime import datetime, timedelta, timezone
         root = profile_root(prof) / "projects" / "_quick"
         if not (root / PROJECT_FILE).is_file():
             return {"images": [], "clips": []}
         project = Project.load(root)
+
+        # Auto-prune scenes older than 24h
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        original_count = len(project.scenes)
+        project.scenes = [s for s in project.scenes
+                          if any(img.created_at > cutoff for img in s.images) or not s.images]
+        project.clips = [c for c in project.clips if c.created_at > cutoff]
+        if len(project.scenes) < original_count:
+            project.save()
+
         images = []
         for scene in project.scenes:
             for i, img in enumerate(scene.images):
