@@ -10,25 +10,9 @@ import { SkeletonProjectBoard } from "../components/Skeleton";
 import { toastError, toastOk } from "../components/toast";
 import { DEMO_PROJECT } from "../demo";
 import { useIsDemo } from "../DemoContext";
+import { ModelPills, CostBadge } from "../components/ModelPills";
 import { useInvalidateProject, useModels, useProject } from "../hooks";
 import type { Character, Project, SavedPrompt, Scene, ShotListItem } from "../types";
-
-function ModelPicker({ kind, value, onChange }: {
-  kind: "image" | "video"; value: string; onChange: (v: string) => void;
-}) {
-  const { data: models } = useModels();
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)}>
-      {Object.entries(models ?? {})
-        .filter(([, m]) => m.kind === kind)
-        .map(([key, m]) => (
-          <option key={key} value={key}>
-            {key} (${m.price}{m.max_refs ? `, ${m.max_refs} refs` : ""})
-          </option>
-        ))}
-    </select>
-  );
-}
 
 function CharacterPicker({ characters, value, onChange }: {
   characters: Character[]; value: string; onChange: (v: string) => void;
@@ -76,9 +60,9 @@ function SettingsDialog({ prof, slug, project, onClose, refresh }: {
       <label>Style anchor</label>
       <input value={anchor} onChange={(e) => setAnchor(e.target.value)} style={{ width: "100%" }} />
       <label>Default image model</label>
-      <ModelPicker kind="image" value={imageModel} onChange={setImageModel} />
+      <ModelPills kind="image" value={imageModel} onChange={setImageModel} />
       <label>Default video model</label>
-      <ModelPicker kind="video" value={videoModel} onChange={setVideoModel} />
+      <ModelPills kind="video" value={videoModel} onChange={setVideoModel} />
       <label>Image options per scene</label>
       <input type="number" min={1} max={6} value={options}
              onChange={(e) => setOptions(Number(e.target.value))} style={{ width: 60 }} />
@@ -208,7 +192,7 @@ function RefineDialog({ prof, slug, scene, project, onClose, refresh }: {
       )}
       <label>Model &amp; options</label>
       <div className="row">
-        <ModelPicker kind="image" value={model} onChange={setModel} />
+        <ModelPills kind="image" value={model} onChange={setModel} />
         <input
           type="number" min={1} max={4} value={options}
           onChange={(e) => setOptions(Number(e.target.value))}
@@ -490,7 +474,7 @@ function SceneCard({ prof, slug, scene, project, refresh, busy, isFirst, isLast,
       </div>
 
       <div className="row" style={{ margin: "8px 0" }}>
-        <ModelPicker kind="image" value={sceneModel} onChange={setSceneModel} />
+        <ModelPills kind="image" value={sceneModel} onChange={setSceneModel} />
         <button
           onClick={() => generateScene.mutate()}
           disabled={busy || generateScene.isPending}
@@ -1583,17 +1567,7 @@ export default function ProjectBoard() {
             )}
             <label>Video model</label>
             <div className="row">
-              <select value={clipModel || proj.settings.video_model}
-                      onChange={(e) => setClipModel(e.target.value)}>
-                <option value="auto">Auto (smart routing)</option>
-                {Object.entries(models ?? {})
-                  .filter(([, m]) => m.kind === "video")
-                  .map(([key, m]) => (
-                    <option key={key} value={key}>
-                      {key} — ${m.price}/clip{m.supports_i2v ? " · I2V" : ""}
-                    </option>
-                  ))}
-              </select>
+              <ModelPills kind="video" value={clipModel || proj.settings.video_model} onChange={setClipModel} />
               {(clipModel || proj.settings.video_model) === "auto" && clipShotType && shotTypes?.[clipShotType] && (
                 <span className="mono muted" style={{ fontSize: "0.68rem" }}>
                   → {shotTypes[clipShotType].recommended_video}
@@ -1764,6 +1738,30 @@ export default function ProjectBoard() {
       {activeTab === "sequence" && <>
       <SequenceTab prof={prof} slug={slug} project={proj} refresh={refresh} busy={!!busy} />
       </>}
+
+      {/* Persistent cost bar */}
+      <div style={{
+        position: "fixed", bottom: 0, left: 0, right: 0,
+        background: "rgba(10, 10, 15, 0.8)",
+        backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+        borderTop: "1px solid var(--glass-border)",
+        padding: "8px 24px",
+        zIndex: 15,
+        display: "flex", justifyContent: "center", gap: 24,
+        fontSize: "0.76rem",
+      }}>
+        <span className="mono" style={{ color: "var(--gold)" }}>
+          ${proj.spent_usd.toFixed(2)} spent
+        </span>
+        {proj.budget_usd > 0 && (
+          <span className="mono muted">
+            ${(proj.budget_usd - proj.spent_usd).toFixed(2)} remaining
+          </span>
+        )}
+        <span className="mono muted">
+          {proj.scenes.length} scenes · {proj.clips.filter(c => c.status === "completed").length} clips · {proj.clips.filter(c => c.kept).length} kept
+        </span>
+      </div>
     </>
   );
 }
