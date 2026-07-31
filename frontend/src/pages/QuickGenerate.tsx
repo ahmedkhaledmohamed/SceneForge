@@ -119,9 +119,24 @@ export default function QuickGenerate() {
         )}
 
         {results && results.images.length === 0 && results.clips.length === 0 && !generating && (
-          <div style={{ textAlign: "center", padding: "60px 0", color: "var(--taupe)" }}>
-            <div style={{ fontSize: "2rem", marginBottom: 12 }}>Generate</div>
-            <p>Type a prompt below, pick a model, and hit Generate.</p>
+          <div style={{ textAlign: "center", padding: "80px 0 60px", color: "var(--taupe)" }}>
+            <div style={{ fontSize: "3rem", marginBottom: 16, opacity: 0.3 }}>&#9670;</div>
+            <h2 style={{ color: "var(--cream)", marginBottom: 8 }}>Start creating</h2>
+            <p style={{ maxWidth: "40ch", margin: "0 auto", lineHeight: 1.6 }}>
+              Type a prompt below, pick a model, and hit Generate.<br />
+              Upload a reference image for multi-ref composition,<br />
+              or switch to Video mode to animate an image.
+            </p>
+            <div className="mono" style={{ marginTop: 16, fontSize: "0.72rem", opacity: 0.5 }}>
+              Cmd+Enter to generate
+            </div>
+          </div>
+        )}
+
+        {generating && (
+          <div style={{ textAlign: "center", padding: "40px 0", color: "var(--gold)" }}>
+            <div className="skeleton" style={{ width: 190, height: 280, margin: "0 auto", borderRadius: 10 }} />
+            <p className="mono" style={{ marginTop: 12, fontSize: "0.78rem" }}>Generating...</p>
           </div>
         )}
       </div>
