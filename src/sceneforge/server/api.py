@@ -449,7 +449,7 @@ def make_router(home: Path) -> APIRouter:
         doc.pop("owner_id", None)
         doc.pop("keys", None)
         doc["slug"] = prof
-        doc["has_keys"] = bool(profile.keys.together)
+        doc["has_keys"] = bool(profile.keys.together or os.environ.get("TOGETHER_API_KEY"))
         return doc
 
     @router.delete("/profiles/{prof}")
@@ -506,9 +506,9 @@ def make_router(home: Path) -> APIRouter:
                 "runpod_api": mask(profile.keys.runpod_api),
                 "runpod_endpoint": profile.keys.runpod_endpoint,
             },
-            "has_together": bool(profile.keys.together),
-            "has_openrouter": bool(profile.keys.openrouter),
-            "has_runpod": bool(profile.keys.runpod_api),
+            "has_together": bool(profile.keys.together or os.environ.get("TOGETHER_API_KEY")),
+            "has_openrouter": bool(profile.keys.openrouter or os.environ.get("OPENROUTER_API_KEY")),
+            "has_runpod": bool(profile.keys.runpod_api or os.environ.get("RUNPOD_API_KEY")),
         }
 
     @router.get("/profiles/{prof}/balance")
